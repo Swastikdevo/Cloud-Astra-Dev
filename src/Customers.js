@@ -4,45 +4,49 @@ import React, { useState } from 'react';
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
   const [name, setName] = useState('');
-  const [editIndex, setEditIndex] = useState(-1);
+  const [editingIndex, setEditingIndex] = useState(null);
 
   const addCustomer = () => {
-    if (!name) return;
-    const updatedCustomers = [...customers];
-    if (editIndex >= 0) {
-      updatedCustomers[editIndex] = name;
-      setEditIndex(-1);
-    } else {
-      updatedCustomers.push(name);
+    if (name) {
+      setCustomers([...customers, name]);
+      setName('');
     }
-    setCustomers(updatedCustomers);
-    setName('');
   };
 
   const editCustomer = (index) => {
     setName(customers[index]);
-    setEditIndex(index);
+    setEditingIndex(index);
+  };
+
+  const updateCustomer = () => {
+    const updatedCustomers = customers.map((customer, index) =>
+      index === editingIndex ? name : customer
+    );
+    setCustomers(updatedCustomers);
+    setName('');
+    setEditingIndex(null);
   };
 
   const deleteCustomer = (index) => {
-    const updatedCustomers = customers.filter((_, i) => i !== index);
-    setCustomers(updatedCustomers);
+    setCustomers(customers.filter((_, i) => i !== index));
   };
 
   return (
     <div>
       <h2>Customer Management</h2>
-      <input 
-        type="text" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
-        placeholder="Customer Name" 
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Enter customer name"
       />
-      <button onClick={addCustomer}>{editIndex >= 0 ? 'Update' : 'Add'} Customer</button>
+      <button onClick={editingIndex !== null ? updateCustomer : addCustomer}>
+        {editingIndex !== null ? 'Update Customer' : 'Add Customer'}
+      </button>
       <ul>
         {customers.map((customer, index) => (
           <li key={index}>
-            {customer} 
+            {customer}
             <button onClick={() => editCustomer(index)}>Edit</button>
             <button onClick={() => deleteCustomer(index)}>Delete</button>
           </li>
