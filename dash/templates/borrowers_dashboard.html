@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borrowers Dashboard</title>
+    <style>
+     
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: #f9fafb;
+            color: #333;
+            padding: 20px;
+            /* margin: 20px;
+            margin-left: 100px;
+            margin-right: 100px; */
+        }
+
+        h1, h2 {
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #222;
+            text-align: center;
+            font-weight: bold;
+            letter-spacing: -1px;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            color: #444;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: linear-gradient(145deg, #ffffff, #f3f4f6);
+            border-radius: 16px;
+            box-shadow: 4px 4px 12px rgba(0, 0, 0, 0.05), -4px -4px 12px rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            margin-bottom: 30px;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .card:hover {
+            transform: scale(1.02);
+            box-shadow: 6px 6px 16px rgba(0, 0, 0, 0.1), -6px -6px 16px rgba(255, 255, 255, 1);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+
+        table thead {
+            background-color: #f3f4f6;
+        }
+
+        table thead th {
+            padding: 14px;
+            text-align: left;
+            font-size: 14px;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        table tbody tr {
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        table tbody td {
+            padding: 14px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        table tbody tr:hover {
+            background-color: #f9fafb;
+        }
+
+        table tbody td span {
+            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+
+        table tbody td span.overdue {
+            background-color: #fde8e8;
+            color: #e63946;
+        }
+
+        table tbody td span.near-due {
+            background-color: #fffbeb;
+            color: #d97706;
+        }
+
+        table tbody td span.safe {
+            background-color: #e6f4ea;
+            color: #256029;
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+        }
+
+        /* Floating Add Button */
+        .add-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #2563eb;
+            color: #ffffff;
+            padding: 12px 20px;
+            border-radius: 50px;
+            box-shadow: 0 6px 12px rgba(37, 99, 235, 0.3);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .add-button:hover {
+            background-color: #1d4ed8;
+            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.5);
+        }
+
+        .add-button svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.3rem;
+            }
+
+            table thead th, table tbody td {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Borrowers Dashboard</h1>
+        <div class="card">
+            <h2>Borrowers Near Due Date (Next 5 Days)</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Loan Amount</th>
+                            <th>Repayment Date</th>
+                            <th>Days Left</th>
+                            <th>Campagn Start</th>
+                            <th>Payment Done</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for borrower in near_due_borrowers %}
+                        <tr>
+                            <td>{{ borrower.name }}</td>
+                            <td>{{ borrower.phone_number }}</td>
+                            <td>₹{{ borrower.loan_amount }}</td>
+                            <td>{{ borrower.repayment_last_date }}</td>
+                            <td>
+                                {% if borrower.days_left == "Overdue" %}
+                                    <span class="overdue">Overdue</span>
+                                {% else %}
+                                    <span class="near-due">{{ borrower.days_left }} days</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{borrower.message_sent}} - {{borrower.notification_attempts}}
+                            </td>
+                            <td>
+                                {{borrower.payment_completed}}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+       
+{% if complete %}
+        <!-- Near Due Borrowers -->
+        <div class="card">
+            <h2>Completed Payment - Out of Campaign</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Loan Amount</th>
+                            <th>Repayment Date</th>
+                            <th>Days Left</th>
+                            <th>Campagn Start</th>
+                            <th>Payment Done</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for borrower in complete %}
+                        <tr>
+                            <td>{{ borrower.name }}</td>
+                            <td>{{ borrower.phone_number }}</td>
+                            <td>₹{{ borrower.loan_amount }}</td>
+                            <td>{{ borrower.repayment_last_date }}</td>
+                            <td>
+                                {% if borrower.days_left == "Overdue" %}
+                                    <span class="overdue">Overdue</span>
+                                {% else %}
+                                    <span class="near-due">{{ borrower.days_left }} days</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{borrower.message_sent}}
+                            </td>
+                            <td>
+                                {{borrower.payment_completed}}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+ 
+ <div class="card">
+    <h2>All Borrowers</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Loan Amount</th>
+                    <th>Repayment Date</th>
+                    <th>Days Left</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for borrower in all_borrowers %}
+                <tr>
+                    <td>{{ borrower.name }}</td>
+                    <td>{{ borrower.phone_number }}</td>
+                    <td>₹{{ borrower.loan_amount }}</td>
+                    <td>{{ borrower.repayment_last_date }}</td>
+                    <td>
+                        {% if borrower.days_left == "Overdue" %}
+                            <span class="overdue">Overdue</span>
+                        {% elif borrower.days_left <= 5 %}
+                            <span class="near-due">{{ borrower.days_left }} days</span>
+                        {% else %}
+                            <span class="safe">{{ borrower.days_left }} days</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+ 
+</body>
+</html>

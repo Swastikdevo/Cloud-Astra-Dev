@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+    
+</head>
+<style>
+    @import "https://fonts.googleapis.com/css?family=Product+Sans";
+    @import url('https://fonts.cdnfonts.com/css/product-sans');
+    /* General Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Product Sans', sans-serif;
+   
+}
+
+/* Container */
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Navbar */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color:white;
+    border-bottom: 1px solid #ddd;
+}
+
+.navbar .logo {
+    font-size: 1.5rem;
+    font-weight: 400;
+}
+
+.navbar nav a {
+    margin: 0 1rem;
+    color: #555;
+    text-decoration: none;
+}
+
+.navbar nav a.active {
+    font-weight: bold;
+    color: #000;
+}
+
+.user-profile img {
+    border-radius: 50%;
+}
+
+/* Main Section */
+main {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    padding: 2rem;
+    background-color: #f0f2f5;
+}
+
+/* Activity Section */
+.activity {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.activity-stat {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.activity-subtext {
+    text-align: center;
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.chart {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 150px;
+    margin: 1rem 0;
+    position: relative;
+}
+
+.bar {
+    width: 12%;
+    background: #ccc;
+    border-radius: 5px;
+    position: relative;
+}
+
+.bar-label {
+    position: absolute;
+    top: 105%;
+    text-align: center;
+    width: 100%;
+    font-size: 0.8rem;
+    color: #555;
+}
+
+.bar.highlight {
+    background:rgb(255, 99, 132);
+}
+
+
+
+/* Recommendations */
+.recommendations {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.participants img {
+    margin-right: 0.5rem;
+}
+
+button {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background: #6c63ff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #5a54d1;
+}
+
+/* Schedule */
+.schedule-card {
+    background: #fff;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 10px;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+}
+
+.tag {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.2rem 0.5rem;
+    background: #ddd;
+    border-radius: 5px;
+    font-size: 0.8rem;
+    color: #555;
+}
+
+.tag.advanced {
+    background: #6c63ff;
+    color: #fff;
+}
+
+</style>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="navbar">
+            <div class="logo">Prresa  </div>
+            <nav>
+                <a href="#">Courses</a>
+                <a href="#" class="active">Dashboard</a>
+                <a href="#">Schedule</a>
+                <a href="#">Message</a>
+                <a href="#">Support</a>
+            </nav>
+            <div class="user-profile">
+                <img src="https://via.placeholder.com/40" alt="User">
+            </div>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main>
+            <!-- Activity Section -->
+            <section class="activity">
+                <h3>Activity</h3><br>
+                <p class="activity-stat">3 <span>Weak Areas</span></p>
+                <div class="chart">
+                    <div class="bar highlight" style="height: 20%;">
+                        <span class="bar-label">Math</span>
+                    </div>
+                    <div class="bar" style="height: 50%;">
+                        <span class="bar-label">DAA</span>
+                    </div>
+                    <div class="bar highlight" style="height: 30%;">
+                        <span class="bar-label">DSA</span>
+                    </div>
+                    <div class="bar" style="height: 80%;">
+                        <span class="bar-label">ML</span>
+                    </div>
+                    <div class="bar highlight" style="height: 40%;">
+                        <span class="bar-label">Elective</span>
+                    </div>
+                    <div class="bar" style="height: 70%;">
+                        <span class="bar-label">PE</span>
+                    </div>
+                    <div class="bar" style="height: 90%;">
+                        <span class="bar-label">English</span>
+                    </div>
+                </div>
+                <br> <br>
+                <p class="activity-subtext">Subjects</p>
+            </section>
+
+            <!-- Progress Statistics -->
+            <!-- <section class="progress">
+                <h3>Progress Statistics</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 64%;"></div>
+                </div>
+                <p>64% <span>Total activity</span></p>
+                <div class="stats-grid">
+                    <div class="stat">
+                        <p>8</p>
+                        <span>In progress</span>
+                    </div>
+                    <div class="stat">
+                        <p>12</p>
+                        <span>Completed</span>
+                    </div>
+                    <div class="stat">
+                        <p>14</p>
+                        <span>Upcoming</span>
+                    </div>
+                </div>
+            </section> -->
+
+            <!-- Recommendations -->
+            <section class="recommendations">
+                <h3>Attendence</h3>
+                <canvas id="myChart" width="200" height="200"></canvas>
+
+            
+            </section>
+            <section class="recommendations">
+                <h3>Content  <span class="tag">Smart Recommendations</span> <br></h3>
+                <br>
+                <div class="schedule-card">
+                    
+                    <h4>Technical English for Beginners</h4>
+                    <span class="tag">Course</span>
+                </div>
+                <div class="schedule-card">
+                    <p>10:30 - 12:00</p>
+                    <h4>Technical English for Beginners</h4>
+                    <span class="tag">Extra Class</span>
+                </div>
+                <br>
+                <span class="tag advanced">Raise A Query</span>
+            </section>
+
+            <!-- Schedule -->
+            <section class="schedule">
+                <h3>My Schedule</h3>
+                <br>
+                <div class="schedule-card">
+                    <p>10:30 - 12:00</p>
+                    <h4>Technical English for Beginners</h4>
+                    <span class="tag">Beginner</span>
+                </div>
+                <div class="schedule-card">
+                    <p>13:00 - 14:00</p>
+                    <h4>English Punctuation Made Easy</h4>
+                    <span class="tag advanced">Advanced</span>
+                </div>
+                <div class="schedule-card">
+                    <p>16:00 - 17:00</p>
+                    <h4>Technical Spanish for Beginners</h4>
+                    <span class="tag">Beginner</span>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+
+<script>
+    const data = {
+      labels: ['DAA', 'Elective', 'DSA','Machine Learning','Python'],
+      datasets: [{
+        label: 'My First Dataset',
+        data: [100, 50, 100,60,40],
+        backgroundColor: [
+          'rgb(255, 99, 132)',
+          'rgb(54, 162, 235)',
+          'rgb(255, 205, 87)',
+          'rgb(54, 162, 235)',
+          'rgb(54, 162, 235)',
+
+
+
+        ],
+        hoverOffset: 4
+      }]
+    };
+
+    const config = {
+      type: 'doughnut',
+      data: data,
+      
+    };
+
+    // Render the chart
+    window.onload = function() {
+      const ctx = document.getElementById('myChart').getContext('2d');
+      new Chart(ctx, config);
+    };
+  </script>
+</html>
