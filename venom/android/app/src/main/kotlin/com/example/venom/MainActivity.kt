@@ -1,6 +1,5 @@
 ```dart
 import 'package:flutter/material.dart';
-import 'dart:math';
 
 void main() {
   runApp(MyApp());
@@ -10,26 +9,26 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Random Color App',
+      title: 'Flutter Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: RandomColorScreen(),
+      home: MyHomePage(),
     );
   }
 }
 
-class RandomColorScreen extends StatefulWidget {
+class MyHomePage extends StatefulWidget {
   @override
-  _RandomColorScreenState createState() => _RandomColorScreenState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _RandomColorScreenState extends State<RandomColorScreen> {
-  Color _randomColor = Colors.white;
+class _MyHomePageState extends State<MyHomePage> {
+  int _counter = 0;
 
-  void _changeColor() {
+  void _incrementCounter() {
     setState(() {
-      _randomColor = Color((Random().nextDouble() * 0xFFFFFF).toInt()).withOpacity(1.0);
+      _counter++;
     });
   }
 
@@ -37,16 +36,26 @@ class _RandomColorScreenState extends State<RandomColorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Random Color Generator'),
+        title: Text('Counter App'),
       ),
-      body: Container(
-        color: _randomColor,
-        child: Center(
-          child: ElevatedButton(
-            onPressed: _changeColor,
-            child: Text('Change Color'),
-          ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text(
+              'You have pushed the button this many times:',
+            ),
+            Text(
+              '$_counter',
+              style: Theme.of(context).textTheme.headline4,
+            ),
+          ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _incrementCounter,
+        tooltip: 'Increment',
+        child: Icon(Icons.add),
       ),
     );
   }
