@@ -1,49 +1,35 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([{ id: 1, name: 'John Doe', email: 'john@example.com' }]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [editId, setEditId] = useState(null);
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const addCustomer = () => {
-    if (name && email) {
-      setCustomers([...customers, { id: Date.now(), name, email }]);
-      setName('');
-      setEmail('');
-    }
-  };
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
+  }, []);
 
-  const deleteCustomer = (id) => {
-    setCustomers(customers.filter(customer => customer.id !== id));
-  };
-
-  const editCustomer = (customer) => {
-    setName(customer.name);
-    setEmail(customer.email);
-    setEditId(customer.id);
-  };
-
-  const updateCustomer = () => {
-    setCustomers(customers.map(customer => customer.id === editId ? { ...customer, name, email } : customer));
-    setName('');
-    setEmail('');
-    setEditId(null);
-  };
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h1>Customer Management System</h1>
-      <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <button onClick={editId ? updateCustomer : addCustomer}>{editId ? 'Update' : 'Add'} Customer</button>
+      <input
+        type="text"
+        placeholder="Search customers..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
       <ul>
-        {customers.map(customer => (
+        {filteredCustomers.map(customer => (
           <li key={customer.id}>
             {customer.name} - {customer.email}
-            <button onClick={() => editCustomer(customer)}>Edit</button>
-            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -51,5 +37,5 @@ const CustomerManagement = () => {
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
