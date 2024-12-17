@@ -1,58 +1,62 @@
-import React, {Component} from 'react';
-import Panel from 'react-bootstrap/lib/Panel'
-import Button from 'react-bootstrap/lib/Button'
-import CustomerDetails from './CustomerDetails'
-import axios from 'axios'
+```javascript
+import React, { useState } from 'react';
 
-export default class Customers extends Component {
+const Customers = () => {
+  const [customers, setCustomers] = useState([]);
+  const [name, setName] = useState('');
+  const [editIndex, setEditIndex] = useState(-1);
 
-  constructor(props) {
-    super(props)
-    this.state = {
-      selectedCustomer: 1
+  const addCustomer = () => {
+    if (name.trim()) {
+      if (editIndex >= 0) {
+        const updatedCustomers = customers.map((customer, index) => 
+          index === editIndex ? name : customer
+        );
+        setCustomers(updatedCustomers);
+        setEditIndex(-1);
+      } else {
+        setCustomers([...customers, name]);
+      }
+      setName('');
     }
-  }
-
-  //function which is called the first time the component loads
-  componentDidMount() {
-    this.getCustomerData();
-  }
-
-  //Function to get the Customer Data from json
-  getCustomerData() {
-    axios.get('assets/samplejson/customerlist.json').then(response => {
-      this.setState({customerList: response})
-    })
   };
 
-  render() {
-    if (!this.state.customerList)
-      return (<p>Loading data</p>)
-    return (<div className="addmargin">
-      <div className="col-md-3">
-        {
+  const editCustomer = (index) => {
+    setName(customers[index]);
+    setEditIndex(index);
+  };
 
-          this.state.customerList.data.map(customer => <Panel bsStyle="info" key={customer.name} className="centeralign">
-            <Panel.Heading>
-              <Panel.Title componentClass="h3">{customer.name}</Panel.Title>
-            </Panel.Heading>
-            <Panel.Body>
-              <p>{customer.email}</p>
-              <p>{customer.phone}</p>
-              <Button bsStyle="info" onClick={() => this.setState({selectedCustomer: customer.id})}>
+  const deleteCustomer = (index) => {
+    setCustomers(customers.filter((_, i) => i !== index));
+  };
 
-                Click to View Details
+  const resetList = () => {
+    setCustomers([]);
+  };
 
-              </Button>
+  return (
+    <div>
+      <h2>Customer Management</h2>
+      <input 
+        type="text" 
+        value={name} 
+        onChange={(e) => setName(e.target.value)} 
+        placeholder="Customer Name"
+      />
+      <button onClick={addCustomer}>{editIndex >= 0 ? 'Update' : 'Add'} Customer</button>
+      <button onClick={resetList}>Reset List</button>
+      <ul>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer}
+            <button onClick={() => editCustomer(index)}>Edit</button>
+            <button onClick={() => deleteCustomer(index)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
 
-            </Panel.Body>
-          </Panel>)
-        }
-      </div>
-      <div className="col-md-6">
-        <CustomerDetails val={this.state.selectedCustomer}/>
-      </div>
-    </div>)
-  }
-
-}
+export default Customers;
+```
