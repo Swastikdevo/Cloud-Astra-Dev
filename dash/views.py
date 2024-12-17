@@ -1,44 +1,47 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
-from .models import BankAccount
-from .forms import DepositForm, WithdrawalForm
+from .models import Account
+from .forms import AccountForm, TransactionForm
+from django.contrib.auth.decorators import login_required
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def account_management(request):
-    account = BankAccount.objects.get(user=request.user)
-
-    if request.method == "POST":
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                return JsonResponse({'success': True, 'new_balance': account.balance}, status=200)
-
-        elif 'withdraw' in request.POST:
-            form = WithdrawalForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount <= account.balance:
-                    account.balance -= amount
-                    account.save()
-                    return JsonResponse({'success': True, 'new_balance': account.balance}, status=200)
-                else:
-                    return JsonResponse({'error': 'Insufficient funds'}, status=400)
-
+def manage_account(request, account_id=None):
+    if account_id:
+        account = Account.objects.get(id=account_id)
     else:
-        deposit_form = DepositForm()
-        withdrawal_form = WithdrawalForm()
+        account = None
 
-    context = {
-        'account': account,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-    }
-    return render(request, 'account_management.html', context)
+    if request.method == 'POST':
+        if account:
+            form = AccountForm(request.POST, instance=account)
+        else:
+            form = AccountForm(request.POST)
+
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user  # Assuming Account has a ForeignKey to User
+            account.save()
+            return redirect('account_details', account_id=account.id)
+    else:
+        form = AccountForm(instance=account)
+
+    return render(request, 'manage_account.html', {'form': form, 'account': account})
+
+@login_required
+@require_http_methods(["POST"])
+def create_transaction(request, account_id):
+    account = Account.objects.get(id=account_id)
+    form = TransactionForm(request.POST)
+
+    if form.is_valid():
+        transaction = form.save(commit=False)
+        transaction.account = account
+        transaction.user = request.user  # Assuming Transaction has a ForeignKey to User
+        transaction.save()
+        return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
+
+    return JsonResponse({'status': 'error', 'errors': form.errors})
 ```
