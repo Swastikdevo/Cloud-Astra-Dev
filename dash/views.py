@@ -22,29 +22,6 @@ def members(request):
         repayment_last_date__lte=target_date,
         repayment_last_date__gte=today,payment_completed = False)
     
-    # for i in near_due_borrowers:
-    #     print(i.phone_number)
-    # if Borrower.objects.get(phone_number='7818097200').payment_completed == False:
-    #     account_sid = 'AC6a499f7825d2ef0f04ced8603e816e50'
-    #     auth_token = '78cefaf132dadd5c6ad8307ed7f809ac'
-    #     client = Client(account_sid, auth_token)
-    #     message = client.messages.create(
-    #         from_='+12246287753',
-    #         body=f'Hello! Please pay your due at this link: {payment_link}',
-    #         to='+917818097200'
-    #         )
-    #     print(message.status)
-    #     wp_message =client.messages.create(
-    #         from_='whatsapp:+14155238886',
-    #         body=f'Hello! Please pay your due at this link: {payment_link}',
-    #         to='whatsapp:+917818097200'
-    #         )
-    #     print(wp_message.status)
-
-    #     borrower = Borrower.objects.get(phone_number='7818097200')
-    #     borrower.notification_attempts += 1
-    #     borrower.message_sent = True
-    #     borrower.save()
 
 
     context = {
