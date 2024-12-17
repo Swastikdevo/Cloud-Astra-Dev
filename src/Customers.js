@@ -1,54 +1,56 @@
 ```javascript
 import React, { useState } from 'react';
 
-const Customers = () => {
-    const [customers, setCustomers] = useState([]);
-    const [name, setName] = useState('');
-    const [editIndex, setEditIndex] = useState(-1);
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+  const [name, setName] = useState('');
+  const [editIndex, setEditIndex] = useState(-1);
 
-    const handleAddCustomer = () => {
-        if (editIndex >= 0) {
-            const updatedCustomers = [...customers];
-            updatedCustomers[editIndex] = name;
-            setCustomers(updatedCustomers);
-            setEditIndex(-1);
-        } else {
-            setCustomers([...customers, name]);
-        }
-        setName('');
-    };
+  const addCustomer = () => {
+    if (!name) return;
+    const updatedCustomers = [...customers];
+    if (editIndex >= 0) {
+      updatedCustomers[editIndex] = name;
+      setEditIndex(-1);
+    } else {
+      updatedCustomers.push(name);
+    }
+    setCustomers(updatedCustomers);
+    setName('');
+  };
 
-    const handleEditCustomer = (index) => {
-        setName(customers[index]);
-        setEditIndex(index);
-    };
+  const editCustomer = (index) => {
+    setName(customers[index]);
+    setEditIndex(index);
+  };
 
-    const handleDeleteCustomer = (index) => {
-        setCustomers(customers.filter((_, i) => i !== index));
-    };
+  const deleteCustomer = (index) => {
+    const updatedCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(updatedCustomers);
+  };
 
-    return (
-        <div>
-            <h2>Customer Management</h2>
-            <input 
-                type="text" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
-                placeholder="Enter Customer Name" 
-            />
-            <button onClick={handleAddCustomer}>{editIndex >= 0 ? 'Update' : 'Add'}</button>
-            <ul>
-                {customers.map((customer, index) => (
-                    <li key={index}>
-                        {customer}
-                        <button onClick={() => handleEditCustomer(index)}>Edit</button>
-                        <button onClick={() => handleDeleteCustomer(index)}>Delete</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  return (
+    <div>
+      <h2>Customer Management</h2>
+      <input 
+        type="text" 
+        value={name} 
+        onChange={(e) => setName(e.target.value)} 
+        placeholder="Customer Name" 
+      />
+      <button onClick={addCustomer}>{editIndex >= 0 ? 'Update' : 'Add'} Customer</button>
+      <ul>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer} 
+            <button onClick={() => editCustomer(index)}>Edit</button>
+            <button onClick={() => deleteCustomer(index)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default Customers;
+export default CustomerManagement;
 ```
