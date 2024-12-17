@@ -1,94 +1,80 @@
-Sure! Below is an example of a Django view function designed for a bank management system. The view includes random features such as creating a new account, depositing funds, withdrawing funds, and checking the balance. To incorporate randomness, the view randomly selects one of these actions each time it is called.
+Sure! Below is an example of a Django view function for a bank management system that implements several features, including account creation, depositing money, withdrawing money, and checking account balance. The view uses the Django REST framework for a clean API implementation and includes decorators for authentication and permission management.
 
-Make sure you have Django set up and relevant models defined for the bank accounts. For this example, I'll assume you have a model named `Account` with fields for `account_number`, `balance`, and `owner`.
+Make sure to install Django and Django REST framework in your environment. This code assumes you have a basic `BankAccount` model already defined with fields like `account_number`, `balance`, and `owner`.
 
-Here’s how you could implement such a view:
+### Django View Implementation
 
 ```python
-import random
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST, require_GET
-from django.shortcuts import get_object_or_404
-from .models import Account
+# views.py
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .models import BankAccount
+from .serializers import BankAccountSerializer
 
-@require_GET
-def random_account_action(request, account_number):
-    # Get the account based on the account number
-    account = get_object_or_404(Account, account_number=account_number)
+@api_view(['GET', 'POST', 'PUT'])
+@permission_classes([IsAuthenticated])
+def manage_account(request):
+    """
+    Manage bank accounts: Create a new account, deposit money, withdraw money, 
+    or check the balance based on the request.
+    """
+    if request.method == 'POST':
+        # Create a new bank account
+        serializer = BankAccountSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(owner=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # List of possible actions
-    actions = ['create_account', 'deposit', 'withdraw', 'check_balance']
+    elif request.method == 'PUT':
+        # Update account details such as deposit or withdrawal
+        account_number = request.data.get('account_number')
+        action = request.data.get('action')  # 'deposit' or 'withdraw'
+        amount = request.data.get('amount')
+        
+        try:
+            account = BankAccount.objects.get(account_number=account_number, owner=request.user)
+        except BankAccount.DoesNotExist:
+            return Response({'error': 'Account not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Randomly select an action from the list
-    action = random.choice(actions)
-
-    # Initialize response dictionary
-    response = {'action': action, 'account_number': account_number}
-
-    if action == 'create_account':
-        # Logic to create a new account (for demonstration, this won't actually save)
-        new_account_number = generate_new_account_number()  # Your logic for generating an account number
-        response.update({
-            'status': 'Account created',
-            'new_account_number': new_account_number,
-        })
-      
-    elif action == 'deposit':
-        deposit_amount = random.randint(10, 1000)  # Random deposit amount
-        account.balance += deposit_amount
-        account.save()
-        response.update({
-            'status': 'Deposit successful',
-            'deposit_amount': deposit_amount,
-            'new_balance': account.balance,
-        })
-
-    elif action == 'withdraw':
-        withdraw_amount = random.randint(10, min(500, account.balance))  # Random withdraw amount not exceeding balance
-        if withdraw_amount <= account.balance:
-            account.balance -= withdraw_amount
+        if action == 'deposit':
+            account.balance += amount
             account.save()
-            response.update({
-                'status': 'Withdrawal successful',
-                'withdraw_amount': withdraw_amount,
-                'new_balance': account.balance,
-            })
-        else:
-            response.update({
-                'status': 'Withdrawal failed: Insufficient funds',
-            })
+            return Response({'message': 'Deposit successful.', 'balance': account.balance}, status=status.HTTP_200_OK)
 
-    elif action == 'check_balance':
-        response.update({
-            'status': 'Balance retrieved',
-            'balance': account.balance,
-        })
+        elif action == 'withdraw':
+            if account.balance >= amount:
+                account.balance -= amount
+                account.save()
+                return Response({'message': 'Withdrawal successful.', 'balance': account.balance}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Insufficient funds.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    return JsonResponse(response)
+    elif request.method == 'GET':
+        # Check the account balance
+        account_number = request.GET.get('account_number')
+        try:
+            account = BankAccount.objects.get(account_number=account_number, owner=request.user)
+            return Response({'account_number': account.account_number, 'balance': account.balance}, status=status.HTTP_200_OK)
+        except BankAccount.DoesNotExist:
+            return Response({'error': 'Account not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-def generate_new_account_number():
-    # Your logic to generate a new account number
-    return random.randint(10000000, 99999999)  # Just a simple example
+    return Response({'error': 'Invalid request method.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 ```
 
-### Explanation:
+### Key Components
 
-1. **Imports**: The view imports necessary components from Django, including `JsonResponse` for returning JSON responses and `get_object_or_404` to handle account retrieval safely.
+- **Imports**: The necessary modules, including Django's REST framework features and the model and serializer dependencies.
+- **@api_view**: Used to specify which HTTP methods the view can handle.
+- **@permission_classes**: To enforce user authentication, ensuring only logged-in users can manage bank accounts.
+- **Account Management Logic**:
+  - **POST**: For creating a new account.
+  - **PUT**: For depositing to or withdrawing from an account.
+  - **GET**: For checking the account balance.
+- **Error Handling**: Ensures that appropriate responses are given for errors such as account not found or insufficient funds.
 
-2. **View Function**: The `random_account_action` function accepts a `request` object and `account_number` as a path parameter. It fetches the corresponding `Account` object or raises a 404 error if it doesn't exist.
-
-3. **Random Action Selection**: A list of allowed actions is defined, from which one is randomly chosen.
-
-4. **Action Handling**:
-   - **Create Account**: This simulates account creation without saving, but in a complete app, you could implement the actual logic here.
-   - **Deposit**: A random deposit amount is generated and added to the account's balance.
-   - **Withdraw**: A random withdrawal amount is generated, ensuring it doesn’t exceed the available funds.
-   - **Check Balance**: Simply returns the current balance of the account.
-
-5. **Response**: A `JsonResponse` is returned detailing the action performed and any relevant information.
-
-### Decorators:
-- `@require_GET`: Ensures that the view can only be accessed via a GET request.
-
-### Note:
-Make sure to adjust the model and data handling according to your actual implementation. You might also want to implement user authentication and other security features in production code.
+### Notes
+- Make sure you have the necessary models and serializers defined: `BankAccount` should have a unique `account_number`, `balance`, and a `ForeignKey` relationship to the `User` model. The `BankAccountSerializer` should handle validation and serialization for the `BankAccount` model.
+- You can extend this view or create additional endpoints to handle more complex features, such as transaction history or account transfers, based on your application's requirements.
