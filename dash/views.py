@@ -1,44 +1,39 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
 
 @login_required
-def account_overview(request):
-    accounts = Account.objects.filter(user=request.user)
-    context = {
-        'accounts': accounts,
-        'transaction_form': TransactionForm(),
-    }
-    return render(request, 'bank/account_overview.html', context)
+@csrf_exempt
+def manage_accounts(request):
+    if request.method == "GET":
+        accounts = Account.objects.filter(owner=request.user)
+        return render(request, 'bank/manage_accounts.html', {'accounts': accounts})
+    
+    elif request.method == "POST":
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.owner = request.user
+            account.save()
+            return JsonResponse({'status': 'success', 'account_id': account.id})
+        return JsonResponse({'status': 'error', 'errors': form.errors})
 
 @login_required
-@require_POST
-def create_account(request):
-    form = AccountForm(request.POST)
-    if form.is_valid():
-        account = form.save(commit=False)
-        account.user = request.user
-        account.save()
-        return JsonResponse({'success': True, 'message': 'Account created successfully!'})
-    return JsonResponse({'success': False, 'errors': form.errors})
-
-@login_required
-@require_POST
-def create_transaction(request):
-    form = TransactionForm(request.POST)
-    if form.is_valid():
-        transaction = form.save(commit=False)
-        transaction.user = request.user
-        transaction.save()
-        return JsonResponse({'success': True, 'message': 'Transaction recorded successfully!'})
-    return JsonResponse({'success': False, 'errors': form.errors})
-
-@login_required
-def transaction_history(request):
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
+@csrf_exempt
+def make_transaction(request):
+    if request.method == "POST":
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
+        return JsonResponse({'status': 'error', 'errors': form.errors})
+    
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 ```
