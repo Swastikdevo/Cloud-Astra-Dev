@@ -1,53 +1,39 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCustomers();
-  }, []);
-
-  const fetchCustomers = async () => {
-    try {
+    const fetchCustomers = async () => {
       const response = await fetch('/api/customers');
       const data = await response.json();
       setCustomers(data);
-    } catch (err) {
-      setError('Failed to fetch customers');
-    }
+      setLoading(false);
+    };
+    fetchCustomers();
+  }, []);
+
+  const filterActiveCustomers = () => {
+    return customers.filter(customer => customer.isActive);
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
-
-  const handleFilterChange = (event) => {
-    setFilter(event.target.value);
-  };
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div>
-      <h1>Customer Management System</h1>
-      {error && <p>{error}</p>}
-      <input
-        type="text"
-        placeholder="Filter customers by name"
-        value={filter}
-        onChange={handleFilterChange}
-      />
+      <h1>Active Customers</h1>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
+        {filterActiveCustomers().map(customer => (
+          <li key={customer.id}>{customer.name}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
