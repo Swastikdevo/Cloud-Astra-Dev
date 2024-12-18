@@ -1,66 +1,50 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const Customers = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState('');
-  const [editIndex, setEditIndex] = useState(null);
-  const [editValue, setEditValue] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const addCustomer = () => {
-    if (newCustomer) {
-      setCustomers([...customers, newCustomer]);
-      setNewCustomer('');
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch('/api/customers');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
+
+  const deleteCustomer = async (id) => {
+    try {
+      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      setCustomers(customers.filter(customer => customer.id !== id));
+    } catch (error) {
+      setError(error.message);
     }
   };
 
-  const editCustomer = (index) => {
-    setEditIndex(index);
-    setEditValue(customers[index]);
-  };
-
-  const updateCustomer = () => {
-    const updatedCustomers = [...customers];
-    updatedCustomers[editIndex] = editValue;
-    setCustomers(updatedCustomers);
-    setEditIndex(null);
-    setEditValue('');
-  };
-
-  const deleteCustomer = (index) => {
-    const updatedCustomers = customers.filter((_, i) => i !== index);
-    setCustomers(updatedCustomers);
-  };
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
     <div>
-      <h2>Customer Management</h2>
-      <input 
-        type="text" 
-        value={newCustomer} 
-        onChange={(e) => setNewCustomer(e.target.value)} 
-        placeholder="Add new customer" 
-      />
-      <button onClick={addCustomer}>Add</button>
+      <h2>Customer List</h2>
       <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
-            {editIndex === index ? (
-              <>
-                <input 
-                  type="text" 
-                  value={editValue} 
-                  onChange={(e) => setEditValue(e.target.value)} 
-                />
-                <button onClick={updateCustomer}>Save</button>
-              </>
-            ) : (
-              <>
-                {customer}
-                <button onClick={() => editCustomer(index)}>Edit</button>
-                <button onClick={() => deleteCustomer(index)}>Delete</button>
-              </>
-            )}
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name}
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -68,5 +52,5 @@ const Customers = () => {
   );
 };
 
-export default Customers;
+export default CustomerList;
 ```
