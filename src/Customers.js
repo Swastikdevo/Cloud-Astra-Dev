@@ -3,31 +3,30 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-      setLoading(false);
-    };
-    fetchCustomers();
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => setCustomers(data))
+      .catch(error => console.error('Error fetching customers:', error));
   }, []);
 
-  const filterActiveCustomers = () => {
-    return customers.filter(customer => customer.isActive);
-  };
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h1>Active Customers</h1>
+      <h1>Customer Management</h1>
+      <input
+        type="text"
+        placeholder="Search customers..."
+        value={searchTerm}
+        onChange={e => setSearchTerm(e.target.value)}
+      />
       <ul>
-        {filterActiveCustomers().map(customer => (
+        {filteredCustomers.map(customer => (
           <li key={customer.id}>{customer.name}</li>
         ))}
       </ul>
