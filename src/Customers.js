@@ -1,8 +1,15 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerSearch = ({ customers }) => {
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => setCustomers(data));
+  }, []);
 
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -12,18 +19,20 @@ const CustomerSearch = ({ customers }) => {
     <div>
       <input
         type="text"
-        placeholder="Search customers"
+        placeholder="Search Customers"
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={e => setSearchTerm(e.target.value)}
       />
       <ul>
         {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+          </li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerSearch;
+export default CustomerList;
 ```
