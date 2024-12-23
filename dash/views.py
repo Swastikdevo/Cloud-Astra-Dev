@@ -1,72 +1,53 @@
 ```python
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm, TransferForm
+from .forms import AccountForm, TransactionForm
+import json
 
 @login_required
-def bank_dashboard(request):
-    user_accounts = Account.objects.filter(owner=request.user)
-    return render(request, 'bank/dashboard.html', {'accounts': user_accounts})
-
-@login_required
-def deposit_money(request, account_id):
-    account = Account.objects.get(id=account_id, owner=request.user)
+@csrf_exempt
+def account_management(request):
+    if request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank/accounts.html', {'accounts': accounts})
     
-    if request.method == 'POST':
-        form = DepositForm(request.POST)
+    elif request.method == 'POST':
+        data = json.loads(request.body)
+        form = AccountForm(data)
         if form.is_valid():
-            amount = form.cleaned_data['amount']
-            account.balance += amount
+            account = form.save(commit=False)
+            account.user = request.user
             account.save()
-            Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-            return redirect('bank:dashboard')
-    else:
-        form = DepositForm()
-    
-    return render(request, 'bank/deposit.html', {'form': form, 'account': account})
+            return JsonResponse({'message': 'Account created successfully'}, status=201)
+        return JsonResponse({'errors': form.errors}, status=400)
 
 @login_required
-def withdraw_money(request, account_id):
-    account = Account.objects.get(id=account_id, owner=request.user)
-    
-    if request.method == 'POST':
-        form = WithdrawForm(request.POST)
+@csrf_exempt
+def transaction_management(request, account_id):
+    account = get_object_or_404(Account, pk=account_id, user=request.user)
+
+    if request.method == 'GET':
+        transactions = Transaction.objects.filter(account=account)
+        return render(request, 'bank/transactions.html', {'transactions': transactions, 'account': account})
+
+    elif request.method == 'POST':
+        data = json.loads(request.body)
+        form = TransactionForm(data)
         if form.is_valid():
-            amount = form.cleaned_data['amount']
-            if amount <= account.balance:
-                account.balance -= amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
-                return redirect('bank:dashboard')
-            else:
-                form.add_error('amount', 'Insufficient balance')
-    else:
-        form = WithdrawForm()
-    
-    return render(request, 'bank/withdraw.html', {'form': form, 'account': account})
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+            return JsonResponse({'message': 'Transaction recorded successfully'}, status=201)
+        return JsonResponse({'errors': form.errors}, status=400)
 
 @login_required
-def transfer_money(request, account_id):
-    account = Account.objects.get(id=account_id, owner=request.user)
-    
+def delete_account(request, account_id):
+    account = get_object_or_404(Account, pk=account_id, user=request.user)
     if request.method == 'POST':
-        form = TransferForm(request.POST)
-        if form.is_valid():
-            recipient_account = Account.objects.get(account_number=form.cleaned_data['recipient_account_number'])
-            amount = form.cleaned_data['amount']
-            if amount <= account.balance:
-                account.balance -= amount
-                recipient_account.balance += amount
-                account.save()
-                recipient_account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='transfer', recipient=recipient_account)
-                return redirect('bank:dashboard')
-            else:
-                form.add_error('amount', 'Insufficient balance')
-    else:
-        form = TransferForm()
-    
-    return render(request, 'bank/transfer.html', {'form': form, 'account': account})
+        account.delete()
+        return JsonResponse({'message': 'Account deleted successfully'}, status=204)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
 ```
