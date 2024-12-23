@@ -1,41 +1,69 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    
-    useEffect(() => {
-        const fetchCustomers = async () => {
-            try {
-                const response = await fetch('/api/customers');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-                setCustomers(data);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
-        fetchCustomers();
-    }, []);
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
+  }, []);
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewCustomer({ ...newCustomer, [name]: value });
+  };
 
-    return (
-        <ul>
-            {customers.map(customer => (
-                <li key={customer.id}>
-                    {customer.name} - {customer.email}
-                </li>
-            ))}
-        </ul>
-    );
+  const handleAddCustomer = async () => {
+    const response = await fetch('/api/customers', { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer) 
+    });
+    const addedCustomer = await response.json();
+    setCustomers([...customers, addedCustomer]);
+    setNewCustomer({ name: '', email: '' });
+  };
+
+  const handleDeleteCustomer = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
+
+  return (
+    <div>
+      <h2>Customer Management</h2>
+      <input
+        type="text"
+        name="name"
+        value={newCustomer.name}
+        onChange={handleInputChange}
+        placeholder="Customer Name"
+      />
+      <input
+        type="email"
+        name="email"
+        value={newCustomer.email}
+        onChange={handleInputChange}
+        placeholder="Customer Email"
+      />
+      <button onClick={handleAddCustomer}>Add Customer</button>
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} ({customer.email}) 
+            <button onClick={() => handleDeleteCustomer(customer.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
