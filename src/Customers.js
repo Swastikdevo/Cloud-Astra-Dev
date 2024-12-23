@@ -3,49 +3,56 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
+    fetch('/api/customers')
+      .then(res => res.json())
+      .then(data => {
+        setCustomers(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err);
+        setLoading(false);
+      });
   }, []);
 
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewCustomer({ ...newCustomer, [name]: value });
   };
 
-  const handleSort = () => {
-    const sortedCustomers = [...customers].sort((a, b) =>
-      sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-    );
-    setCustomers(sortedCustomers);
-    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  const addCustomer = () => {
+    fetch('/api/customers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newCustomer),
+    })
+      .then(res => res.json())
+      .then(data => {
+        setCustomers([...customers, data]);
+        setNewCustomer({ name: '', email: '' });
+      });
   };
-
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <div>
       <h1>Customer Management</h1>
-      <input
-        type="text"
-        placeholder="Search customers"
-        value={searchQuery}
-        onChange={handleSearch}
-      />
-      <button onClick={handleSort}>Sort by Name</button>
+      {loading && <p>Loading...</p>}
+      {error && <p>Error: {error.message}</p>}
       <ul>
-        {filteredCustomers.map(customer => (
+        {customers.map(customer => (
           <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
+      <input name="name" value={newCustomer.name} onChange={handleInputChange} placeholder="Name" />
+      <input name="email" value={newCustomer.email} onChange={handleInputChange} placeholder="Email" />
+      <button onClick={addCustomer}>Add Customer</button>
     </div>
   );
 };
