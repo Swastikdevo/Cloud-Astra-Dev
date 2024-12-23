@@ -1,41 +1,53 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
-    const [customers, setCustomers] = useState([]);
-    const [name, setName] = useState("");
+  const [customers, setCustomers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState('asc');
 
-    const addCustomer = () => {
-        if (name) {
-            setCustomers([...customers, { id: Date.now(), name }]);
-            setName("");
-        }
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
     };
+    fetchCustomers();
+  }, []);
 
-    const removeCustomer = (id) => {
-        setCustomers(customers.filter(customer => customer.id !== id));
-    };
+  const handleSearch = (e) => {
+    setSearchQuery(e.target.value);
+  };
 
-    return (
-        <div>
-            <h2>Customer Management System</h2>
-            <input 
-                type="text" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
-                placeholder="Enter customer name" 
-            />
-            <button onClick={addCustomer}>Add Customer</button>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} 
-                        <button onClick={() => removeCustomer(customer.id)}>Remove</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
+  const handleSort = () => {
+    const sortedCustomers = [...customers].sort((a, b) =>
+      sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
     );
+    setCustomers(sortedCustomers);
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div>
+      <h1>Customer Management</h1>
+      <input
+        type="text"
+        placeholder="Search customers"
+        value={searchQuery}
+        onChange={handleSearch}
+      />
+      <button onClick={handleSort}>Sort by Name</button>
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
 export default CustomerManagement;
