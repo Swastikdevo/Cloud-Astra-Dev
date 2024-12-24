@@ -36,25 +36,31 @@ class HomePage extends StatelessWidget {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text('Hello!'),
-                    content: Text('This is your Flutter app.'),
-                    actions: <Widget>[
-                      TextButton(
-                        child: Text('Close'),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                    ],
-                  ),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => DetailPage()),
                 );
               },
-              child: Text('Show Alert'),
+              child: Text('Go to Details'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class DetailPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Detail Page'),
+      ),
+      body: Center(
+        child: Text(
+          'This is the Detail Page',
+          style: TextStyle(fontSize: 24),
         ),
       ),
     );
