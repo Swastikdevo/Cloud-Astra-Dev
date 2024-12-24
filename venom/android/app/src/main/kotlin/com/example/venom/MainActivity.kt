@@ -13,12 +13,12 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(),
+      home: HomePage(),
     );
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,7 +30,7 @@ class MyHomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Hello, Flutter!',
+              'Welcome to Flutter!',
               style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),
@@ -59,7 +59,7 @@ class SecondPage extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'Welcome to the Second Page!',
+          'This is the second page!',
           style: TextStyle(fontSize: 24),
         ),
       ),
