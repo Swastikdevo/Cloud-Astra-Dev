@@ -1,54 +1,51 @@
 ```python
-from django.shortcuts import render, redirect
-from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
-from django.utils.decorators import method_decorator
 
-@method_decorator(login_required, name='dispatch')
-def account_dashboard(request):
-    accounts = Account.objects.filter(owner=request.user).all()
-    return render(request, 'bank/dashboard.html', {'accounts': accounts})
-
-@csrf_exempt
 @login_required
-def create_account(request):
-    if request.method == 'POST':
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            new_account = form.save(commit=False)
-            new_account.owner = request.user
-            new_account.save()
-            return JsonResponse({'status': 'Account created', 'account_id': new_account.id})
+def manage_account(request, account_id=None):
+    """View to create or update a bank account with transaction support."""
+    if account_id:
+        account = get_object_or_404(Account, id=account_id)
     else:
-        form = AccountForm()
-    return render(request, 'bank/create_account.html', {'form': form})
+        account = None
+
+    if request.method == 'POST':
+        form = AccountForm(request.POST, instance=account)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return redirect('account_detail', account_id=account.id)
+    else:
+        form = AccountForm(instance=account)
+
+    return render(request, 'accounts/manage_account.html', {'form': form})
 
 @login_required
 def make_transaction(request, account_id):
-    account = Account.objects.get(id=account_id, owner=request.user)
-    
+    """View to handle making transactions for an account."""
+    account = get_object_or_404(Account, id=account_id, user=request.user)
+
     if request.method == 'POST':
         form = TransactionForm(request.POST)
         if form.is_valid():
             transaction = form.save(commit=False)
             transaction.account = account
             transaction.save()
-            return JsonResponse({'status': 'Transaction successful', 'transaction_id': transaction.id})
+            return redirect('account_detail', account_id=account.id)
     else:
         form = TransactionForm()
-    return render(request, 'bank/make_transaction.html', {'form': form, 'account': account})
+
+    return render(request, 'transactions/make_transaction.html', {'form': form, 'account': account})
 
 @login_required
-def transaction_history(request, account_id):
-    account = Account.objects.get(id=account_id, owner=request.user)
+def account_detail(request, account_id):
+    """View to display account details and associated transactions."""
+    account = get_object_or_404(Account, id=account_id, user=request.user)
     transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions, 'account': account})
-
-@login_required
-def view_balance(request, account_id):
-    account = Account.objects.get(id=account_id, owner=request.user)
-    return JsonResponse({'balance': account.balance})
+    return render(request, 'accounts/account_detail.html', {'account': account, 'transactions': transactions})
 ```
