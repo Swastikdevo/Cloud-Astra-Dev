@@ -1,39 +1,47 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+const CustomerTable = ({ customers }) => {
+  const [filter, setFilter] = useState('');
+  const [sortedCustomers, setSortedCustomers] = useState([]);
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
-  }, []);
+    setSortedCustomers(customers.sort((a, b) => a.name.localeCompare(b.name)));
+  }, [customers]);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCustomers = sortedCustomers.filter(customer =>
+    customer.name.toLowerCase().includes(filter.toLowerCase())
   );
 
   return (
     <div>
       <input
         type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
+        placeholder="Search by name"
+        value={filter}
+        onChange={e => setFilter(e.target.value)}
       />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
-        ))}
-      </ul>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredCustomers.map(customer => (
+            <tr key={customer.id}>
+              <td>{customer.name}</td>
+              <td>{customer.email}</td>
+              <td>{customer.phone}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerTable;
 ```
