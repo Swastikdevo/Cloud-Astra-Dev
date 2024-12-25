@@ -1,33 +1,41 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-const CustomerSearch = ({ customers }) => {
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredCustomers, setFilteredCustomers] = useState(customers);
 
   useEffect(() => {
-    const result = customers.filter(customer =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredCustomers(result);
-  }, [searchTerm, customers]);
+    const fetchCustomers = async () => {
+      const response = await axios.get('/api/customers');
+      setCustomers(response.data);
+    };
+    fetchCustomers();
+  }, []);
+
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search Customers" 
-        value={searchTerm} 
-        onChange={e => setSearchTerm(e.target.value)} 
+      <input
+        type="text"
+        placeholder="Search Customers"
+        value={searchTerm}
+        onChange={e => setSearchTerm(e.target.value)}
       />
       <ul>
         {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+          </li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerSearch;
+export default CustomerManagement;
 ```
