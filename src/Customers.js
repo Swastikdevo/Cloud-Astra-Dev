@@ -1,45 +1,42 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-    const [customers, setCustomers] = useState([]);
-    const [filter, setFilter] = useState('');
-    const [sortOrder, setSortOrder] = useState('asc');
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    useEffect(() => {
-        fetch('/api/customers')
-            .then(response => response.json())
-            .then(data => setCustomers(data));
-    }, []);
-
-    const filteredCustomers = customers.filter(customer =>
-        customer.name.toLowerCase().includes(filter.toLowerCase())
-    );
-
-    const sortedCustomers = [...filteredCustomers].sort((a, b) => {
-        return sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
-    });
-
-    const handleFilterChange = (e) => {
-        setFilter(e.target.value);
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch('https://api.example.com/customers');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchCustomers();
+  }, []);
 
-    const handleSortToggle = () => {
-        setSortOrder(prevOrder => (prevOrder === 'asc' ? 'desc' : 'asc'));
-    };
-
-    return (
-        <div>
-            <input type="text" value={filter} onChange={handleFilterChange} placeholder="Filter by name" />
-            <button onClick={handleSortToggle}>Sort {sortOrder === 'asc' ? 'Descending' : 'Ascending'}</button>
-            <ul>
-                {sortedCustomers.map(customer => (
-                    <li key={customer.id}>{customer.name}</li>
-                ))}
-            </ul>
-        </div>
-    );
+  return (
+    <div>
+      <h1>Customer List</h1>
+      {loading && <p>Loading...</p>}
+      {error && <p>Error: {error}</p>}
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
