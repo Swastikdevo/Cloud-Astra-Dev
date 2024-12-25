@@ -30,7 +30,7 @@ class HomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Welcome to Flutter!',
+              'Welcome to My Flutter App!',
               style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),
@@ -38,10 +38,10 @@ class HomePage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => DetailPage()),
+                  MaterialPageRoute(builder: (context) => SecondPage()),
                 );
               },
-              child: Text('Go to Details'),
+              child: Text('Go to Second Page'),
             ),
           ],
         ),
@@ -50,16 +50,16 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class DetailPage extends StatelessWidget {
+class SecondPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Detail Page'),
+        title: Text('Second Page'),
       ),
       body: Center(
         child: Text(
-          'This is the Detail Page',
+          'This is the Second Page!',
           style: TextStyle(fontSize: 24),
         ),
       ),
