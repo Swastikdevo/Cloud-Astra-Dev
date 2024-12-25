@@ -2,61 +2,43 @@
 import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
-  
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
-  }, []);
+    const [customers, setCustomers] = useState([]);
+    const [filter, setFilter] = useState('');
+    const [sortOrder, setSortOrder] = useState('asc');
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewCustomer({ ...newCustomer, [name]: value });
-  };
+    useEffect(() => {
+        fetch('/api/customers')
+            .then(response => response.json())
+            .then(data => setCustomers(data));
+    }, []);
 
-  const handleAddCustomer = async () => {
-    const response = await fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCustomer),
+    const filteredCustomers = customers.filter(customer =>
+        customer.name.toLowerCase().includes(filter.toLowerCase())
+    );
+
+    const sortedCustomers = [...filteredCustomers].sort((a, b) => {
+        return sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
     });
-    if (response.ok) {
-      const addedCustomer = await response.json();
-      setCustomers([...customers, addedCustomer]);
-      setNewCustomer({ name: '', email: '' });
-    }
-  };
 
-  return (
-    <div>
-      <h2>Customer Management</h2>
-      <input 
-        type="text" 
-        name="name" 
-        value={newCustomer.name} 
-        onChange={handleInputChange} 
-        placeholder="Customer Name"
-      />
-      <input 
-        type="email" 
-        name="email" 
-        value={newCustomer.email} 
-        onChange={handleInputChange} 
-        placeholder="Customer Email"
-      />
-      <button onClick={handleAddCustomer}>Add Customer</button>
-      <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
-        ))}
-      </ul>
-    </div>
-  );
+    const handleFilterChange = (e) => {
+        setFilter(e.target.value);
+    };
+
+    const handleSortToggle = () => {
+        setSortOrder(prevOrder => (prevOrder === 'asc' ? 'desc' : 'asc'));
+    };
+
+    return (
+        <div>
+            <input type="text" value={filter} onChange={handleFilterChange} placeholder="Filter by name" />
+            <button onClick={handleSortToggle}>Sort {sortOrder === 'asc' ? 'Descending' : 'Ascending'}</button>
+            <ul>
+                {sortedCustomers.map(customer => (
+                    <li key={customer.id}>{customer.name}</li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
 export default CustomerManagement;
