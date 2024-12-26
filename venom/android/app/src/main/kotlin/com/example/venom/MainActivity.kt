@@ -30,8 +30,8 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Welcome to My Flutter App!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              'Welcome to Flutter!',
+              style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),
             ElevatedButton(
@@ -59,7 +59,7 @@ class SecondScreen extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'This is the Second Screen!',
+          'You are on the Second Screen!',
           style: TextStyle(fontSize: 24),
         ),
       ),
