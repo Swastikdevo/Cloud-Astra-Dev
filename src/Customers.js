@@ -1,63 +1,60 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('');
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
     const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-        setCustomers(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
     };
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
-
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-      setCustomers(customers.filter(customer => customer.id !== id));
-    } catch (err) {
-      setError(err.message);
-    }
+  const handleChange = (e) => {
+    setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
   };
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newCustomer),
+    });
+    const data = await response.json();
+    setCustomers([...customers, data]);
+    setNewCustomer({ name: '', email: '' });
+  };
+
+  const handleDelete = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search customers"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      />
+      <h1>Customer Management</h1>
+      <form onSubmit={handleSubmit}>
+        <input type="text" name="name" value={newCustomer.name} onChange={handleChange} placeholder="Customer Name" required />
+        <input type="email" name="email" value={newCustomer.email} onChange={handleChange} placeholder="Customer Email" required />
+        <button type="submit">Add Customer</button>
+      </form>
       <ul>
-        {filteredCustomers.map(customer => (
+        {customers.map(customer => (
           <li key={customer.id}>
-            {customer.name}
-            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+            {customer.name} - {customer.email} <button onClick={() => handleDelete(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
     </div>
   );
-};
+}
 
-export default CustomerList;
+export default CustomerManagement;
 ```
