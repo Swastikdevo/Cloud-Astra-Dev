@@ -3,32 +3,29 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetch('/api/customers')
       .then(response => response.json())
-      .then(data => {
-        setCustomers(data);
-        setLoading(false);
-      })
-      .catch(error => console.log(error));
+      .then(data => setCustomers(data));
   }, []);
 
-  const removeCustomer = id => {
-    setCustomers(customers.filter(customer => customer.id !== id));
-  };
-
-  if (loading) return <div>Loading...</div>;
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h2>Customer List</h2>
+      <input
+        type="text"
+        placeholder="Search customers"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
       <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} <button onClick={() => removeCustomer(customer.id)}>Remove</button>
-          </li>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
