@@ -1,39 +1,51 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetch('https://api.example.com/customers')
-      .then((response) => response.json())
-      .then((data) => setCustomers(data));
-  }, []);
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            try {
+                const response = await axios.get('/api/customers');
+                setCustomers(response.data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCustomers();
+    }, []);
 
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
-  };
+    const handleDelete = async (id) => {
+        try {
+            await axios.delete(`/api/customers/${id}`);
+            setCustomers(customers.filter(customer => customer.id !== id));
+        } catch (err) {
+            setError(err.message);
+        }
+    };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p>Error: {error}</p>;
 
-  return (
-    <div>
-      <input
-        type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={handleSearch}
-      />
-      <ul>
-        {filteredCustomers.map((customer) => (
-          <li key={customer.id}>{customer.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+        <div>
+            <h2>Customer List</h2>
+            <ul>
+                {customers.map(customer => (
+                    <li key={customer.id}>
+                        {customer.name} 
+                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
 export default CustomerList;
