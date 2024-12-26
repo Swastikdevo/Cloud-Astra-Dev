@@ -1,61 +1,35 @@
 ```python
 from django.shortcuts import render, redirect
+from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
+from django.views.decorators.http import require_http_methods
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm, TransferForm
+from .forms import TransactionForm
 
 @login_required
-def banking_dashboard(request):
-    user_accounts = Account.objects.filter(owner=request.user)
-
+@require_http_methods(["GET", "POST"])
+def account_management(request):
+    """View for account management including transactions, balance inquiries, and account details."""
+    
+    user_account = Account.objects.filter(user=request.user).first()
+    
     if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                account = Account.objects.get(pk=form.cleaned_data['account_id'], owner=request.user)
-                account.balance += form.cleaned_data['amount']
-                account.save()
-                Transaction.objects.create(account=account, amount=form.cleaned_data['amount'], transaction_type='deposit')
-                return redirect('banking_dashboard')
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = user_account
+            transaction.save()
+            return JsonResponse({'status': 'success', 'message': 'Transaction successful!'})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Transaction failed, please check your input.'})
 
-        elif 'withdraw' in request.POST:
-            form = WithdrawalForm(request.POST)
-            if form.is_valid():
-                account = Account.objects.get(pk=form.cleaned_data['account_id'], owner=request.user)
-                if account.balance >= form.cleaned_data['amount']:
-                    account.balance -= form.cleaned_data['amount']
-                    account.save()
-                    Transaction.objects.create(account=account, amount=form.cleaned_data['amount'], transaction_type='withdrawal')
-                    return redirect('banking_dashboard')
-                else:
-                    return render(request, 'banking/dashboard.html', {'error': 'Insufficient funds.', 'accounts': user_accounts})
+    transactions = Transaction.objects.filter(account=user_account).order_by('-date')
+    balance = user_account.balance
 
-        elif 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                from_account = Account.objects.get(pk=form.cleaned_data['from_account_id'], owner=request.user)
-                to_account = Account.objects.get(pk=form.cleaned_data['to_account_id'])
-                if from_account.balance >= form.cleaned_data['amount']:
-                    from_account.balance -= form.cleaned_data['amount']
-                    to_account.balance += form.cleaned_data['amount']
-                    from_account.save()
-                    to_account.save()
-                    Transaction.objects.create(account=from_account, amount=form.cleaned_data['amount'], transaction_type='transfer_out')
-                    Transaction.objects.create(account=to_account, amount=form.cleaned_data['amount'], transaction_type='transfer_in')
-                    return redirect('banking_dashboard')
-                else:
-                    return render(request, 'banking/dashboard.html', {'error': 'Insufficient funds for transfer.', 'accounts': user_accounts})
-
-    else:
-        deposit_form = DepositForm()
-        withdrawal_form = WithdrawalForm()
-        transfer_form = TransferForm()
-
-    return render(request, 'banking/dashboard.html', {
-        'accounts': user_accounts,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-        'transfer_form': transfer_form,
+    return render(request, 'account_management.html', {
+        'transactions': transactions,
+        'balance': balance,
+        'form': TransactionForm(),
+        'account': user_account
     })
 ```
