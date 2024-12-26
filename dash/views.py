@@ -1,35 +1,45 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_http_methods
 from .models import Account, Transaction
-from .forms import TransactionForm
+from .forms import AccountForm, TransactionForm
+import json
 
+@csrf_exempt
 @login_required
-@require_http_methods(["GET", "POST"])
-def account_management(request):
-    """View for account management including transactions, balance inquiries, and account details."""
-    
-    user_account = Account.objects.filter(user=request.user).first()
-    
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = user_account
-            transaction.save()
-            return JsonResponse({'status': 'success', 'message': 'Transaction successful!'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Transaction failed, please check your input.'})
+def manage_account(request):
+    if request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank/manage_account.html', {'accounts': accounts})
 
-    transactions = Transaction.objects.filter(account=user_account).order_by('-date')
-    balance = user_account.balance
+    elif request.method == 'POST':
+        data = json.loads(request.body)
+        action_type = data.get('action')
 
-    return render(request, 'account_management.html', {
-        'transactions': transactions,
-        'balance': balance,
-        'form': TransactionForm(),
-        'account': user_account
-    })
+        if action_type == 'create':
+            form = AccountForm(data)
+            if form.is_valid():
+                account = form.save(commit=False)
+                account.user = request.user
+                account.save()
+                return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
+            return JsonResponse({'status': 'error', 'message': 'Invalid data'})
+
+        elif action_type == 'update':
+            account_id = data.get('account_id')
+            account = Account.objects.get(id=account_id, user=request.user)
+            form = AccountForm(data, instance=account)
+            if form.is_valid():
+                form.save()
+                return JsonResponse({'status': 'success', 'message': 'Account updated successfully!'})
+            return JsonResponse({'status': 'error', 'message': 'Invalid data'})
+
+        elif action_type == 'delete':
+            account_id = data.get('account_id')
+            Account.objects.filter(id=account_id, user=request.user).delete()
+            return JsonResponse({'status': 'success', 'message': 'Account deleted successfully!'})
+
+    return JsonResponse({'status': 'error', 'message': 'Unsupported method'})
 ```
