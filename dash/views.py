@@ -1,39 +1,44 @@
 ```python
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import TransactionForm, AccountForm
+from .forms import DepositForm, WithdrawForm
+
 
 @login_required
 def manage_account(request):
     if request.method == 'POST':
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            new_account = form.save(commit=False)
-            new_account.user = request.user
-            new_account.save()
-            return redirect('account_detail', pk=new_account.pk)
+        action = request.POST.get('action')
+        if action == 'deposit':
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, type='Deposit')
+                return JsonResponse({'status': 'success', 'new_balance': account.balance})
+        elif action == 'withdraw':
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
+                if account.balance >= amount:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, type='Withdraw')
+                    return JsonResponse({'status': 'success', 'new_balance': account.balance})
+                else:
+                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
     else:
-        form = AccountForm()
-
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'manage_account.html', {'form': form, 'accounts': accounts})
-
-@login_required
-def transaction_view(request, pk):
-    account = get_object_or_404(Account, pk=pk, user=request.user)
-
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = account
-            transaction.save()
-            return redirect('account_detail', pk=account.pk)
-    else:
-        form = TransactionForm()
-
-    transactions = Transaction.objects.filter(account=account)
-    return render(request, 'transaction_view.html', {'form': form, 'account': account, 'transactions': transactions})
+        deposit_form = DepositForm()
+        withdraw_form = WithdrawForm()
+    
+    account = Account.objects.get(user=request.user)
+    return render(request, 'manage_account.html', {
+        'account': account,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+    })
 ```
