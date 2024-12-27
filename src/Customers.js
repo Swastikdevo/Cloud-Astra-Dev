@@ -1,46 +1,36 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 
 const CustomerList = () => {
     const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        const fetchCustomers = async () => {
-            try {
-                const response = await axios.get('/api/customers');
-                setCustomers(response.data);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchCustomers();
     }, []);
 
-    const handleDelete = async (id) => {
-        try {
-            await axios.delete(`/api/customers/${id}`);
-            setCustomers(customers.filter(customer => customer.id !== id));
-        } catch (err) {
-            setError(err.message);
-        }
+    const fetchCustomers = async () => {
+        const response = await fetch('/api/customers');
+        const data = await response.json();
+        setCustomers(data);
     };
 
-    if (loading) return <p>Loading...</p>;
-    if (error) return <p>Error: {error}</p>;
+    const filteredCustomers = customers.filter(customer => 
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div>
-            <h2>Customer List</h2>
+            <input 
+                type="text" 
+                placeholder="Search customers" 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+            />
             <ul>
-                {customers.map(customer => (
+                {filteredCustomers.map(customer => (
                     <li key={customer.id}>
-                        {customer.name} 
-                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                        {customer.name} - {customer.email} 
                     </li>
                 ))}
             </ul>
