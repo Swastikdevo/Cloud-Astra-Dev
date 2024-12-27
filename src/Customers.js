@@ -14,6 +14,10 @@ const CustomerList = () => {
     fetchCustomers();
   }, []);
 
+  const handleSearch = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -24,13 +28,11 @@ const CustomerList = () => {
         type="text"
         placeholder="Search Customers"
         value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
+        onChange={handleSearch}
       />
       <ul>
         {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
+          <li key={customer.id}>{customer.name}</li>
         ))}
       </ul>
     </div>
