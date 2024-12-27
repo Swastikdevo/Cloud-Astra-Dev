@@ -38,10 +38,10 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => SecondScreen()),
+                  MaterialPageRoute(builder: (context) => DetailScreen()),
                 );
               },
-              child: Text('Go to Second Screen'),
+              child: Text('Go to Detail Screen'),
             ),
           ],
         ),
@@ -50,16 +50,16 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class SecondScreen extends StatelessWidget {
+class DetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Second Screen'),
+        title: Text('Detail Screen'),
       ),
       body: Center(
         child: Text(
-          'This is the second screen!',
+          'This is the Detail Screen',
           style: TextStyle(fontSize: 24),
         ),
       ),
