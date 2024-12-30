@@ -1,47 +1,52 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerTable = ({ customers }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredCustomers, setFilteredCustomers] = useState(customers);
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+  const [newCustomer, setNewCustomer] = useState('');
 
   useEffect(() => {
-    setFilteredCustomers(
-      customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
-  }, [searchTerm, customers]);
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
+  };
+
+  const handleAddCustomer = async () => {
+    if (newCustomer) {
+      const response = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCustomer }),
+      });
+      if (response.ok) {
+        setNewCustomer('');
+        fetchCustomers();
+      }
+    }
+  };
 
   return (
     <div>
+      <h1>Customer Management</h1>
       <input
         type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
+        value={newCustomer}
+        onChange={(e) => setNewCustomer(e.target.value)}
+        placeholder="Add new customer"
       />
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredCustomers.map(customer => (
-            <tr key={customer.id}>
-              <td>{customer.name}</td>
-              <td>{customer.email}</td>
-              <td>{customer.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <button onClick={handleAddCustomer}>Add Customer</button>
+      <ul>
+        {customers.map((customer) => (
+          <li key={customer.id}>{customer.name}</li>
+        ))}
+      </ul>
     </div>
   );
 };
 
-export default CustomerTable;
+export default CustomerManagement;
 ```
