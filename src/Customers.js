@@ -1,48 +1,41 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch('/api/customers');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCustomers();
+  }, []);
 
-  const addCustomer = () => {
-    if (newCustomer.name && newCustomer.email) {
-      setCustomers([...customers, newCustomer]);
-      setNewCustomer({ name: '', email: '' });
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setNewCustomer({ ...newCustomer, [name]: value });
-  };
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div>
-      <h2>Customer Management</h2>
-      <input
-        type="text"
-        name="name"
-        value={newCustomer.name}
-        onChange={handleChange}
-        placeholder="Customer Name"
-      />
-      <input
-        type="email"
-        name="email"
-        value={newCustomer.email}
-        onChange={handleChange}
-        placeholder="Customer Email"
-      />
-      <button onClick={addCustomer}>Add Customer</button>
+      <h1>Customer List</h1>
       <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>{customer.name} - {customer.email}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>{customer.name}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
