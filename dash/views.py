@@ -1,46 +1,45 @@
 ```python
 from django.shortcuts import render, redirect
-from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+from django.http import HttpResponse
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import DepositForm, WithdrawForm
 
 @login_required
-@require_http_methods(["GET", "POST"])
 def manage_account(request):
-    if request.method == "POST":
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            messages.success(request, "Account created successfully!")
-            return redirect('account_detail', account.id)
-        else:
-            messages.error(request, "Error creating account. Please try again.")
+    user_account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=user_account).order_by('-date')
+    
+    if request.method == 'POST':
+        if 'deposit' in request.POST:
+            deposit_form = DepositForm(request.POST)
+            if deposit_form.is_valid():
+                amount = deposit_form.cleaned_data['amount']
+                user_account.balance += amount
+                user_account.save()
+                Transaction.objects.create(account=user_account, amount=amount, type='Deposit')
+                return redirect('manage_account')
+        elif 'withdraw' in request.POST:
+            withdraw_form = WithdrawForm(request.POST)
+            if withdraw_form.is_valid():
+                amount = withdraw_form.cleaned_data['amount']
+                if user_account.balance >= amount:
+                    user_account.balance -= amount
+                    user_account.save()
+                    Transaction.objects.create(account=user_account, amount=-amount, type='Withdraw')
+                    return redirect('manage_account')
+                else:
+                    return HttpResponse("Insufficient funds.")
     else:
-        form = AccountForm()
+        deposit_form = DepositForm()
+        withdraw_form = WithdrawForm()
 
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/manage_account.html', {'form': form, 'accounts': accounts})
-
-@login_required
-@require_http_methods(["GET", "POST"])
-def make_transaction(request):
-    if request.method == "POST":
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.user = request.user
-            transaction.save()
-            messages.success(request, "Transaction completed successfully!")
-            return redirect('transaction_history')
-        else:
-            messages.error(request, "Error processing transaction. Please try again.")
-    else:
-        form = TransactionForm()
-
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
-    return render(request, 'bank/make_transaction.html', {'form': form, 'transactions': transactions})
+    context = {
+        'user_account': user_account,
+        'transactions': transactions,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+    }
+    
+    return render(request, 'bank/manage_account.html', context)
 ```
