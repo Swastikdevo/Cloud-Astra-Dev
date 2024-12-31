@@ -1,50 +1,41 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
+    fetch('https://api.example.com/customers')
+      .then(res => res.json())
+      .then(data => setCustomers(data));
   }, []);
 
-  const addCustomer = async () => {
-    if (newCustomer) {
-      const response = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCustomer }),
-      });
-      const addedCustomer = await response.json();
-      setCustomers([...customers, addedCustomer]);
-      setNewCustomer('');
-    }
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
   };
+
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
       <h1>Customer Management</h1>
       <input
         type="text"
-        value={newCustomer}
-        onChange={(e) => setNewCustomer(e.target.value)}
-        placeholder="Add new customer"
+        placeholder="Search customers..."
+        value={searchTerm}
+        onChange={handleSearch}
       />
-      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {customers.map((customer) => (
-          <li key={customer.id}>{customer.name}</li>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
