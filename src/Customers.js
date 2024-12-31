@@ -1,36 +1,43 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('https://api.example.com/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
-  }, []);
+  const addCustomer = () => {
+    if (newCustomer.name && newCustomer.email) {
+      setCustomers([...customers, newCustomer]);
+      setNewCustomer({ name: '', email: '' });
+    }
+  };
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNewCustomer({ ...newCustomer, [name]: value });
+  };
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search Customers" 
-        value={searchTerm} 
-        onChange={(e) => setSearchTerm(e.target.value)} 
+      <h2>Customer Management</h2>
+      <input
+        type="text"
+        name="name"
+        value={newCustomer.name}
+        onChange={handleChange}
+        placeholder="Customer Name"
       />
+      <input
+        type="email"
+        name="email"
+        value={newCustomer.email}
+        onChange={handleChange}
+        placeholder="Customer Email"
+      />
+      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
+        {customers.map((customer, index) => (
+          <li key={index}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
