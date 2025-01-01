@@ -4,37 +4,61 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import TransferForm, DepositForm, WithdrawalForm
+from django.contrib import messages
 
 @login_required
 @csrf_exempt
-def manage_account(request):
+def bank_operations(request):
     if request.method == 'POST':
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
-        return JsonResponse({'status': 'error', 'message': 'Invalid form data.'}, status=400)
-    
-    elif request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        return render(request, 'manage_account.html', {'accounts': accounts, 'form': AccountForm()})
+        if request.POST.get('action') == 'transfer':
+            form = TransferForm(request.POST)
+            if form.is_valid():
+                sender = request.user.account
+                receiver_account_number = form.cleaned_data['receiver_account_number']
+                amount = form.cleaned_data['amount']
+                
+                try:
+                    receiver = Account.objects.get(account_number=receiver_account_number)
+                    Transaction.objects.create(sender=sender, receiver=receiver, amount=amount, transaction_type='transfer')
+                    messages.success(request, 'Transfer successful.')
+                    return redirect('bank_home')
+                except Account.DoesNotExist:
+                    messages.error(request, 'Receiver account does not exist.')
+        
+        elif request.POST.get('action') == 'deposit':
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                account = request.user.account
+                amount = form.cleaned_data['amount']
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
+                messages.success(request, 'Deposit successful.')
+                return redirect('bank_home')
+        
+        elif request.POST.get('action') == 'withdraw':
+            form = WithdrawalForm(request.POST)
+            if form.is_valid():
+                account = request.user.account
+                amount = form.cleaned_data['amount']
+                if amount <= account.balance:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
+                    messages.success(request, 'Withdrawal successful.')
+                else:
+                    messages.error(request, 'Insufficient funds.')
+                return redirect('bank_home')
 
-@login_required
-@csrf_exempt
-def make_transaction(request):
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.user = request.user
-            transaction.save()
-            return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully!'})
-        return JsonResponse({'status': 'error', 'message': 'Invalid transaction data.'}, status=400)
+    else:
+        transfer_form = TransferForm()
+        deposit_form = DepositForm()
+        withdrawal_form = WithdrawalForm()
 
-    elif request.method == 'GET':
-        transactions = Transaction.objects.filter(user=request.user)
-        return render(request, 'transactions.html', {'transactions': transactions, 'form': TransactionForm()})
+    return render(request, 'bank_operations.html', {
+        'transfer_form': transfer_form,
+        'deposit_form': deposit_form,
+        'withdrawal_form': withdrawal_form,
+    })
 ```
