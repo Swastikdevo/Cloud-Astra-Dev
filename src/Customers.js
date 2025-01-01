@@ -1,51 +1,40 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerTable = ({ customers }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredCustomers, setFilteredCustomers] = useState(customers);
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    setFilteredCustomers(
-      customers.filter(customer => 
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
-  }, [searchTerm, customers]);
+    // Mock fetch from an API
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
+  }, []);
 
-  const handleSearchChange = (event) => {
-    setSearchTerm(event.target.value);
-  };
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search customers..." 
-        value={searchTerm} 
-        onChange={handleSearchChange} 
+      <input
+        type="text"
+        placeholder="Search customers"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
       />
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredCustomers.map(customer => (
-            <tr key={customer.id}>
-              <td>{customer.name}</td>
-              <td>{customer.email}</td>
-              <td>{customer.phone}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name}</li>
+        ))}
+      </ul>
     </div>
   );
 };
 
-export default CustomerTable;
+export default CustomerList;
 ```
