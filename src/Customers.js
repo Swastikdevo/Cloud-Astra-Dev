@@ -1,36 +1,35 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState('');
 
   useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    
     fetchCustomers();
   }, []);
 
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
-  };
-
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
+  const handleFilterChange = (e) => {
+    setFilter(e.target.value);
   };
 
   const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    customer.name.toLowerCase().includes(filter.toLowerCase())
   );
 
   return (
     <div>
-      <h1>Customer Management</h1>
       <input
         type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={handleSearch}
+        placeholder="Filter by name"
+        value={filter}
+        onChange={handleFilterChange}
       />
       <ul>
         {filteredCustomers.map(customer => (
@@ -41,5 +40,5 @@ const CustomerManagement = () => {
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
