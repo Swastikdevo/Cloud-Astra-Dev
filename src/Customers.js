@@ -1,48 +1,56 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('');
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
+
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
+  };
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-      setLoading(false);
-    };
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  const addCustomer = async () => {
+    await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    setNewCustomer({ name: '', email: '' });
+    fetchCustomers();
+  };
 
   return (
     <div>
-      <h2>Customer List</h2>
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <>
-          <input 
-            type="text" 
-            placeholder="Search by name"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-          <ul>
-            {filteredCustomers.map(customer => (
-              <li key={customer.id}>{customer.name} - {customer.email}</li>
-            ))}
-          </ul>
-        </>
-      )}
+      <h1>Customer Management</h1>
+      <form onSubmit={(e) => { e.preventDefault(); addCustomer(); }}>
+        <input
+          type="text"
+          value={newCustomer.name}
+          placeholder="Customer Name"
+          onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+        />
+        <input
+          type="email"
+          value={newCustomer.email}
+          placeholder="Customer Email"
+          onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+        />
+        <button type="submit">Add Customer</button>
+      </form>
+      <ul>
+        {customers.map((customer) => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        ))}
+      </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
