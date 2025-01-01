@@ -1,29 +1,51 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerSearch = ({ customers }) => {
+const CustomerTable = ({ customers }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [filteredCustomers, setFilteredCustomers] = useState(customers);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    setFilteredCustomers(
+      customers.filter(customer => 
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    );
+  }, [searchTerm, customers]);
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search customers"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+      <input 
+        type="text" 
+        placeholder="Search customers..." 
+        value={searchTerm} 
+        onChange={handleSearchChange} 
       />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
-        ))}
-      </ul>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredCustomers.map(customer => (
+            <tr key={customer.id}>
+              <td>{customer.name}</td>
+              <td>{customer.email}</td>
+              <td>{customer.phone}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
 
-export default CustomerSearch;
+export default CustomerTable;
 ```
