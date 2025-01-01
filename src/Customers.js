@@ -1,40 +1,49 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [search, setSearch] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
-  useEffect(() => {
-    // Mock fetch from an API
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
-  }, []);
+  const addCustomer = () => {
+    setCustomers([...customers, { name, email }]);
+    setName('');
+    setEmail('');
+  };
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const deleteCustomer = (index) => {
+    const newCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(newCustomers);
+  };
 
   return (
     <div>
+      <h1>Customer Management System</h1>
       <input
         type="text"
-        placeholder="Search customers"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
       />
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer.name} - {customer.email} 
+            <button onClick={() => deleteCustomer(index)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
