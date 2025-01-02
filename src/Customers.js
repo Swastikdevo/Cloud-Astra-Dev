@@ -1,43 +1,42 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchCustomers = async () => {
-      const response = await axios.get('/api/customers');
-      setCustomers(response.data);
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
       setLoading(false);
     };
     fetchCustomers();
   }, []);
 
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
-  };
-
-  const filteredCustomers = customers.filter((customer) =>
+  const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div>
+      <h1>Customer Management</h1>
       <input
         type="text"
-        placeholder="Search customers..."
+        placeholder="Search Customers"
         value={searchTerm}
-        onChange={handleSearch}
+        onChange={e => setSearchTerm(e.target.value)}
       />
       {loading ? (
         <p>Loading...</p>
       ) : (
         <ul>
-          {filteredCustomers.map((customer) => (
-            <li key={customer.id}>{customer.name}</li>
+          {filteredCustomers.map(customer => (
+            <li key={customer.id}>
+              {customer.name} - {customer.email}
+            </li>
           ))}
         </ul>
       )}
@@ -45,5 +44,5 @@ const CustomerList = () => {
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
