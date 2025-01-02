@@ -1,38 +1,50 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerForm = () => {
-  const [customer, setCustomer] = useState({ name: '', email: '', phone: '' });
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('');
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setCustomer({ ...customer, [name]: value });
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
+    setLoading(false);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setCustomers([...customers, customer]);
-    setCustomer({ name: '', email: '', phone: '' });
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const handleChange = (event) => {
+    setFilter(event.target.value);
   };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div>
-      <h2>Add Customer</h2>
-      <form onSubmit={handleSubmit}>
-        <input type='text' name='name' value={customer.name} onChange={handleChange} placeholder='Name' required />
-        <input type='email' name='email' value={customer.email} onChange={handleChange} placeholder='Email' required />
-        <input type='tel' name='phone' value={customer.phone} onChange={handleChange} placeholder='Phone' required />
-        <button type='submit'>Add Customer</button>
-      </form>
+      <input 
+        type="text" 
+        placeholder="Search customers" 
+        value={filter} 
+        onChange={handleChange} 
+      />
       <ul>
-        {customers.map((cust, index) => (
-          <li key={index}>{cust.name} - {cust.email} - {cust.phone}</li>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+          </li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerForm;
+export default CustomerList;
 ```
