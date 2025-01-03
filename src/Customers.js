@@ -3,29 +3,32 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
-
+  const [searchTerm, setSearchTerm] = useState('');
+  
   useEffect(() => {
     fetch('/api/customers')
       .then(response => response.json())
       .then(data => setCustomers(data));
   }, []);
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(filter.toLowerCase())
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search customers" 
-        value={filter} 
-        onChange={(e) => setFilter(e.target.value)} 
+      <h2>Customer Management</h2>
+      <input
+        type="text"
+        placeholder="Search Customers"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
       />
       <ul>
         {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+          </li>
         ))}
       </ul>
     </div>
