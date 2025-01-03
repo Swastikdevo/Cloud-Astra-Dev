@@ -29,10 +29,7 @@ class HomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(
-              'Welcome to Flutter!',
-              style: TextStyle(fontSize: 24),
-            ),
+            Text('Welcome to Flutter!'),
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
@@ -58,10 +55,7 @@ class SecondPage extends StatelessWidget {
         title: Text('Second Page'),
       ),
       body: Center(
-        child: Text(
-          'You are on the second page!',
-          style: TextStyle(fontSize: 24),
-        ),
+        child: Text('This is the second page!'),
       ),
     );
   }
