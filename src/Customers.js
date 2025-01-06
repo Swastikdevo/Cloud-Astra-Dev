@@ -3,38 +3,33 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-      setLoading(false);
-    };
-    fetchCustomers();
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => setCustomers(data));
   }, []);
 
-  const sortCustomers = () => {
-    const sorted = [...customers].sort((a, b) => {
-      return sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
-    });
-    setCustomers(sorted);
-    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
   };
 
-  if (loading) return <div>Loading...</div>;
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h1>Customers</h1>
-      <button onClick={sortCustomers}>Sort by Name</button>
+      <input
+        type="text"
+        placeholder="Search customers..."
+        value={searchTerm}
+        onChange={handleSearch}
+      />
       <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name}</li>
         ))}
       </ul>
     </div>
