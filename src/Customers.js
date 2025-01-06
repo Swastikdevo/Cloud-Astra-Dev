@@ -1,55 +1,39 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredCustomers, setFilteredCustomers] = useState([]);
 
   useEffect(() => {
-    // Simulating fetching data
     const fetchCustomers = async () => {
-      const dummyData = [
-        { id: 1, name: 'John Doe', email: 'john@example.com' },
-        { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
-        { id: 3, name: 'Mike Johnson', email: 'mike@example.com' }
-      ];
-      setCustomers(dummyData);
+      const response = await fetch('https://api.example.com/customers');
+      const data = await response.json();
+      setCustomers(data);
     };
     fetchCustomers();
   }, []);
 
-  useEffect(() => {
-    setFilteredCustomers(
-      customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
-  }, [searchTerm, customers]);
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h1>Customer Management</h1>
       <input 
         type="text" 
-        placeholder="Search Customers" 
+        placeholder="Search customers" 
         value={searchTerm} 
-        onChange={handleSearchChange} 
+        onChange={(e) => setSearchTerm(e.target.value)} 
       />
       <ul>
         {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
