@@ -13,12 +13,12 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(),
+      home: HomePage(),
     );
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,25 +36,31 @@ class MyHomePage extends StatelessWidget {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text('Hello!'),
-                      content: Text('This is a Flutter alert dialog.'),
-                      actions: <Widget>[
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: Text('OK'),
-                        ),
-                      ],
-                    );
-                  },
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SecondPage()),
                 );
               },
-              child: Text('Show Alert'),
+              child: Text('Go to Second Page'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class SecondPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Second Page'),
+      ),
+      body: Center(
+        child: Text(
+          'This is the Second Page!',
+          style: TextStyle(fontSize: 24),
         ),
       ),
     );
