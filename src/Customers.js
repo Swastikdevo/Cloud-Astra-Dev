@@ -3,51 +3,60 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
     fetchCustomers();
   }, []);
 
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
+  const handleChange = (e) => {
+    setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
   };
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleSort = () => {
-    const sortedCustomers = [...customers].sort((a, b) => {
-      if (sortOrder === 'asc') return a.name.localeCompare(b.name);
-      return b.name.localeCompare(a.name);
+  const handleAddCustomer = async (e) => {
+    e.preventDefault();
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
     });
-    setCustomers(sortedCustomers);
-    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    const addedCustomer = await response.json();
+    setCustomers([...customers, addedCustomer]);
+    setNewCustomer({ name: '', email: '' });
   };
-
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div>
       <h1>Customer Management</h1>
-      <input 
-        type="text" 
-        placeholder="Search customers" 
-        value={searchTerm} 
-        onChange={handleSearch} 
-      />
-      <button onClick={handleSort}>
-        Sort by Name ({sortOrder === 'asc' ? 'Ascending' : 'Descending'})
-      </button>
+      <form onSubmit={handleAddCustomer}>
+        <input
+          type="text"
+          name="name"
+          value={newCustomer.name}
+          onChange={handleChange}
+          placeholder="Customer Name"
+          required
+        />
+        <input
+          type="email"
+          name="email"
+          value={newCustomer.email}
+          onChange={handleChange}
+          placeholder="Customer Email"
+          required
+        />
+        <button type="submit">Add Customer</button>
+      </form>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+        {customers.map((customer) => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+          </li>
         ))}
       </ul>
     </div>
