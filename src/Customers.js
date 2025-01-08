@@ -1,42 +1,43 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
-
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
-  };
+  const [newCustomer, setNewCustomer] = useState('');
 
   useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  const addCustomer = () => {
+    const updatedCustomers = [...customers, { name: newCustomer }];
+    setCustomers(updatedCustomers);
+    setNewCustomer('');
+  };
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search customers"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
+      <h1>Customer Management</h1>
+      <input 
+        type="text" 
+        value={newCustomer} 
+        onChange={(e) => setNewCustomer(e.target.value)} 
+        placeholder="Add new customer"
       />
+      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
+        {customers.map((customer, index) => (
+          <li key={index}>{customer.name}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
