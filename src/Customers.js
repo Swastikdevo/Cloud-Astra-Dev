@@ -1,39 +1,53 @@
-```javascript
-import React, { useState, useEffect } from 'react';
+```jsx
+import React, { useState } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  useEffect(() => {
-    // Mock API call to fetch customers
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
-  }, []);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const addCustomer = () => {
+    if (name && email) {
+      setCustomers([...customers, { name, email }]);
+      setName('');
+      setEmail('');
+    }
+  };
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
+  const removeCustomer = (index) => {
+    const updatedCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(updatedCustomers);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    addCustomer();
   };
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search customers..." 
-        value={searchQuery} 
-        onChange={handleSearchChange} 
-      />
+      <h2>Customer Management System</h2>
+      <form onSubmit={handleSubmit}>
+        <input 
+          type="text" 
+          placeholder="Customer Name" 
+          value={name} 
+          onChange={(e) => setName(e.target.value)} 
+        />
+        <input 
+          type="email" 
+          placeholder="Customer Email" 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)} 
+        />
+        <button type="submit">Add Customer</button>
+      </form>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer.name} - {customer.email}
+            <button onClick={() => removeCustomer(index)}>Remove</button>
+          </li>
         ))}
       </ul>
     </div>
