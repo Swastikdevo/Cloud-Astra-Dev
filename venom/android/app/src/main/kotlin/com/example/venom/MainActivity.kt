@@ -13,17 +13,17 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomeScreen(),
+      home: MyHomePage(),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home Screen'),
+        title: Text('Flutter Basic App'),
       ),
       body: Center(
         child: Column(
@@ -36,31 +36,27 @@ class HomeScreen extends StatelessWidget {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => SecondScreen()),
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: Text('Hello'),
+                      content: Text('This is a simple Flutter app.'),
+                      actions: <Widget>[
+                        TextButton(
+                          child: Text('Close'),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
-              child: Text('Go to Second Screen'),
+              child: Text('Show Message'),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class SecondScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Second Screen'),
-      ),
-      body: Center(
-        child: Text(
-          'This is the second screen!',
-          style: TextStyle(fontSize: 24),
         ),
       ),
     );
