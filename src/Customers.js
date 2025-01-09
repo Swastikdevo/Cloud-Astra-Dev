@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredCustomers, setFilteredCustomers] = useState([]);
-
+  const [searchQuery, setSearchQuery] = useState('');
+  
   useEffect(() => {
+    // Mock API call to fetch customers
     const fetchCustomers = async () => {
       const response = await fetch('/api/customers');
       const data = await response.json();
@@ -15,28 +15,25 @@ const CustomerManagement = () => {
     fetchCustomers();
   }, []);
 
-  useEffect(() => {
-    setFilteredCustomers(
-      customers.filter(customer => 
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
-  }, [searchTerm, customers]);
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
 
   return (
     <div>
-      <h1>Customer Management</h1>
       <input 
         type="text" 
         placeholder="Search customers..." 
-        value={searchTerm} 
-        onChange={(e) => setSearchTerm(e.target.value)} 
+        value={searchQuery} 
+        onChange={handleSearchChange} 
       />
       <ul>
         {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
+          <li key={customer.id}>{customer.name}</li>
         ))}
       </ul>
     </div>
