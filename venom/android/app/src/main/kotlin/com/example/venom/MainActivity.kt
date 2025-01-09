@@ -13,12 +13,12 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomePage(),
+      home: MyHomePage(),
     );
   }
 }
 
-class HomePage extends StatelessWidget {
+class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,7 +31,7 @@ class HomePage extends StatelessWidget {
           children: <Widget>[
             Text(
               'Welcome to Flutter!',
-              style: TextStyle(fontSize: 24),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 20),
             ElevatedButton(
