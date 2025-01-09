@@ -3,44 +3,56 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
-from django.utils.decorators import method_decorator
-from django.views import View
 
-@method_decorator(login_required, name='dispatch')
-class BankView(View):
-
-    def get(self, request):
+@csrf_exempt
+@login_required
+def manage_account(request):
+    if request.method == 'GET':
         accounts = Account.objects.filter(user=request.user)
-        transactions = Transaction.objects.filter(account__in=accounts).order_by('-date')
-        return render(request, 'bank/home.html', {'accounts': accounts, 'transactions': transactions})
+        return render(request, 'bank/manage_account.html', {'accounts': accounts})
 
-    @csrf_exempt
-    def post(self, request):
-        if request.POST.get("action") == "create_account":
-            form = AccountForm(request.POST)
-            if form.is_valid():
-                new_account = form.save(commit=False)
-                new_account.user = request.user
-                new_account.save()
-                return JsonResponse({'status': 'success', 'account_id': new_account.id})
+    elif request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'create':
+            account_name = request.POST.get('account_name')
+            new_account = Account(user=request.user, name=account_name)
+            new_account.save()
+            messages.success(request, 'Account created successfully!')
+        
+        elif action == 'delete':
+            account_id = request.POST.get('account_id')
+            try:
+                account = Account.objects.get(id=account_id, user=request.user)
+                account.delete()
+                messages.success(request, 'Account deleted successfully!')
+            except Account.DoesNotExist:
+                messages.error(request, 'Account not found!')
 
-        elif request.POST.get("action") == "create_transaction":
-            form = TransactionForm(request.POST)
-            if form.is_valid():
-                new_transaction = form.save(commit=False)
-                new_transaction.account = Account.objects.get(id=request.POST['account_id'])
-                new_transaction.save()
-                return JsonResponse({'status': 'success', 'transaction_id': new_transaction.id})
+        elif action == 'transfer':
+            account_id = request.POST.get('account_id')
+            target_account_id = request.POST.get('target_account_id')
+            amount = float(request.POST.get('amount'))
+            try:
+                source_account = Account.objects.get(id=account_id, user=request.user)
+                target_account = Account.objects.get(id=target_account_id, user=request.user)
 
-        return JsonResponse({'status': 'error', 'message': 'Invalid action or form data'})
+                if source_account.balance >= amount:
+                    source_account.balance -= amount
+                    target_account.balance += amount
+                    source_account.save()
+                    target_account.save()
 
-    def delete(self, request, account_id):
-        try:
-            account = Account.objects.get(id=account_id, user=request.user)
-            account.delete()
-            return JsonResponse({'status': 'success', 'message': 'Account deleted'})
-        except Account.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Account not found'})
+                    Transaction.objects.create(source_account=source_account, target_account=target_account, amount=amount)
+                    messages.success(request, 'Transfer successful!')
+                else:
+                    messages.error(request, 'Insufficient funds!')
+            except Account.DoesNotExist:
+                messages.error(request, 'One of the accounts does not exist!')
+
+        return redirect('manage_account')
+
+    return JsonResponse({'status': 'invalid method'}, status=400)
 ```
