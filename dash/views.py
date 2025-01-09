@@ -1,50 +1,46 @@
 ```python
 from django.shortcuts import render, redirect
-from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import TransactionForm, AccountForm
+from .forms import AccountForm, TransactionForm
+from django.utils.decorators import method_decorator
+from django.views import View
 
-@login_required
-def manage_account(request):
-    user_account = Account.objects.get(user=request.user)
+@method_decorator(login_required, name='dispatch')
+class BankView(View):
 
-    if request.method == 'POST':
-        if 'deposit' in request.POST:
+    def get(self, request):
+        accounts = Account.objects.filter(user=request.user)
+        transactions = Transaction.objects.filter(account__in=accounts).order_by('-date')
+        return render(request, 'bank/home.html', {'accounts': accounts, 'transactions': transactions})
+
+    @csrf_exempt
+    def post(self, request):
+        if request.POST.get("action") == "create_account":
+            form = AccountForm(request.POST)
+            if form.is_valid():
+                new_account = form.save(commit=False)
+                new_account.user = request.user
+                new_account.save()
+                return JsonResponse({'status': 'success', 'account_id': new_account.id})
+
+        elif request.POST.get("action") == "create_transaction":
             form = TransactionForm(request.POST)
             if form.is_valid():
-                amount = form.cleaned_data['amount']
-                user_account.balance += amount
-                user_account.save()
-                Transaction.objects.create(account=user_account, amount=amount, transaction_type='Deposit')
-                messages.success(request, 'Deposit successful!')
-                return redirect('manage_account')
-        
-        elif 'withdraw' in request.POST:
-            form = TransactionForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if user_account.balance >= amount:
-                    user_account.balance -= amount
-                    user_account.save()
-                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Withdrawal')
-                    messages.success(request, 'Withdrawal successful!')
-                else:
-                    messages.error(request, 'Insufficient balance!')
-                return redirect('manage_account')
-    
-    else:
-        deposit_form = TransactionForm()
-        withdraw_form = TransactionForm()
+                new_transaction = form.save(commit=False)
+                new_transaction.account = Account.objects.get(id=request.POST['account_id'])
+                new_transaction.save()
+                return JsonResponse({'status': 'success', 'transaction_id': new_transaction.id})
 
-    transactions = Transaction.objects.filter(account=user_account).order_by('-date')
-    
-    context = {
-        'account': user_account,
-        'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
-        'transactions': transactions
-    }
-    
-    return render(request, 'bank/manage_account.html', context)
+        return JsonResponse({'status': 'error', 'message': 'Invalid action or form data'})
+
+    def delete(self, request, account_id):
+        try:
+            account = Account.objects.get(id=account_id, user=request.user)
+            account.delete()
+            return JsonResponse({'status': 'success', 'message': 'Account deleted'})
+        except Account.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Account not found'})
 ```
