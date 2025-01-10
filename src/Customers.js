@@ -1,81 +1,56 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-    const [customers, setCustomers] = useState([]);
-    const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
-    const [editingCustomer, setEditingCustomer] = useState(null);
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortOrder, setSortOrder] = useState('asc');
 
-    useEffect(() => {
-        // Mock fetch call
-        const fetchCustomers = async () => {
-            const data = await fetch('/api/customers');
-            const customers = await data.json();
-            setCustomers(customers);
-        };
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
-        fetchCustomers();
-    }, []);
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
+  };
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setNewCustomer({ ...newCustomer, [name]: value });
-    };
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (editingCustomer) {
-            setCustomers(customers.map(customer => customer.id === editingCustomer.id ? newCustomer : customer));
-            setEditingCustomer(null);
-        } else {
-            setCustomers([...customers, { id: Date.now(), ...newCustomer }]);
-        }
-        setNewCustomer({ name: '', email: '' });
-    };
+  const sortedCustomers = [...customers].sort((a, b) => {
+    if (sortOrder === 'asc') {
+      return a.name.localeCompare(b.name);
+    } else {
+      return b.name.localeCompare(a.name);
+    }
+  });
 
-    const handleEdit = (customer) => {
-        setNewCustomer(customer);
-        setEditingCustomer(customer);
-    };
+  const filteredCustomers = sortedCustomers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    const handleDelete = (id) => {
-        setCustomers(customers.filter(customer => customer.id !== id));
-    };
-
-    return (
-        <div>
-            <h1>Customer Management</h1>
-            <form onSubmit={handleSubmit}>
-                <input
-                    type="text"
-                    name="name"
-                    value={newCustomer.name}
-                    onChange={handleInputChange}
-                    placeholder="Customer Name"
-                    required
-                />
-                <input
-                    type="email"
-                    name="email"
-                    value={newCustomer.email}
-                    onChange={handleInputChange}
-                    placeholder="Customer Email"
-                    required
-                />
-                <button type="submit">{editingCustomer ? 'Update' : 'Add'}</button>
-            </form>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.email}
-                        <button onClick={() => handleEdit(customer)}>Edit</button>
-                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Search Customers"
+        value={searchTerm}
+        onChange={handleSearch}
+      />
+      <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>
+        Sort {sortOrder === 'asc' ? 'Descending' : 'Ascending'}
+      </button>
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
