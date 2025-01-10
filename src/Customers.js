@@ -1,10 +1,9 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
     fetchCustomers();
@@ -16,35 +15,35 @@ const CustomerList = () => {
     setCustomers(data);
   };
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
+  const addCustomer = async () => {
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    const data = await response.json();
+    setCustomers([...customers, data]);
+    setNewCustomer({ name: '', email: '' });
   };
-
-  const sortedCustomers = [...customers].sort((a, b) => {
-    if (sortOrder === 'asc') {
-      return a.name.localeCompare(b.name);
-    } else {
-      return b.name.localeCompare(a.name);
-    }
-  });
-
-  const filteredCustomers = sortedCustomers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div>
+      <h1>Customer Management</h1>
       <input
         type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={handleSearch}
+        placeholder="Name"
+        value={newCustomer.name}
+        onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
       />
-      <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>
-        Sort {sortOrder === 'asc' ? 'Descending' : 'Ascending'}
-      </button>
+      <input
+        type="email"
+        placeholder="Email"
+        value={newCustomer.email}
+        onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+      />
+      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map(customer => (
+        {customers.map((customer) => (
           <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
@@ -52,5 +51,5 @@ const CustomerList = () => {
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
