@@ -1,49 +1,41 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
     const [customers, setCustomers] = useState([]);
-    const [filter, setFilter] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
+        const fetchCustomers = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch('/api/customers');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                setCustomers(data);
+            } catch (error) {
+                setError(error);
+            } finally {
+                setLoading(false);
+            }
+        };
         fetchCustomers();
     }, []);
 
-    const fetchCustomers = async () => {
-        const response = await fetch('https://api.example.com/customers');
-        const data = await response.json();
-        setCustomers(data);
-    };
-
-    const filteredCustomers = customers.filter(customer => 
-        customer.name.toLowerCase().includes(filter.toLowerCase())
-    );
-
-    const handleDelete = async (id) => {
-        await fetch(`https://api.example.com/customers/${id}`, { method: 'DELETE' });
-        setCustomers(customers.filter(customer => customer.id !== id));
-    };
+    if (loading) return <p>Loading customers...</p>;
+    if (error) return <p>Error loading customers: {error.message}</p>;
 
     return (
-        <div>
-            <h1>Customer Management</h1>
-            <input 
-                type="text" 
-                placeholder="Search customers..." 
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-            />
-            <ul>
-                {filteredCustomers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.email}
-                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
+        <ul>
+            {customers.map(customer => (
+                <li key={customer.id}>
+                    {customer.name} - {customer.email}
+                </li>
+            ))}
+        </ul>
     );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
