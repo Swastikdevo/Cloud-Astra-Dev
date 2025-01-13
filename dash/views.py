@@ -2,57 +2,44 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
 
-@login_required
 @csrf_exempt
-def manage_account(request):
+def manage_account(request, account_id=None):
     if request.method == 'POST':
-        action = request.POST.get('action')
-
-        if action == 'create':
-            form = AccountForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
-            else:
-                return JsonResponse({'status': 'error', 'errors': form.errors})
-
-        elif action == 'update':
-            account_id = request.POST.get('id')
+        if account_id:
             account = Account.objects.get(id=account_id)
             form = AccountForm(request.POST, instance=account)
-            if form.is_valid():
-                form.save()
-                return JsonResponse({'status': 'success', 'message': 'Account updated successfully!'})
-            else:
-                return JsonResponse({'status': 'error', 'errors': form.errors})
-
-        elif action == 'delete':
-            account_id = request.POST.get('id')
-            account = Account.objects.get(id=account_id)
-            account.delete()
-            return JsonResponse({'status': 'success', 'message': 'Account deleted successfully!'})
-
+        else:
+            form = AccountForm(request.POST)
+        
+        if form.is_valid():
+            account = form.save()
+            return JsonResponse({'status': 'success', 'account_id': account.id})
+        else:
+            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
     else:
-        accounts = Account.objects.filter(user=request.user)
-        return render(request, 'manage_account.html', {'accounts': accounts})
+        account = Account.objects.get(id=account_id) if account_id else None
+        form = AccountForm(instance=account)
+        return render(request, 'account_form.html', {'form': form})
 
-@login_required
 @csrf_exempt
-def manage_transaction(request):
+def make_transaction(request, account_id):
     if request.method == 'POST':
         form = TransactionForm(request.POST)
         if form.is_valid():
             transaction = form.save(commit=False)
-            transaction.user = request.user
+            transaction.account = Account.objects.get(id=account_id)
             transaction.save()
-            return JsonResponse({'status': 'success', 'message': 'Transaction recorded successfully!'})
+            return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
         else:
-            return JsonResponse({'status': 'error', 'errors': form.errors})
+            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+    
+    return render(request, 'transaction_form.html', {'account_id': account_id})
 
-    transactions = Transaction.objects.filter(user=request.user)
-    return render(request, 'manage_transaction.html', {'transactions': transactions})
+def account_details(request, account_id):
+    account = Account.objects.get(id=account_id)
+    transactions = Transaction.objects.filter(account=account)
+    return render(request, 'account_details.html', {'account': account, 'transactions': transactions})
 ```
