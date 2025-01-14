@@ -1,42 +1,57 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [filter, setFilter] = useState('');
+const CustomerManager = () => {
+  const [customers, setCustomers] = useState([]);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
-    useEffect(() => {
-        fetch('/api/customers')
-            .then(response => response.json())
-            .then(data => setCustomers(data));
-    }, []);
+  const addCustomer = () => {
+    const newCustomer = { id: Date.now(), name, email };
+    setCustomers([...customers, newCustomer]);
+    setName('');
+    setEmail('');
+  };
 
-    const handleFilterChange = (event) => {
-        setFilter(event.target.value);
-    };
+  const removeCustomer = (id) => {
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
 
-    const filteredCustomers = customers.filter(customer =>
-        customer.name.toLowerCase().includes(filter.toLowerCase())
-    );
+  useEffect(() => {
+    const initialCustomers = [
+      { id: 1, name: 'John Doe', email: 'john@example.com' },
+      { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
+    ];
+    setCustomers(initialCustomers);
+  }, []);
 
-    return (
-        <div>
-            <input
-                type="text"
-                placeholder="Filter by name"
-                value={filter}
-                onChange={handleFilterChange}
-            />
-            <ul>
-                {filteredCustomers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.email}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  return (
+    <div>
+      <h1>Customer Management</h1>
+      <input 
+        type="text" 
+        placeholder="Name" 
+        value={name} 
+        onChange={(e) => setName(e.target.value)} 
+      />
+      <input 
+        type="email" 
+        placeholder="Email" 
+        value={email} 
+        onChange={(e) => setEmail(e.target.value)} 
+      />
+      <button onClick={addCustomer}>Add Customer</button>
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} ({customer.email}) 
+            <button onClick={() => removeCustomer(customer.id)}>Remove</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerList;
+export default CustomerManager;
 ```
