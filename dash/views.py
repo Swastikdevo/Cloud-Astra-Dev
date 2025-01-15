@@ -1,55 +1,70 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+from django.views.decorators.http import require_POST
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import CreateAccountForm, DepositForm, WithdrawForm
 
 @login_required
-def manage_account(request, account_id=None):
-    if account_id:
-        account = get_object_or_404(Account, id=account_id, user=request.user)
-    else:
-        account = None
-
+def manage_account(request):
+    accounts = Account.objects.filter(user=request.user)
     if request.method == 'POST':
-        if account:
-            form = AccountForm(request.POST, instance=account)
-        else:
-            form = AccountForm(request.POST)
+        if 'create_account' in request.POST:
+            form = CreateAccountForm(request.POST)
+            if form.is_valid():
+                account = form.save(commit=False)
+                account.user = request.user
+                account.save()
+                return redirect('manage_account')
 
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            messages.success(request, 'Account updated successfully!' if account_id else 'Account created successfully!')
-            return redirect('account_detail', account_id=account.id)
+        elif 'deposit' in request.POST:
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                account = form.cleaned_data['account']
+                amount = form.cleaned_data['amount']
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
+                return redirect('manage_account')
+
+        elif 'withdraw' in request.POST:
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                account = form.cleaned_data['account']
+                amount = form.cleaned_data['amount']
+                if account.balance >= amount:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='withdraw')
+                    return redirect('manage_account')
+
     else:
-        form = AccountForm(instance=account)
+        create_form = CreateAccountForm()
+        deposit_form = DepositForm()
+        withdraw_form = WithdrawForm()
 
-    return render(request, 'bank/manage_account.html', {'form': form, 'account': account})
+    return render(request, 'manage_account.html', {
+        'accounts': accounts,
+        'create_form': create_form,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+    })
 
+@require_POST
 @login_required
-def make_transaction(request, account_id):
-    account = get_object_or_404(Account, id=account_id, user=request.user)
+def account_details(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account)
 
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = account
-            transaction.save()
-            messages.success(request, 'Transaction made successfully!')
-            return redirect('transaction_history', account_id=account.id)
-    else:
-        form = TransactionForm()
-
-    return render(request, 'bank/make_transaction.html', {'form': form, 'account': account})
-
-@login_required
-def transaction_history(request, account_id):
-    account = get_object_or_404(Account, id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions, 'account': account})
+    response_data = {
+        'account_number': account.account_number,
+        'balance': account.balance,
+        'transactions': [{
+            'amount': txn.amount,
+            'transaction_type': txn.transaction_type,
+            'created_at': txn.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        } for txn in transactions],
+    }
+    return JsonResponse(response_data)
 ```
