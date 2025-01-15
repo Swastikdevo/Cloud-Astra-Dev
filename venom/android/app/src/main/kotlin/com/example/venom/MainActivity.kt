@@ -9,16 +9,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Basic App',
+      title: 'Flutter Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(),
+      home: HomePage(),
     );
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,7 +41,7 @@ class MyHomePage extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => SecondPage()),
                 );
               },
-              child: Text('Go to Second Page'),
+              child: Text('Go to Next Page'),
             ),
           ],
         ),
