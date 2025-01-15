@@ -2,39 +2,34 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from .models import Account
+from .forms import AccountForm
 from django.contrib.auth.decorators import login_required
-from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
 
 @login_required
 @csrf_exempt
-def bank_management_view(request):
+def account_management(request):
     if request.method == 'GET':
-        accounts = Account.objects.filter(owner=request.user)
-        account_form = AccountForm()
-        transaction_form = TransactionForm()
-        return render(request, 'bank_management.html', {
-            'accounts': accounts,
-            'account_form': account_form,
-            'transaction_form': transaction_form
-        })
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'account_management.html', {'accounts': accounts})
 
     elif request.method == 'POST':
-        if 'create_account' in request.POST:
-            account_form = AccountForm(request.POST)
-            if account_form.is_valid():
-                new_account = account_form.save(commit=False)
-                new_account.owner = request.user
-                new_account.save()
-                return redirect('bank_management')
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return JsonResponse({'message': 'Account created successfully!'}, status=201)
+        return JsonResponse({'errors': form.errors}, status=400)
 
-        elif 'make_transaction' in request.POST:
-            transaction_form = TransactionForm(request.POST)
-            if transaction_form.is_valid():
-                transaction = transaction_form.save(commit=False)
-                transaction.user = request.user
-                transaction.save()
-                return JsonResponse({'message': 'Transaction successful'}, status=200)
+    elif request.method == 'DELETE':
+        account_id = request.POST.get('account_id')
+        try:
+            account = Account.objects.get(id=account_id, user=request.user)
+            account.delete()
+            return JsonResponse({'message': 'Account deleted successfully!'}, status=204)
+        except Account.DoesNotExist:
+            return JsonResponse({'error': 'Account not found!'}, status=404)
 
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+    return JsonResponse({'error': 'Method not allowed!'}, status=405)
 ```
