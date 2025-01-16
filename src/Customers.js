@@ -1,48 +1,38 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
+  const [loading, setLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState('asc');
 
   useEffect(() => {
     const fetchCustomers = async () => {
       const response = await fetch('/api/customers');
       const data = await response.json();
       setCustomers(data);
+      setLoading(false);
     };
     fetchCustomers();
   }, []);
 
-  const addCustomer = async () => {
-    const response = await fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCustomer),
+  const sortCustomers = () => {
+    const sorted = [...customers].sort((a, b) => {
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
+      return sortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
     });
-    const addedCustomer = await response.json();
-    setCustomers([...customers, addedCustomer]);
-    setNewCustomer({ name: '', email: '' });
+    setCustomers(sorted);
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
   };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div>
-      <h2>Customer Management</h2>
-      <input
-        type="text"
-        placeholder="Name"
-        value={newCustomer.name}
-        onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        value={newCustomer.email}
-        onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
-      />
-      <button onClick={addCustomer}>Add Customer</button>
+      <button onClick={sortCustomers}>Sort Customers</button>
       <ul>
-        {customers.map((customer) => (
+        {customers.map(customer => (
           <li key={customer.id}>
             {customer.name} - {customer.email}
           </li>
@@ -52,5 +42,5 @@ const CustomerManagement = () => {
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
