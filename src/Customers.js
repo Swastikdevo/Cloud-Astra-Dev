@@ -1,60 +1,50 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState('');
-
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
-
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
-  };
-
-  const addCustomer = async () => {
-    if (newCustomer) {
-      const response = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCustomer }),
-      });
-      if (response.ok) {
+const CustomerList = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            try {
+                const response = await fetch('/api/customers');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                setCustomers(data);
+            } catch (error) {
+                setError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
         fetchCustomers();
-        setNewCustomer('');
-      }
-    }
-  };
+    }, []);
 
-  const deleteCustomer = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-    fetchCustomers();
-  };
+    const deleteCustomer = async (id) => {
+        try {
+            await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+            setCustomers(customers.filter(customer => customer.id !== id));
+        } catch (error) {
+            setError(error.message);
+        }
+    };
 
-  return (
-    <div>
-      <h2>Customer Management</h2>
-      <input
-        type="text"
-        value={newCustomer}
-        onChange={(e) => setNewCustomer(e.target.value)}
-        placeholder="Add new customer"
-      />
-      <button onClick={addCustomer}>Add</button>
-      <ul>
-        {customers.map((customer) => (
-          <li key={customer.id}>
-            {customer.name}
-            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>Error: {error}</div>;
+
+    return (
+        <ul>
+            {customers.map(customer => (
+                <li key={customer.id}>
+                    {customer.name} - {customer.email}
+                    <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+                </li>
+            ))}
+        </ul>
+    );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
