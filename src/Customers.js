@@ -1,50 +1,78 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    
-    useEffect(() => {
-        const fetchCustomers = async () => {
-            try {
-                const response = await fetch('/api/customers');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-                setCustomers(data);
-            } catch (error) {
-                setError(error.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchCustomers();
-    }, []);
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [editingIndex, setEditingIndex] = useState(-1);
 
-    const deleteCustomer = async (id) => {
-        try {
-            await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-            setCustomers(customers.filter(customer => customer.id !== id));
-        } catch (error) {
-            setError(error.message);
-        }
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
     };
+    fetchCustomers();
+  }, []);
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
+  const handleAddOrUpdateCustomer = () => {
+    if (editingIndex === -1) {
+      setCustomers([...customers, { name, email }]);
+    } else {
+      const updatedCustomers = customers.map((customer, index) =>
+        index === editingIndex ? { name, email } : customer
+      );
+      setCustomers(updatedCustomers);
+    }
+    resetForm();
+  };
 
-    return (
-        <ul>
-            {customers.map(customer => (
-                <li key={customer.id}>
-                    {customer.name} - {customer.email}
-                    <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-                </li>
-            ))}
-        </ul>
-    );
+  const handleEditCustomer = (index) => {
+    setEditingIndex(index);
+    setName(customers[index].name);
+    setEmail(customers[index].email);
+  };
+
+  const resetForm = () => {
+    setName('');
+    setEmail('');
+    setEditingIndex(-1);
+  };
+
+  return (
+    <div>
+      <h1>Customer Management</h1>
+      <form onSubmit={(e) => e.preventDefault()}>
+        <input
+          type="text"
+          placeholder="Customer Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          type="email"
+          placeholder="Customer Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <button onClick={handleAddOrUpdateCustomer}>
+          {editingIndex === -1 ? 'Add Customer' : 'Update Customer'}
+        </button>
+        <button onClick={resetForm}>Cancel</button>
+      </form>
+      <ul>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer.name} - {customer.email}
+            <button onClick={() => handleEditCustomer(index)}>Edit</button>
+            <button onClick={() => setCustomers(customers.filter((_, i) => i !== index))}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
