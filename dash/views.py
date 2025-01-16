@@ -4,43 +4,49 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import DepositForm, WithdrawForm, TransferForm
 
+@login_required
 @csrf_exempt
-@login_required
-def manage_account(request, account_id=None):
-    if request.method == 'POST':
-        if account_id:
-            account = Account.objects.get(id=account_id)
-            form = AccountForm(request.POST, instance=account)
-            if form.is_valid():
-                form.save()
-                return JsonResponse({'status': 'success', 'message': 'Account updated successfully!'})
-        else:
-            form = AccountForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return JsonResponse({'status': 'success', 'message': 'New account created successfully!'})
-    else:
-        if account_id:
-            account = Account.objects.get(id=account_id)
-            form = AccountForm(instance=account)
-        else:
-            form = AccountForm()
+def manage_account(request):
+    if request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank/manage_account.html', {'accounts': accounts})
 
-    return render(request, 'account/manage_account.html', {'form': form})
+    elif request.method == 'POST':
+        action = request.POST.get('action')
 
-@login_required
-def transfer_funds(request):
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.user = request.user
-            transaction.save()
-            return JsonResponse({'status': 'success', 'message': 'Funds transferred successfully!'})
-    else:
-        form = TransactionForm()
-    
-    return render(request, 'transaction/transfer_funds.html', {'form': form})
+        if action == 'deposit':
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                account = form.cleaned_data['account']
+                amount = form.cleaned_data['amount']
+                # Perform deposit operation
+                account.deposit(amount)
+                return JsonResponse({'status': 'success', 'message': 'Deposit successful'})
+
+        elif action == 'withdraw':
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                account = form.cleaned_data['account']
+                amount = form.cleaned_data['amount']
+                # Perform withdrawal operation
+                if account.withdraw(amount):
+                    return JsonResponse({'status': 'success', 'message': 'Withdrawal successful'})
+                else:
+                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
+
+        elif action == 'transfer':
+            form = TransferForm(request.POST)
+            if form.is_valid():
+                source_account = form.cleaned_data['source_account']
+                target_account = form.cleaned_data['target_account']
+                amount = form.cleaned_data['amount']
+                # Perform transfer operation
+                if source_account.transfer(target_account, amount):
+                    return JsonResponse({'status': 'success', 'message': 'Transfer successful'})
+                else:
+                    return JsonResponse({'status': 'error', 'message': 'Transfer failed'})
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
 ```
