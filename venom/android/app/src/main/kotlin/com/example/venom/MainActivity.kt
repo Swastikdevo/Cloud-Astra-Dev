@@ -37,9 +37,10 @@ class HomePage extends StatelessWidget {
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SecondPage()),
-                );
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SecondPage(),
+                    ));
               },
               child: Text('Go to Second Page'),
             ),
@@ -59,7 +60,7 @@ class SecondPage extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'This is the Second Page',
+          'This is the second page!',
           style: TextStyle(fontSize: 24),
         ),
       ),
