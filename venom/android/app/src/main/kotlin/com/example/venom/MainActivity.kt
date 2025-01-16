@@ -41,7 +41,7 @@ class HomePage extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => SecondPage()),
                 );
               },
-              child: Text('Go to Next Page'),
+              child: Text('Go to Second Page'),
             ),
           ],
         ),
@@ -59,7 +59,7 @@ class SecondPage extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'This is the second page!',
+          'This is the Second Page',
           style: TextStyle(fontSize: 24),
         ),
       ),
