@@ -1,45 +1,33 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerManager = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const addCustomer = () => {
-    if(name && email) {
-      setCustomers([...customers, { name, email }]);
-      setName('');
-      setEmail('');
-    }
-  };
+  useEffect(() => {
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => setCustomers(data))
+      .catch(error => console.error('Error fetching customers:', error));
+  }, []);
 
-  const deleteCustomer = (index) => {
-    const newCustomers = customers.filter((_, i) => i !== index);
-    setCustomers(newCustomers);
-  };
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <input 
-        type="text" 
-        placeholder="Name" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
+      <input
+        type="text"
+        placeholder="Search customers"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
       />
-      <input 
-        type="email" 
-        placeholder="Email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
-      />
-      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>
             {customer.name} - {customer.email}
-            <button onClick={() => deleteCustomer(index)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -47,5 +35,5 @@ const CustomerManager = () => {
   );
 };
 
-export default CustomerManager;
+export default CustomerList;
 ```
