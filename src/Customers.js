@@ -1,78 +1,63 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
+import Axios from 'axios';
 
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [editingIndex, setEditingIndex] = useState(-1);
+const CustomerTable = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await Axios.get('/api/customers');
+                setCustomers(response.data);
+            } catch (err) {
+                setError(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const handleDelete = async (id) => {
+        try {
+            await Axios.delete(`/api/customers/${id}`);
+            setCustomers(customers.filter(customer => customer.id !== id));
+        } catch (err) {
+            setError(err);
+        }
     };
-    fetchCustomers();
-  }, []);
 
-  const handleAddOrUpdateCustomer = () => {
-    if (editingIndex === -1) {
-      setCustomers([...customers, { name, email }]);
-    } else {
-      const updatedCustomers = customers.map((customer, index) =>
-        index === editingIndex ? { name, email } : customer
-      );
-      setCustomers(updatedCustomers);
-    }
-    resetForm();
-  };
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>Error: {error.message}</div>;
 
-  const handleEditCustomer = (index) => {
-    setEditingIndex(index);
-    setName(customers[index].name);
-    setEmail(customers[index].email);
-  };
-
-  const resetForm = () => {
-    setName('');
-    setEmail('');
-    setEditingIndex(-1);
-  };
-
-  return (
-    <div>
-      <h1>Customer Management</h1>
-      <form onSubmit={(e) => e.preventDefault()}>
-        <input
-          type="text"
-          placeholder="Customer Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          type="email"
-          placeholder="Customer Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <button onClick={handleAddOrUpdateCustomer}>
-          {editingIndex === -1 ? 'Add Customer' : 'Update Customer'}
-        </button>
-        <button onClick={resetForm}>Cancel</button>
-      </form>
-      <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
-            {customer.name} - {customer.email}
-            <button onClick={() => handleEditCustomer(index)}>Edit</button>
-            <button onClick={() => setCustomers(customers.filter((_, i) => i !== index))}>Delete</button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {customers.map(customer => (
+                    <tr key={customer.id}>
+                        <td>{customer.id}</td>
+                        <td>{customer.name}</td>
+                        <td>{customer.email}</td>
+                        <td>
+                            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
 };
 
-export default CustomerManagement;
+export default CustomerTable;
 ```
