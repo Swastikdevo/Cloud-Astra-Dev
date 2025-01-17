@@ -1,9 +1,9 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
     fetch('/api/customers')
@@ -12,28 +12,50 @@ const CustomerList = () => {
       .catch(error => console.error('Error fetching customers:', error));
   }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleChange = (e) => {
+    setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
+  };
+
+  const handleAddCustomer = () => {
+    fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer)
+    })
+      .then(response => response.json())
+      .then(data => {
+        setCustomers([...customers, data]);
+        setNewCustomer({ name: '', email: '' });
+      })
+      .catch(error => console.error('Error adding customer:', error));
+  };
 
   return (
     <div>
+      <h1>Customer Management</h1>
       <input
         type="text"
-        placeholder="Search customers"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        name="name"
+        value={newCustomer.name}
+        onChange={handleChange}
+        placeholder="Customer Name"
       />
+      <input
+        type="email"
+        name="email"
+        value={newCustomer.email}
+        onChange={handleChange}
+        placeholder="Customer Email"
+      />
+      <button onClick={handleAddCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
+        {customers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
