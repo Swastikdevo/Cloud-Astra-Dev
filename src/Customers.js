@@ -1,63 +1,62 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
-import Axios from 'axios';
 
-const CustomerTable = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+const CustomerManager = () => {
+  const [customers, setCustomers] = useState([]);
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
+  const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await Axios.get('/api/customers');
-                setCustomers(response.data);
-            } catch (err) {
-                setError(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
-
-    const handleDelete = async (id) => {
-        try {
-            await Axios.delete(`/api/customers/${id}`);
-            setCustomers(customers.filter(customer => customer.id !== id));
-        } catch (err) {
-            setError(err);
-        }
+  useEffect(() => {
+    // Simulate fetching data
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
     };
+    fetchCustomers();
+  }, []);
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error.message}</div>;
+  const addCustomer = () => {
+    setCustomers([...customers, newCustomer]);
+    setNewCustomer({ name: '', email: '' });
+  };
 
-    return (
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {customers.map(customer => (
-                    <tr key={customer.id}>
-                        <td>{customer.id}</td>
-                        <td>{customer.name}</td>
-                        <td>{customer.email}</td>
-                        <td>
-                            <button onClick={() => handleDelete(customer.id)}>Delete</button>
-                        </td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    );
+  const handleSearch = (event) => {
+    setSearchQuery(event.target.value);
+  };
+
+  return (
+    <div>
+      <h1>Customer Management</h1>
+      <input
+        type="text"
+        placeholder="Search customers"
+        value={searchQuery}
+        onChange={handleSearch}
+      />
+      <ul>
+        {customers
+          .filter(customer => customer.name.includes(searchQuery))
+          .map((customer, index) => (
+            <li key={index}>{customer.name} - {customer.email}</li>
+          ))}
+      </ul>
+      <input
+        type="text"
+        placeholder="Name"
+        value={newCustomer.name}
+        onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={newCustomer.email}
+        onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+      />
+      <button onClick={addCustomer}>Add Customer</button>
+    </div>
+  );
 };
 
-export default CustomerTable;
+export default CustomerManager;
 ```
