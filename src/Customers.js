@@ -1,49 +1,56 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerManager = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
   useEffect(() => {
-    fetch('/api/customers')
+    fetch('https://api.example.com/customers')
       .then(response => response.json())
-      .then(data => {
-        setCustomers(data);
-        setLoading(false);
-      });
+      .then(data => setCustomers(data));
   }, []);
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const addCustomer = () => {
+    const newCustomer = { name, email };
+    setCustomers([...customers, newCustomer]);
+    setName('');
+    setEmail('');
+  };
 
-  const handleChange = (e) => {
-    setSearchTerm(e.target.value);
+  const deleteCustomer = (index) => {
+    const updatedCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(updatedCustomers);
   };
 
   return (
     <div>
-      <h1>Customer Management</h1>
+      <h2>Customer Management</h2>
       <input 
         type="text" 
-        placeholder="Search customers..." 
-        value={searchTerm} 
-        onChange={handleChange} 
+        placeholder="Name" 
+        value={name} 
+        onChange={(e) => setName(e.target.value)} 
       />
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <ul>
-          {filteredCustomers.map(customer => (
-            <li key={customer.id}>{customer.name}</li>
-          ))}
-        </ul>
-      )}
+      <input 
+        type="email" 
+        placeholder="Email" 
+        value={email} 
+        onChange={(e) => setEmail(e.target.value)} 
+      />
+      <button onClick={addCustomer}>Add Customer</button>
+      <ul>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer.name} - {customer.email}
+            <button onClick={() => deleteCustomer(index)}>Delete</button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerManager;
 ```
