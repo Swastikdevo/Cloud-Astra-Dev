@@ -1,44 +1,35 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await axios.get('/api/customers');
-        setCustomers(response.data);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching customers:', error);
-      }
-    };
     fetchCustomers();
   }, []);
 
-  const deleteCustomer = async (id) => {
-    try {
-      await axios.delete(`/api/customers/${id}`);
-      setCustomers(customers.filter(customer => customer.id !== id));
-    } catch (error) {
-      console.error('Error deleting customer:', error);
-    }
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
   };
 
-  if (loading) return <p>Loading customers...</p>;
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h1>Customer List</h1>
+      <input 
+        type="text" 
+        placeholder="Search Customers" 
+        value={searchTerm} 
+        onChange={(e) => setSearchTerm(e.target.value)} 
+      />
       <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-          </li>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
