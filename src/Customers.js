@@ -1,50 +1,43 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-const CustomerManager = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('https://api.example.com/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
+    const fetchCustomers = async () => {
+      try {
+        const response = await axios.get('/api/customers');
+        setCustomers(response.data);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+      }
+    };
+    fetchCustomers();
   }, []);
 
-  const addCustomer = () => {
-    const newCustomer = { name, email };
-    setCustomers([...customers, newCustomer]);
-    setName('');
-    setEmail('');
+  const deleteCustomer = async (id) => {
+    try {
+      await axios.delete(`/api/customers/${id}`);
+      setCustomers(customers.filter(customer => customer.id !== id));
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+    }
   };
 
-  const deleteCustomer = (index) => {
-    const updatedCustomers = customers.filter((_, i) => i !== index);
-    setCustomers(updatedCustomers);
-  };
+  if (loading) return <p>Loading customers...</p>;
 
   return (
     <div>
-      <h2>Customer Management</h2>
-      <input 
-        type="text" 
-        placeholder="Name" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
-      />
-      <input 
-        type="email" 
-        placeholder="Email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
-      />
-      <button onClick={addCustomer}>Add Customer</button>
+      <h1>Customer List</h1>
       <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
+        {customers.map(customer => (
+          <li key={customer.id}>
             {customer.name} - {customer.email}
-            <button onClick={() => deleteCustomer(index)}>Delete</button>
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -52,5 +45,5 @@ const CustomerManager = () => {
   );
 };
 
-export default CustomerManager;
+export default CustomerList;
 ```
