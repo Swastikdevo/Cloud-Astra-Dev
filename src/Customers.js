@@ -4,37 +4,35 @@ import React, { useState, useEffect } from 'react';
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      setIsLoading(true);
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-      setIsLoading(false);
-    };
-    fetchCustomers();
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => {
+        setCustomers(data);
+        setLoading(false);
+      });
   }, []);
 
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
-  };
-
-  const filteredCustomers = customers.filter(customer =>
+  const filteredCustomers = customers.filter(customer => 
     customer.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
 
   return (
     <div>
       <h1>Customer Management</h1>
       <input 
         type="text" 
-        value={searchTerm} 
-        onChange={handleSearch} 
         placeholder="Search customers..." 
+        value={searchTerm} 
+        onChange={handleChange} 
       />
-      {isLoading ? (
+      {loading ? (
         <p>Loading...</p>
       ) : (
         <ul>
