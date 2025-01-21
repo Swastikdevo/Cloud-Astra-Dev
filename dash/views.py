@@ -1,59 +1,47 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawForm
+from django.db import transaction
+from django.views.decorators.http import require_POST
 
 @login_required
 def account_overview(request):
-    account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')[:10]
-    return render(request, 'bank/account_overview.html', {'account': account, 'transactions': transactions})
+    user = request.user
+    accounts = Account.objects.filter(owner=user)
+    return render(request, 'accounts/overview.html', {'accounts': accounts})
 
 @login_required
 @require_POST
-def deposit(request):
+def deposit_funds(request, account_id):
     form = DepositForm(request.POST)
     if form.is_valid():
         amount = form.cleaned_data['amount']
-        account = Account.objects.get(user=request.user)
-        account.balance += amount
-        account.save()
-        Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-        messages.success(request, f'You have successfully deposited {amount}.')
-        return redirect('account_overview')
-    messages.error(request, 'Invalid deposit amount.')
-    return redirect('account_overview')
+        account = Account.objects.get(id=account_id, owner=request.user)
+        with transaction.atomic():
+            account.balance += amount
+            account.save()
+            transaction_record = Transaction(account=account, amount=amount, transaction_type='Deposit')
+            transaction_record.save()
+        return JsonResponse({'status': 'success', 'new_balance': account.balance})
+    return JsonResponse({'status': 'error', 'errors': form.errors})
 
 @login_required
 @require_POST
-def withdraw(request):
-    form = WithdrawalForm(request.POST)
+def withdraw_funds(request, account_id):
+    form = WithdrawForm(request.POST)
     if form.is_valid():
         amount = form.cleaned_data['amount']
-        account = Account.objects.get(user=request.user)
+        account = Account.objects.get(id=account_id, owner=request.user)
         if account.balance >= amount:
-            account.balance -= amount
-            account.save()
-            Transaction.objects.create(account=account, amount=-amount, transaction_type='withdrawal')
-            messages.success(request, f'You have successfully withdrawn {amount}.')
-        else:
-            messages.error(request, 'Insufficient funds for this withdrawal.')
-    else:
-        messages.error(request, 'Invalid withdrawal amount.')
-    return redirect('account_overview')
-
-@login_required
-def transaction_history(request):
-    account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
-
-@login_required
-def api_account_balance(request):
-    account = Account.objects.get(user=request.user)
-    return JsonResponse({'balance': account.balance})
+            with transaction.atomic():
+                account.balance -= amount
+                account.save()
+                transaction_record = Transaction(account=account, amount=amount, transaction_type='Withdrawal')
+                transaction_record.save()
+            return JsonResponse({'status': 'success', 'new_balance': account.balance})
+        return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
+    return JsonResponse({'status': 'error', 'errors': form.errors})
 ```
