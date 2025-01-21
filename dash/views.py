@@ -1,70 +1,38 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm, TransferForm
-from django.contrib import messages
+from .forms import AccountForm, TransactionForm
 
 @login_required
-def bank_account_view(request):
-    account = get_object_or_404(Account, user=request.user)
+@csrf_exempt
+def bank_management_view(request):
+    if request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank_management.html', {'accounts': accounts})
 
-    if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
+    elif request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'create_account':
+            form = AccountForm(request.POST)
             if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                messages.success(request, 'Deposit successful!')
-                return redirect('bank_account_view')
+                new_account = form.save(commit=False)
+                new_account.user = request.user
+                new_account.save()
+                return JsonResponse({'status': 'success', 'message': 'Account created successfully'}, status=201)
+            return JsonResponse({'status': 'error', 'message': 'Failed to create account.'}, status=400)
 
-        elif 'withdraw' in request.POST:
-            form = WithdrawalForm(request.POST)
+        elif action == 'make_transaction':
+            form = TransactionForm(request.POST)
             if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount <= account.balance:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                    messages.success(request, 'Withdrawal successful!')
-                else:
-                    messages.error(request, 'Insufficient funds!')
-                return redirect('bank_account_view')
-
-        elif 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                target_account_number = form.cleaned_data['target_account_number']
-                amount = form.cleaned_data['amount']
-                target_account = get_object_or_404(Account, account_number=target_account_number)
-
-                if amount <= account.balance:
-                    account.balance -= amount
-                    target_account.balance += amount
-                    account.save()
-                    target_account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer Out')
-                    Transaction.objects.create(account=target_account, amount=amount, transaction_type='Transfer In')
-                    messages.success(request, 'Transfer successful!')
-                else:
-                    messages.error(request, 'Insufficient funds for transfer!')
-                return redirect('bank_account_view')
-    else:
-        deposit_form = DepositForm()
-        withdrawal_form = WithdrawalForm()
-        transfer_form = TransferForm()
-
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-
-    context = {
-        'account': account,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-        'transfer_form': transfer_form,
-        'transactions': transactions,
-    }
-    return render(request, 'bank/account.html', context)
+                transaction = form.save(commit=False)
+                transaction.user = request.user
+                transaction.save()
+                return JsonResponse({'status': 'success', 'message': 'Transaction made successfully'}, status=201)
+            return JsonResponse({'status': 'error', 'message': 'Failed to make transaction.'}, status=400)
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 ```
