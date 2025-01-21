@@ -30,33 +30,37 @@ class MyHomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Welcome to Flutter!',
+              'Hello, Flutter!',
               style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text('Dialog Title'),
-                      content: Text('This is a simple dialog.'),
-                      actions: <Widget>[
-                        TextButton(
-                          child: Text('Close'),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                      ],
-                    );
-                  },
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SecondPage()),
                 );
               },
-              child: Text('Show Dialog'),
+              child: Text('Go to Second Page'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class SecondPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Second Page'),
+      ),
+      body: Center(
+        child: Text(
+          'Welcome to the Second Page!',
+          style: TextStyle(fontSize: 24),
         ),
       ),
     );
