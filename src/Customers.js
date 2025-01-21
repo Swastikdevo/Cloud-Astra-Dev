@@ -1,42 +1,47 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const CustomerManagement = () => {
+const CustomerForm = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-        setCustomers(data);
-      } catch (error) {
-        setError(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCustomers();
-  }, []);
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setCustomers([...customers, { id: Date.now(), name, email }]);
+    setName('');
+    setEmail('');
+  };
 
-  const handleDelete = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+  const handleDelete = (id) => {
     setCustomers(customers.filter(customer => customer.id !== id));
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
   return (
     <div>
-      <h1>Customer List</h1>
+      <h1>Customer Management</h1>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          placeholder="Customer Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        <input
+          type="email"
+          placeholder="Customer Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <button type="submit">Add Customer</button>
+      </form>
       <ul>
         {customers.map(customer => (
           <li key={customer.id}>
-            {customer.name} <button onClick={() => handleDelete(customer.id)}>Delete</button>
+            {customer.name} - {customer.email}
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -44,5 +49,5 @@ const CustomerManagement = () => {
   );
 };
 
-export default CustomerManagement;
+export default CustomerForm;
 ```
