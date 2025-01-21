@@ -36,11 +36,31 @@ class MyHomePage extends StatelessWidget {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Add your button action here
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SecondPage()),
+                );
               },
-              child: Text('Click Me'),
+              child: Text('Go to Second Page'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class SecondPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Second Page'),
+      ),
+      body: Center(
+        child: Text(
+          'This is the Second Page',
+          style: TextStyle(fontSize: 24),
         ),
       ),
     );
