@@ -1,51 +1,64 @@
 ```javascript
-import React, { useState } from 'react';
-
-const CustomerForm = ({ onAddCustomer }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [age, setAge] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onAddCustomer({ name, email, age });
-    setName('');
-    setEmail('');
-    setAge('');
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      <input type="number" placeholder="Age" value={age} onChange={(e) => setAge(e.target.value)} required />
-      <button type="submit">Add Customer</button>
-    </form>
-  );
-};
-
-const CustomerList = ({ customers }) => {
-  return (
-    <ul>
-      {customers.map((customer, index) => (
-        <li key={index}>{customer.name} - {customer.email} - {customer.age}</li>
-      ))}
-    </ul>
-  );
-};
+import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
-  const handleAddCustomer = (newCustomer) => {
-    setCustomers([...customers, newCustomer]);
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
+  }, []);
+
+  const handleChange = (e) => {
+    setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    if (response.ok) {
+      const createdCustomer = await response.json();
+      setCustomers([...customers, createdCustomer]);
+      setNewCustomer({ name: '', email: '' });
+    }
   };
 
   return (
     <div>
-      <h1>Customer Management System</h1>
-      <CustomerForm onAddCustomer={handleAddCustomer} />
-      <CustomerList customers={customers} />
+      <h1>Customer Management</h1>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          name="name"
+          value={newCustomer.name}
+          onChange={handleChange}
+          placeholder="Customer Name"
+          required
+        />
+        <input
+          type="email"
+          name="email"
+          value={newCustomer.email}
+          onChange={handleChange}
+          placeholder="Customer Email"
+          required
+        />
+        <button type="submit">Add Customer</button>
+      </form>
+      <ul>
+        {customers.map((customer) => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        ))}
+      </ul>
     </div>
   );
 };
