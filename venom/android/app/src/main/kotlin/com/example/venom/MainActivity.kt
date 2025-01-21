@@ -13,17 +13,17 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomeScreen(),
+      home: MyHomePage(),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home Screen'),
+        title: Text('Home Page'),
       ),
       body: Center(
         child: Column(
@@ -36,31 +36,11 @@ class HomeScreen extends StatelessWidget {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SecondScreen()),
-                );
+                // Add your button action here
               },
-              child: Text('Go to Second Screen'),
+              child: Text('Click Me'),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class SecondScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Second Screen'),
-      ),
-      body: Center(
-        child: Text(
-          'This is the second screen.',
-          style: TextStyle(fontSize: 24),
         ),
       ),
     );
