@@ -1,54 +1,41 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerForm = ({ onAddCustomer }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onAddCustomer({ name, email, phone });
-    setName('');
-    setEmail('');
-    setPhone('');
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" required />
-      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
-      <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" required />
-      <button type="submit">Add Customer</button>
-    </form>
-  );
-};
-
-const CustomerList = ({ customers }) => {
-  return (
-    <ul>
-      {customers.map((customer, index) => (
-        <li key={index}>{customer.name} - {customer.email} - {customer.phone}</li>
-      ))}
-    </ul>
-  );
-};
-
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const handleAddCustomer = (customer) => {
-    setCustomers([...customers, customer]);
-  };
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('https://api.example.com/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
+  }, []);
+
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <CustomerForm onAddCustomer={handleAddCustomer} />
-      <CustomerList customers={customers} />
+      <input
+        type="text"
+        placeholder="Search Customers"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
