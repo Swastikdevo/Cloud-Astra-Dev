@@ -3,17 +3,25 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
   const [searchTerm, setSearchTerm] = useState('');
 
+  const fetchCustomers = async () => {
+    // Simulating an API call
+    const data = [
+      { id: 1, name: 'John Doe', email: 'john@example.com' },
+      { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
+    ];
+    setCustomers(data);
+  };
+
   useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data))
-      .catch(error => console.error('Error fetching customers:', error));
+    fetchCustomers();
   }, []);
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
+  const handleAddCustomer = () => {
+    setCustomers((prev) => [...prev, { ...newCustomer, id: Date.now() }]);
+    setNewCustomer({ name: '', email: '' });
   };
 
   const filteredCustomers = customers.filter(customer =>
@@ -22,12 +30,28 @@ const CustomerManagement = () => {
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search customers..."
-        value={searchTerm}
-        onChange={handleSearch}
+      <h1>Customer Management System</h1>
+      <input 
+        type="text" 
+        placeholder="Search Customers" 
+        value={searchTerm} 
+        onChange={(e) => setSearchTerm(e.target.value)} 
       />
+      <div>
+        <input 
+          type="text" 
+          placeholder="Name" 
+          value={newCustomer.name} 
+          onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} 
+        />
+        <input 
+          type="email" 
+          placeholder="Email" 
+          value={newCustomer.email} 
+          onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} 
+        />
+        <button onClick={handleAddCustomer}>Add Customer</button>
+      </div>
       <ul>
         {filteredCustomers.map(customer => (
           <li key={customer.id}>
