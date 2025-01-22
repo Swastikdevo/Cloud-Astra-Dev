@@ -1,71 +1,58 @@
 ```python
-from django.shortcuts import render, redirect
-from django.views.decorators.http import require_http_methods
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+import json
+
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm, TransferForm
+from .utils import generate_transaction_id
 
+@csrf_exempt
 @login_required
-@require_http_methods(["GET", "POST"])
-def account_view(request):
-    account = Account.objects.get(user=request.user)
+@require_POST
+def create_transaction(request):
+    try:
+        data = json.loads(request.body)
+        account_id = data.get('account_id')
+        transaction_type = data.get('transaction_type')
+        amount = data.get('amount')
 
-    if request.method == "POST":
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                messages.success(request, 'Deposit successful!')
-                return redirect('account_view')
-                
-        elif 'withdraw' in request.POST:
-            form = WithdrawForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount > account.balance:
-                    messages.warning(request, 'Insufficient funds!')
-                else:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdraw')
-                    messages.success(request, 'Withdrawal successful!')
-                return redirect('account_view')
-                
-        elif 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                recipient_username = form.cleaned_data['recipient']
-                amount = form.cleaned_data['amount']
-                try:
-                    recipient_account = Account.objects.get(user__username=recipient_username)
-                    if amount > account.balance:
-                        messages.warning(request, 'Insufficient funds!')
-                    else:
-                        account.balance -= amount
-                        recipient_account.balance += amount
-                        account.save()
-                        recipient_account.save()
-                        Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer', recipient=recipient_account)
-                        messages.success(request, 'Transfer successful!')
-                except Account.DoesNotExist:
-                    messages.error(request, 'Recipient account not found!')
-                return redirect('account_view')
-    else:
-        deposit_form = DepositForm()
-        withdraw_form = WithdrawForm()
-        transfer_form = TransferForm()
+        # Validate input
+        if account_id is None or transaction_type not in ['deposit', 'withdraw'] or amount <= 0:
+            return JsonResponse({'error': 'Invalid input'}, status=400)
 
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    context = {
-        'account': account,
-        'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
-        'transfer_form': transfer_form,
-        'transactions': transactions,
-    }
-    return render(request, 'account/account_view.html', context)
+        # Fetch account
+        account = Account.objects.get(id=account_id, user=request.user)
+        
+        if transaction_type == 'withdraw' and account.balance < amount:
+            return JsonResponse({'error': 'Insufficient funds'}, status=400)
+
+        # Create transaction
+        transaction_id = generate_transaction_id()
+        transaction = Transaction.objects.create(
+            transaction_id=transaction_id,
+            account=account,
+            amount=amount,
+            transaction_type=transaction_type
+        )
+
+        # Update account balance
+        if transaction_type == 'deposit':
+            account.balance += amount
+        else:  # withdraw
+            account.balance -= amount
+        account.save()
+
+        return JsonResponse({
+            'transaction_id': transaction.transaction_id,
+            'new_balance': account.balance
+        }, status=201)
+
+    except Account.DoesNotExist:
+        return JsonResponse({'error': 'Account not found'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 ```
