@@ -1,58 +1,44 @@
 ```python
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.shortcuts import render, redirect
+from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
-import json
-
+from django.views.decorators.http import require_http_methods
 from .models import Account, Transaction
-from .utils import generate_transaction_id
+from .forms import AccountForm, TransactionForm
 
-@csrf_exempt
 @login_required
-@require_POST
-def create_transaction(request):
-    try:
-        data = json.loads(request.body)
-        account_id = data.get('account_id')
-        transaction_type = data.get('transaction_type')
-        amount = data.get('amount')
+@require_http_methods(["GET", "POST"])
+def manage_account(request):
+    if request.method == "POST":
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return redirect('account_detail', account_id=account.id)
+    else:
+        form = AccountForm()
+    
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'manage_account.html', {'form': form, 'accounts': accounts})
 
-        # Validate input
-        if account_id is None or transaction_type not in ['deposit', 'withdraw'] or amount <= 0:
-            return JsonResponse({'error': 'Invalid input'}, status=400)
+@login_required
+@require_http_methods(["GET", "POST"])
+def make_transaction(request):
+    if request.method == "POST":
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            return redirect('transaction_history')
+    else:
+        form = TransactionForm()
+    
+    return render(request, 'make_transaction.html', {'form': form})
 
-        # Fetch account
-        account = Account.objects.get(id=account_id, user=request.user)
-        
-        if transaction_type == 'withdraw' and account.balance < amount:
-            return JsonResponse({'error': 'Insufficient funds'}, status=400)
-
-        # Create transaction
-        transaction_id = generate_transaction_id()
-        transaction = Transaction.objects.create(
-            transaction_id=transaction_id,
-            account=account,
-            amount=amount,
-            transaction_type=transaction_type
-        )
-
-        # Update account balance
-        if transaction_type == 'deposit':
-            account.balance += amount
-        else:  # withdraw
-            account.balance -= amount
-        account.save()
-
-        return JsonResponse({
-            'transaction_id': transaction.transaction_id,
-            'new_balance': account.balance
-        }, status=201)
-
-    except Account.DoesNotExist:
-        return JsonResponse({'error': 'Account not found'}, status=404)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+@login_required
+def view_transaction_history(request):
+    transactions = Transaction.objects.filter(user=request.user)
+    return render(request, 'transaction_history.html', {'transactions': transactions})
 ```
