@@ -1,44 +1,37 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_http_methods
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
 
+@csrf_exempt
 @login_required
-@require_http_methods(["GET", "POST"])
-def manage_account(request):
-    if request.method == "POST":
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            return redirect('account_detail', account_id=account.id)
-    else:
-        form = AccountForm()
-    
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'manage_account.html', {'form': form, 'accounts': accounts})
+def bank_manage_view(request):
+    if request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        transactions = Transaction.objects.filter(account__user=request.user).order_by('-date')
+        return render(request, 'bank/manage.html', {'accounts': accounts, 'transactions': transactions})
 
-@login_required
-@require_http_methods(["GET", "POST"])
-def make_transaction(request):
-    if request.method == "POST":
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.user = request.user
-            transaction.save()
-            return redirect('transaction_history')
-    else:
-        form = TransactionForm()
-    
-    return render(request, 'make_transaction.html', {'form': form})
+    elif request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'create_account':
+            form = AccountForm(request.POST)
+            if form.is_valid():
+                new_account = form.save(commit=False)
+                new_account.user = request.user
+                new_account.save()
+                return JsonResponse({'status': 'success', 'message': 'Account created successfully.'})
 
-@login_required
-def view_transaction_history(request):
-    transactions = Transaction.objects.filter(user=request.user)
-    return render(request, 'transaction_history.html', {'transactions': transactions})
+        elif action == 'make_transaction':
+            form = TransactionForm(request.POST)
+            if form.is_valid():
+                new_transaction = form.save(commit=False)
+                new_transaction.account = Account.objects.get(id=request.POST.get('account_id'), user=request.user)
+                new_transaction.save()
+                return JsonResponse({'status': 'success', 'message': 'Transaction recorded successfully.'})
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 ```
