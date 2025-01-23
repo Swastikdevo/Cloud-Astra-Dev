@@ -9,21 +9,21 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Flutter Basic App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(),
+      home: HomeScreen(),
     );
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home Page'),
+        title: Text('Home Screen'),
       ),
       body: Center(
         child: Column(
@@ -36,13 +36,31 @@ class MyHomePage extends StatelessWidget {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Button Pressed!')),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SecondScreen()),
                 );
               },
-              child: Text('Press Me'),
+              child: Text('Go to Second Screen'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class SecondScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Second Screen'),
+      ),
+      body: Center(
+        child: Text(
+          'This is the second screen',
+          style: TextStyle(fontSize: 24),
         ),
       ),
     );
