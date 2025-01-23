@@ -1,56 +1,68 @@
 ```javascript
-import React, { useState } from 'react';
-
-const CustomerForm = ({ onAddCustomer }) => {
-  const [customer, setCustomer] = useState({ name: '', email: '', phone: '' });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setCustomer({ ...customer, [name]: value });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onAddCustomer(customer);
-    setCustomer({ name: '', email: '', phone: '' });
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input type="text" name="name" value={customer.name} onChange={handleChange} placeholder="Customer Name" required />
-      <input type="email" name="email" value={customer.email} onChange={handleChange} placeholder="Email" required />
-      <input type="tel" name="phone" value={customer.phone} onChange={handleChange} placeholder="Phone" required />
-      <button type="submit">Add Customer</button>
-    </form>
-  );
-};
-
-const CustomerList = ({ customers, onRemoveCustomer }) => (
-  <ul>
-    {customers.map((customer, index) => (
-      <li key={index}>
-        {customer.name} - {customer.email} - {customer.phone}
-        <button onClick={() => onRemoveCustomer(index)}>Remove</button>
-      </li>
-    ))}
-  </ul>
-);
+import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const addCustomer = (newCustomer) => {
-    setCustomers([...customers, newCustomer]);
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
+  }, []);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewCustomer({ ...newCustomer, [name]: value });
   };
 
-  const removeCustomer = (index) => {
-    setCustomers(customers.filter((_, i) => i !== index));
+  const handleAddCustomer = async () => {
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    const addedCustomer = await response.json();
+    setCustomers([...customers, addedCustomer]);
+    setNewCustomer({ name: '', email: '' });
   };
+
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <CustomerForm onAddCustomer={addCustomer} />
-      <CustomerList customers={customers} onRemoveCustomer={removeCustomer} />
+      <input
+        type="text"
+        placeholder="Search Customer"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+      <input
+        type="text"
+        name="name"
+        placeholder="Name"
+        value={newCustomer.name}
+        onChange={handleInputChange}
+      />
+      <input
+        type="email"
+        name="email"
+        placeholder="Email"
+        value={newCustomer.email}
+        onChange={handleInputChange}
+      />
+      <button onClick={handleAddCustomer}>Add Customer</button>
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        ))}
+      </ul>
     </div>
   );
 };
