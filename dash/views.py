@@ -1,65 +1,62 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from .models import Account, Transaction
 from .forms import DepositForm, WithdrawForm, TransferForm
 
-@csrf_exempt
 @login_required
-def account_view(request):
-    account = Account.objects.get(user=request.user)
+def bank_management_view(request):
+    user_account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=user_account).order_by('-date')
     
     if request.method == 'POST':
         if 'deposit' in request.POST:
             form = DepositForm(request.POST)
             if form.is_valid():
                 amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return redirect('account_view')
-
+                user_account.balance += amount
+                user_account.save()
+                Transaction.objects.create(account=user_account, amount=amount, transaction_type='Deposit')
+                return redirect('bank_management')
         elif 'withdraw' in request.POST:
             form = WithdrawForm(request.POST)
             if form.is_valid():
                 amount = form.cleaned_data['amount']
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                    return redirect('account_view')
+                if amount <= user_account.balance:
+                    user_account.balance -= amount
+                    user_account.save()
+                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Withdraw')
+                    return redirect('bank_management')
                 else:
-                    return HttpResponse("Insufficient funds.")
-
+                    return HttpResponse("Insufficient funds")
         elif 'transfer' in request.POST:
             form = TransferForm(request.POST)
             if form.is_valid():
-                recipient_username = form.cleaned_data['recipient_username']
                 amount = form.cleaned_data['amount']
+                recipient_username = form.cleaned_data['recipient_username']
                 recipient_account = Account.objects.get(user__username=recipient_username)
-
-                if account.balance >= amount:
-                    account.balance -= amount
+                if amount <= user_account.balance:
+                    user_account.balance -= amount
                     recipient_account.balance += amount
-                    account.save()
+                    user_account.save()
                     recipient_account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer to {}'.format(recipient_username))
-                    Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transfer from {}'.format(account.user.username))
-                    return redirect('account_view')
+                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Transfer', recipient=recipient_account)
+                    return redirect('bank_management')
                 else:
-                    return HttpResponse("Insufficient funds.")
-
-    deposit_form = DepositForm()
-    withdraw_form = WithdrawForm()
-    transfer_form = TransferForm()
+                    return HttpResponse("Insufficient funds")
+    else:
+        deposit_form = DepositForm()
+        withdraw_form = WithdrawForm()
+        transfer_form = TransferForm()
 
     context = {
-        'account': account,
+        'user_account': user_account,
+        'transactions': transactions,
         'deposit_form': deposit_form,
         'withdraw_form': withdraw_form,
         'transfer_form': transfer_form,
     }
-    return render(request, 'bank/account_view.html', context)
+    
+    return render(request, 'bank_management.html', context)
 ```
