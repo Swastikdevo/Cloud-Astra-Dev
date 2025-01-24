@@ -1,62 +1,51 @@
 ```python
-from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.views import View
+from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm, TransferForm
+from django.views.decorators.csrf import csrf_exempt
+import json
 
-@login_required
-def bank_management_view(request):
-    user_account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=user_account).order_by('-date')
-    
-    if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                user_account.balance += amount
-                user_account.save()
-                Transaction.objects.create(account=user_account, amount=amount, transaction_type='Deposit')
-                return redirect('bank_management')
-        elif 'withdraw' in request.POST:
-            form = WithdrawForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount <= user_account.balance:
-                    user_account.balance -= amount
-                    user_account.save()
-                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Withdraw')
-                    return redirect('bank_management')
-                else:
-                    return HttpResponse("Insufficient funds")
-        elif 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                recipient_username = form.cleaned_data['recipient_username']
-                recipient_account = Account.objects.get(user__username=recipient_username)
-                if amount <= user_account.balance:
-                    user_account.balance -= amount
-                    recipient_account.balance += amount
-                    user_account.save()
-                    recipient_account.save()
-                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Transfer', recipient=recipient_account)
-                    return redirect('bank_management')
-                else:
-                    return HttpResponse("Insufficient funds")
-    else:
-        deposit_form = DepositForm()
-        withdraw_form = WithdrawForm()
-        transfer_form = TransferForm()
+@method_decorator(login_required, name='dispatch')
+@method_decorator(csrf_exempt, name='dispatch')
+class AccountView(View):
 
-    context = {
-        'user_account': user_account,
-        'transactions': transactions,
-        'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
-        'transfer_form': transfer_form,
-    }
-    
-    return render(request, 'bank_management.html', context)
+    def get(self, request, account_id=None):
+        if account_id:
+            try:
+                account = Account.objects.get(id=account_id, user=request.user)
+                return JsonResponse(account.serialize(), safe=False)
+            except Account.DoesNotExist:
+                return JsonResponse({'error': 'Account not found'}, status=404)
+        else:
+            accounts = Account.objects.filter(user=request.user)
+            return JsonResponse([account.serialize() for account in accounts], safe=False)
+
+    def post(self, request):
+        data = json.loads(request.body)
+        account = Account.objects.create(
+            user=request.user,
+            account_type=data.get('account_type'),
+            balance=data.get('balance', 0),
+        )
+        return JsonResponse(account.serialize(), status=201)
+
+    def put(self, request, account_id):
+        data = json.loads(request.body)
+        try:
+            account = Account.objects.get(id=account_id, user=request.user)
+            account.balance = data.get('balance', account.balance)
+            account.save()
+            return JsonResponse(account.serialize())
+        except Account.DoesNotExist:
+            return JsonResponse({'error': 'Account not found'}, status=404)
+
+    def delete(self, request, account_id):
+        try:
+            account = Account.objects.get(id=account_id, user=request.user)
+            account.delete()
+            return JsonResponse({'message': 'Account deleted'}, status=204)
+        except Account.DoesNotExist:
+            return JsonResponse({'error': 'Account not found'}, status=404)
 ```
