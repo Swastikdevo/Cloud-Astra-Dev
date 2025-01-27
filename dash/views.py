@@ -1,50 +1,52 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
+from django.http import JsonResponse
 from .models import Account, Transaction
-from .forms import AccountForm
+from .forms import TransferForm, DepositForm, WithdrawalForm
 
-@csrf_exempt
 @login_required
-def manage_account(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        return render(request, 'bank/manage_account.html', {'accounts': accounts})
+def bank_dashboard(request):
+    accounts = Account.objects.filter(user=request.user)
+    transactions = Transaction.objects.filter(account__in=accounts).order_by('-date')[:10]
 
-    elif request.method == 'POST':
-        action = request.POST.get('action')
-        
-        if action == 'create':
-            form = AccountForm(request.POST)
-            if form.is_valid():
-                account = form.save(commit=False)
-                account.user = request.user
-                account.save()
-                return JsonResponse({'success': True, 'message': 'Account created successfully!'})
-            return JsonResponse({'success': False, 'errors': form.errors})
-        
-        elif action == 'delete':
-            account_id = request.POST.get('account_id')
-            try:
-                account = Account.objects.get(pk=account_id, user=request.user)
-                account.delete()
-                return JsonResponse({'success': True, 'message': 'Account deleted successfully!'})
-            except Account.DoesNotExist:
-                return JsonResponse({'success': False, 'message': 'Account not found.'})
-        
-        elif action == 'update':
-            account_id = request.POST.get('account_id')
-            account = Account.objects.get(pk=account_id)
-            if account.user != request.user:
-                raise PermissionDenied
-            form = AccountForm(request.POST, instance=account)
-            if form.is_valid():
-                form.save()
-                return JsonResponse({'success': True, 'message': 'Account updated successfully!'})
-            return JsonResponse({'success': False, 'errors': form.errors})
+    if request.method == 'POST':
+        if 'transfer' in request.POST:
+            transfer_form = TransferForm(request.POST)
+            if transfer_form.is_valid():
+                transfer_form.save()
+                return redirect('bank_dashboard')
 
-    return JsonResponse({'success': False, 'message': 'Invalid request'})
+        elif 'deposit' in request.POST:
+            deposit_form = DepositForm(request.POST)
+            if deposit_form.is_valid():
+                deposit_form.save()
+                return redirect('bank_dashboard')
+
+        elif 'withdraw' in request.POST:
+            withdrawal_form = WithdrawalForm(request.POST)
+            if withdrawal_form.is_valid():
+                withdrawal_form.save()
+                return redirect('bank_dashboard')
+    
+    transfer_form = TransferForm()
+    deposit_form = DepositForm()
+    withdrawal_form = WithdrawalForm()
+
+    context = {
+        'accounts': accounts,
+        'transactions': transactions,
+        'transfer_form': transfer_form,
+        'deposit_form': deposit_form,
+        'withdrawal_form': withdrawal_form,
+    }
+    
+    return render(request, 'bank/dashboard.html', context)
+
+@login_required
+def fetch_account_balance(request, account_id):
+    account = Account.objects.filter(id=account_id, user=request.user).first()
+    if account:
+        return JsonResponse({'balance': account.balance})
+    return JsonResponse({'error': 'Account not found.'}, status=404)
 ```
