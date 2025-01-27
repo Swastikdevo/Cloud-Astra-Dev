@@ -1,43 +1,37 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+const CustomerList = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch('https://api.example.com/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
-  }, []);
+    useEffect(() => {
+        fetch('/api/customers')
+            .then(res => res.json())
+            .then(data => {
+                setCustomers(data);
+                setLoading(false);
+            });
+    }, []);
 
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
-  };
+    const deleteCustomer = (id) => {
+        fetch(`/api/customers/${id}`, { method: 'DELETE' })
+            .then(() => setCustomers(customers.filter(customer => customer.id !== id)));
+    };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    if (loading) return <div>Loading...</div>;
 
-  return (
-    <div>
-      <h1>Customer Management System</h1>
-      <input
-        type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={handleSearch}
-      />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+        <ul>
+            {customers.map(customer => (
+                <li key={customer.id}>
+                    {customer.name}
+                    <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+                </li>
+            ))}
+        </ul>
+    );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
