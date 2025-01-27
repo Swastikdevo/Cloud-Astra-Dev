@@ -1,36 +1,50 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import AccountForm
 
+@csrf_exempt
 @login_required
-@require_http_methods(["GET", "POST"])
 def manage_account(request):
-    if request.method == "POST":
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            return redirect('account_list')
-    else:
-        form = AccountForm()
+    if request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank/manage_account.html', {'accounts': accounts})
 
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/manage_account.html', {'form': form, 'accounts': accounts})
+    elif request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'create':
+            form = AccountForm(request.POST)
+            if form.is_valid():
+                account = form.save(commit=False)
+                account.user = request.user
+                account.save()
+                return JsonResponse({'success': True, 'message': 'Account created successfully!'})
+            return JsonResponse({'success': False, 'errors': form.errors})
+        
+        elif action == 'delete':
+            account_id = request.POST.get('account_id')
+            try:
+                account = Account.objects.get(pk=account_id, user=request.user)
+                account.delete()
+                return JsonResponse({'success': True, 'message': 'Account deleted successfully!'})
+            except Account.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Account not found.'})
+        
+        elif action == 'update':
+            account_id = request.POST.get('account_id')
+            account = Account.objects.get(pk=account_id)
+            if account.user != request.user:
+                raise PermissionDenied
+            form = AccountForm(request.POST, instance=account)
+            if form.is_valid():
+                form.save()
+                return JsonResponse({'success': True, 'message': 'Account updated successfully!'})
+            return JsonResponse({'success': False, 'errors': form.errors})
 
-@login_required
-@require_http_methods(["POST"])
-def create_transaction(request, account_id):
-    account = Account.objects.get(id=account_id, user=request.user)
-    form = TransactionForm(request.POST)
-    if form.is_valid():
-        transaction = form.save(commit=False)
-        transaction.account = account
-        transaction.save()
-        return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
-    return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
 ```
