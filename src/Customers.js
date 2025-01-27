@@ -6,27 +6,27 @@ const CustomerList = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/customers')
-            .then(res => res.json())
-            .then(data => {
-                setCustomers(data);
-                setLoading(false);
-            });
+        const fetchCustomers = async () => {
+            const response = await fetch('/api/customers');
+            const data = await response.json();
+            setCustomers(data);
+            setLoading(false);
+        };
+        fetchCustomers();
     }, []);
 
-    const deleteCustomer = (id) => {
-        fetch(`/api/customers/${id}`, { method: 'DELETE' })
-            .then(() => setCustomers(customers.filter(customer => customer.id !== id)));
+    const deleteCustomer = async (id) => {
+        await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+        setCustomers(customers.filter(customer => customer.id !== id));
     };
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <p>Loading...</p>;
 
     return (
         <ul>
             {customers.map(customer => (
                 <li key={customer.id}>
-                    {customer.name}
-                    <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+                    {customer.name} <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
                 </li>
             ))}
         </ul>
