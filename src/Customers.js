@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 const CustomerList = () => {
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('');
 
     useEffect(() => {
         const fetchCustomers = async () => {
@@ -15,21 +16,32 @@ const CustomerList = () => {
         fetchCustomers();
     }, []);
 
-    const deleteCustomer = async (id) => {
-        await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-        setCustomers(customers.filter(customer => customer.id !== id));
+    const filteredCustomers = customers.filter(customer => 
+        customer.name.toLowerCase().includes(filter.toLowerCase())
+    );
+
+    const handleChange = (e) => {
+        setFilter(e.target.value);
     };
 
-    if (loading) return <p>Loading...</p>;
-
     return (
-        <ul>
-            {customers.map(customer => (
-                <li key={customer.id}>
-                    {customer.name} <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-                </li>
-            ))}
-        </ul>
+        <div>
+            <input
+                type="text"
+                placeholder="Search Customers"
+                value={filter}
+                onChange={handleChange}
+            />
+            {loading ? (
+                <p>Loading...</p>
+            ) : (
+                <ul>
+                    {filteredCustomers.map(customer => (
+                        <li key={customer.id}>{customer.name}</li>
+                    ))}
+                </ul>
+            )}
+        </div>
     );
 };
 
