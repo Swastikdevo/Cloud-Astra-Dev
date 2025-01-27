@@ -3,41 +3,50 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filterText, setFilterText] = useState('');
+  const [newCustomer, setNewCustomer] = useState('');
 
   useEffect(() => {
     const fetchCustomers = async () => {
-      setLoading(true);
       const response = await fetch('/api/customers');
       const data = await response.json();
       setCustomers(data);
-      setLoading(false);
     };
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(filterText.toLowerCase())
-  );
+  const handleAddCustomer = async () => {
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newCustomer }),
+    });
+    const addedCustomer = await response.json();
+    setCustomers([...customers, addedCustomer]);
+    setNewCustomer('');
+  };
+
+  const removeCustomer = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search customers"
-        value={filterText}
-        onChange={(e) => setFilterText(e.target.value)}
+      <h2>Customer List</h2>
+      <input 
+        type="text" 
+        value={newCustomer} 
+        onChange={(e) => setNewCustomer(e.target.value)} 
+        placeholder="Add new customer"
       />
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <ul>
-          {filteredCustomers.map(customer => (
-            <li key={customer.id}>{customer.name} - {customer.email}</li>
-          ))}
-        </ul>
-      )}
+      <button onClick={handleAddCustomer}>Add</button>
+      <ul>
+        {customers.map((customer) => (
+          <li key={customer.id}>
+            {customer.name} <button onClick={() => removeCustomer(customer.id)}>Remove</button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
