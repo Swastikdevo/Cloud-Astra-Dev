@@ -30,8 +30,8 @@ class HomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Welcome to Flutter!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              'Welcome to Flutter App!',
+              style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),
             ElevatedButton(
