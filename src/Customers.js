@@ -1,9 +1,9 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
     fetchCustomers();
@@ -15,22 +15,46 @@ const CustomerList = () => {
     setCustomers(data);
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const addCustomer = async () => {
+    if (newCustomer.name && newCustomer.email) {
+      const response = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCustomer),
+      });
+      if (response.ok) {
+        fetchCustomers();
+        setNewCustomer({ name: '', email: '' });
+      }
+    }
+  };
+
+  const deleteCustomer = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    fetchCustomers();
+  };
 
   return (
     <div>
+      <h1>Customer Management</h1>
       <input
         type="text"
-        placeholder="Search customer..."
-        value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
+        placeholder="Name"
+        value={newCustomer.name}
+        onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
       />
+      <input
+        type="email"
+        placeholder="Email"
+        value={newCustomer.email}
+        onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+      />
+      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map(customer => (
+        {customers.map((customer) => (
           <li key={customer.id}>
-            {customer.name}: {customer.email}
+            {customer.name} - {customer.email}
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -38,5 +62,5 @@ const CustomerList = () => {
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
