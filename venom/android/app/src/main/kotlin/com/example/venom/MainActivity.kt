@@ -2,28 +2,28 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(MyFlutterApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyFlutterApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Basic Flutter App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomeScreen(),
+      home: HomePage(),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home Screen'),
+        title: Text('Home Page'),
       ),
       body: Center(
         child: Column(
@@ -38,10 +38,10 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => SecondScreen()),
+                  MaterialPageRoute(builder: (context) => SecondPage()),
                 );
               },
-              child: Text('Go to Second Screen'),
+              child: Text('Go to Second Page'),
             ),
           ],
         ),
@@ -50,16 +50,16 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class SecondScreen extends StatelessWidget {
+class SecondPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Second Screen'),
+        title: Text('Second Page'),
       ),
       body: Center(
         child: Text(
-          'This is the second screen!',
+          'This is the second page!',
           style: TextStyle(fontSize: 24),
         ),
       ),
