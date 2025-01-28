@@ -1,83 +1,53 @@
 ```python
-from django.shortcuts import render, redirect
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm, TransferForm
-from django.contrib import messages
+from .forms import AccountForm, TransactionForm
+
 
 @login_required
-def account_view(request):
-    account = Account.objects.get(user=request.user)
-    
-    # Handle deposit
-    if request.method == 'POST' and 'deposit' in request.POST:
-        deposit_form = DepositForm(request.POST)
-        if deposit_form.is_valid():
-            amount = deposit_form.cleaned_data['amount']
-            account.balance += amount
-            account.save()
-            transaction = Transaction.objects.create(
-                account=account,
-                amount=amount,
-                transaction_type='Deposit'
-            )
-            messages.success(request, f'Deposit successful! New balance: {account.balance}')
-            return redirect('account_view')
+@require_http_methods(["GET", "POST"])
+def manage_account(request, account_id=None):
+    if account_id:
+        account = get_object_or_404(Account, id=account_id)
     else:
-        deposit_form = DepositForm()
+        account = None
 
-    # Handle withdrawal
-    if request.method == 'POST' and 'withdraw' in request.POST:
-        withdrawal_form = WithdrawalForm(request.POST)
-        if withdrawal_form.is_valid():
-            amount = withdrawal_form.cleaned_data['amount']
-            if account.balance >= amount:
-                account.balance -= amount
-                account.save()
-                transaction = Transaction.objects.create(
-                    account=account,
-                    amount=amount,
-                    transaction_type='Withdrawal'
-                )
-                messages.success(request, f'Withdrawal successful! New balance: {account.balance}')
-                return redirect('account_view')
-            else:
-                messages.error(request, 'Insufficient funds for this withdrawal.')
+    if request.method == "POST":
+        form = AccountForm(request.POST, instance=account)
+        if form.is_valid():
+            form.save()
+            return redirect('account_detail', account_id=form.instance.id)
     else:
-        withdrawal_form = WithdrawalForm()
+        form = AccountForm(instance=account)
 
-    # Handle transfer
-    if request.method == 'POST' and 'transfer' in request.POST:
-        transfer_form = TransferForm(request.POST)
-        if transfer_form.is_valid():
-            recipient_username = transfer_form.cleaned_data['recipient_username']
-            amount = transfer_form.cleaned_data['amount']
+    return render(request, 'bank/manage_account.html', {'form': form, 'account': account})
 
-            try:
-                recipient_account = Account.objects.get(user__username=recipient_username)
-                if account.balance >= amount:
-                    account.balance -= amount
-                    recipient_account.balance += amount
-                    account.save()
-                    recipient_account.save()
 
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer Out')
-                    Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transfer In')
+@login_required
+@require_http_methods(["GET", "POST"])
+def process_transaction(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
 
-                    messages.success(request, f'Transfer successful! New balance: {account.balance}')
-                    return redirect('account_view')
-                else:
-                    messages.error(request, 'Insufficient funds for this transfer.')
-            except Account.DoesNotExist:
-                messages.error(request, 'Recipient account does not exist.')
-    else:
-        transfer_form = TransferForm()
+    if request.method == "POST":
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+            return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
 
-    context = {
-        'account': account,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-        'transfer_form': transfer_form,
-    }
-    return render(request, 'bank/account_view.html', context)
+    form = TransactionForm()
+    return render(request, 'bank/process_transaction.html', {'form': form, 'account': account})
+
+
+@login_required
+@require_http_methods(["GET"])
+def view_transactions(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
+    transactions = Transaction.objects.filter(account=account)
+
+    return render(request, 'bank/view_transactions.html', {'account': account, 'transactions': transactions})
 ```
