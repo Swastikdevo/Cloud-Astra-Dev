@@ -1,68 +1,50 @@
 ```python
 from django.shortcuts import render, redirect
+from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
+from django.views.decorators.http import require_http_methods
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm, TransferForm
+from .forms import DepositForm, WithdrawalForm
 
 @login_required
-def banking_view(request):
-    user = request.user
-    account = Account.objects.get(user=user)
+@require_http_methods(["GET", "POST"])
+def account_view(request):
+    account = Account.objects.get(user=request.user)  # Get the logged-in user's account
 
-    if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
+    if request.method == "POST":
+        # Handle deposit
+        deposit_form = DepositForm(request.POST)
+        withdrawal_form = WithdrawalForm(request.POST)
+
+        if deposit_form.is_valid():
+            amount = deposit_form.cleaned_data['amount']
+            account.balance += amount
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+            return JsonResponse({'message': 'Deposit successful', 'new_balance': account.balance})
+
+        if withdrawal_form.is_valid():
+            amount = withdrawal_form.cleaned_data['amount']
+            if amount <= account.balance:
+                account.balance -= amount
                 account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return redirect('banking')
-
-        elif 'withdraw' in request.POST:
-            form = WithdrawForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount <= account.balance:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdraw')
-                    return redirect('banking')
-                else:
-                    return render(request, 'banking.html', {'account': account, 'error': 'Insufficient funds!'})
-
-        elif 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                recipient_username = form.cleaned_data['recipient']
-                amount = form.cleaned_data['amount']
-                if amount <= account.balance:
-                    try:
-                        recipient_account = Account.objects.get(user__username=recipient_username)
-                        account.balance -= amount
-                        recipient_account.balance += amount
-                        account.save()
-                        recipient_account.save()
-                        Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer', recipient=recipient_username)
-                        return redirect('banking')
-                    except Account.DoesNotExist:
-                        return render(request, 'banking.html', {'account': account, 'error': 'Recipient not found!'})
-                else:
-                    return render(request, 'banking.html', {'account': account, 'error': 'Insufficient funds!'})
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                return JsonResponse({'message': 'Withdrawal successful', 'new_balance': account.balance})
+            else:
+                return JsonResponse({'error': 'Insufficient funds'}, status=400)
 
     else:
         deposit_form = DepositForm()
-        withdraw_form = WithdrawForm()
-        transfer_form = TransferForm()
+        withdrawal_form = WithdrawalForm()
     
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    transactions = Transaction.objects.filter(account=account).order_by('-date')  # Fetch account transactions
 
-    return render(request, 'banking.html', {
+    context = {
         'account': account,
         'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
-        'transfer_form': transfer_form,
+        'withdrawal_form': withdrawal_form,
         'transactions': transactions
-    })
+    }
+    
+    return render(request, 'bank/account.html', context)
 ```
