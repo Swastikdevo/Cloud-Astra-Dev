@@ -1,57 +1,48 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-    const [customers, setCustomers] = useState([]);
-    const [search, setSearch] = useState('');
-    const [sortOrder, setSortOrder] = useState('asc');
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
+  const [error, setError] = useState(null);
 
-    useEffect(() => {
-        fetchCustomers();
-    }, []);
-
+  useEffect(() => {
     const fetchCustomers = async () => {
+      try {
         const response = await fetch('/api/customers');
+        if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         setCustomers(data);
+      } catch (error) {
+        setError(error.message);
+      }
     };
+    fetchCustomers();
+  }, []);
 
-    const handleSearchChange = (e) => {
-        setSearch(e.target.value);
-    };
+  const handleDelete = async (id) => {
+    try {
+      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      setCustomers(customers.filter(customer => customer.id !== id));
+    } catch (error) {
+      setError(error.message);
+    }
+  };
 
-    const filteredCustomers = customers.filter(customer =>
-        customer.name.toLowerCase().includes(search.toLowerCase())
-    );
-
-    const sortedCustomers = filteredCustomers.sort((a, b) =>
-        sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-    );
-
-    const toggleSortOrder = () => {
-        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    };
-
-    return (
-        <div>
-            <h1>Customer Management</h1>
-            <input
-                type="text"
-                placeholder="Search by name"
-                value={search}
-                onChange={handleSearchChange}
-            />
-            <button onClick={toggleSortOrder}>
-                Sort {sortOrder === 'asc' ? 'Descending' : 'Ascending'}
-            </button>
-            <ul>
-                {sortedCustomers.map(customer => (
-                    <li key={customer.id}>{customer.name}</li>
-                ))}
-            </ul>
-        </div>
-    );
+  return (
+    <div>
+      {error && <p>Error: {error}</p>}
+      <h1>Customer List</h1>
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} 
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
