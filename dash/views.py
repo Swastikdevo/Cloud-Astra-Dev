@@ -1,53 +1,73 @@
 ```python
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from .models import BankAccount, Transaction
-from .forms import BankAccountForm, TransactionForm
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import json
+from .models import Account
+from django.contrib.auth.decorators import login_required
 
+@csrf_exempt
 @login_required
-def bank_account_view(request, account_id):
-    account = get_object_or_404(BankAccount, id=account_id, user=request.user)
+@require_http_methods(["POST"])
+def create_account(request):
+    try:
+        data = json.loads(request.body)
+        account_type = data.get('account_type')
+        initial_balance = data.get('initial_balance', 0)
+        
+        if account_type not in ['savings', 'checking']:
+            return JsonResponse({'error': 'Invalid account type'}, status=400)
 
-    if request.method == 'POST':
-        if 'update_account' in request.POST:
-            form = BankAccountForm(request.POST, instance=account)
-            if form.is_valid():
-                form.save()
-                return redirect('bank_account_view', account_id=account.id)
-        elif 'make_transaction' in request.POST:
-            form = TransactionForm(request.POST)
-            if form.is_valid():
-                transaction = form.save(commit=False)
-                transaction.account = account
-                transaction.save()
-                return redirect('bank_account_view', account_id=account.id)
+        user = request.user
+        account = Account.objects.create(user=user, account_type=account_type, balance=initial_balance)
+        
+        return JsonResponse({'message': 'Account created successfully', 'account_id': account.id}, status=201)
 
-    else:
-        form = BankAccountForm(instance=account)
-        transaction_form = TransactionForm()
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-
-    context = {
-        'account': account,
-        'form': form,
-        'transaction_form': transaction_form,
-        'transactions': transactions,
-    }
-    return render(request, 'bank_management/bank_account.html', context)
-
+@csrf_exempt
 @login_required
-def transaction_history_view(request, account_id):
-    account = get_object_or_404(BankAccount, id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    
-    return render(request, 'bank_management/transaction_history.html', {'transactions': transactions})
+@require_http_methods(["PUT"])
+def deposit_funds(request, account_id):
+    try:
+        data = json.loads(request.body)
+        amount = data.get('amount')
 
+        if amount <= 0:
+            return JsonResponse({'error': 'Deposit amount must be greater than zero'}, status=400)
+
+        account = Account.objects.get(id=account_id, user=request.user)
+        account.balance += amount
+        account.save()
+        
+        return JsonResponse({'message': 'Funds deposited successfully', 'new_balance': account.balance}, status=200)
+
+    except Account.DoesNotExist:
+        return JsonResponse({'error': 'Account not found'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
 @login_required
-def account_balance_view(request, account_id):
-    account = get_object_or_404(BankAccount, id=account_id, user=request.user)
-    balance = account.get_balance()
-    
-    return JsonResponse({'account_id': account.id, 'balance': balance})
+@require_http_methods(["GET"])
+def account_details(request, account_id):
+    try:
+        account = Account.objects.get(id=account_id, user=request.user)
+        
+        return JsonResponse({
+            'account_id': account.id,
+            'account_type': account.account_type,
+            'balance': account.balance,
+            'user': account.user.username
+        }, status=200)
+
+    except Account.DoesNotExist:
+        return JsonResponse({'error': 'Account not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 ```
