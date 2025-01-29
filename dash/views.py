@@ -1,46 +1,84 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
-from .models import Account, Transaction
-from .forms import TransferForm
+from django.http import JsonResponse
 from django.contrib import messages
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawForm, TransferForm
 
 @login_required
 def account_dashboard(request):
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/account_dashboard.html', {'accounts': accounts})
+    user_account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=user_account).order_by('-date')
+    
+    return render(request, 'account/dashboard.html', {
+        'account': user_account,
+        'transactions': transactions,
+    })
 
 @login_required
-@require_POST
-def transfer_funds(request):
-    form = TransferForm(request.POST)
-    if form.is_valid():
-        sender_account = form.cleaned_data['sender_account']
-        receiver_account = form.cleaned_data['receiver_account']
-        amount = form.cleaned_data['amount']
-        
-        if sender_account.balance >= amount:
-            sender_account.balance -= amount
-            receiver_account.balance += amount
-            sender_account.save()
-            receiver_account.save()
-            
-            transaction = Transaction(
-                sender=sender_account,
-                receiver=receiver_account,
-                amount=amount,
-                user=request.user
-            )
-            transaction.save()
-
-            messages.success(request, 'Transfer successful!')
+def deposit(request):
+    if request.method == 'POST':
+        form = DepositForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            user_account = Account.objects.get(user=request.user)
+            user_account.balance += amount
+            user_account.save()
+            Transaction.objects.create(account=user_account, amount=amount, transaction_type='Deposit')
+            messages.success(request, f'Deposit of ${amount} successful!')
             return redirect('account_dashboard')
-        else:
-            messages.error(request, 'Insufficient funds!')
     else:
-        messages.error(request, 'Invalid transfer data!')
+        form = DepositForm()
+    
+    return render(request, 'account/deposit.html', {'form': form})
 
-    return redirect('account_dashboard')
+@login_required
+def withdraw(request):
+    if request.method == 'POST':
+        form = WithdrawForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            user_account = Account.objects.get(user=request.user)
+            if user_account.balance >= amount:
+                user_account.balance -= amount
+                user_account.save()
+                Transaction.objects.create(account=user_account, amount=amount, transaction_type='Withdraw')
+                messages.success(request, f'Withdrawal of ${amount} successful!')
+            else:
+                messages.error(request, 'Insufficient funds!')
+            return redirect('account_dashboard')
+    else:
+        form = WithdrawForm()
+    
+    return render(request, 'account/withdraw.html', {'form': form})
+
+@login_required
+def transfer(request):
+    if request.method == 'POST':
+        form = TransferForm(request.POST)
+        if form.is_valid():
+            recipient_username = form.cleaned_data['recipient_username']
+            amount = form.cleaned_data['amount']
+            user_account = Account.objects.get(user=request.user)
+
+            try:
+                recipient_account = Account.objects.get(user__username=recipient_username)
+                if user_account.balance >= amount:
+                    user_account.balance -= amount
+                    recipient_account.balance += amount
+                    user_account.save()
+                    recipient_account.save()
+                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Transfer to ' + recipient_username)
+                    messages.success(request, f'Transfer of ${amount} to {recipient_username} successful!')
+                else:
+                    messages.error(request, 'Insufficient funds!')
+            except Account.DoesNotExist:
+                messages.error(request, 'Recipient does not exist!')
+
+            return redirect('account_dashboard')
+    else:
+        form = TransferForm()
+    
+    return render(request, 'account/transfer.html', {'form': form})
 ```
