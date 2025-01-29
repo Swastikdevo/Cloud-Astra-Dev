@@ -4,62 +4,66 @@ import React, { useState, useEffect } from 'react';
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
   const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    // Fetch initial customer data
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
     fetchCustomers();
   }, []);
 
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewCustomer((prev) => ({ ...prev, [name]: value }));
+    setNewCustomer({ ...newCustomer, [name]: value });
   };
 
   const handleAddCustomer = async () => {
-    const response = await fetch('/api/customers', {
+    await fetch('/api/customers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newCustomer),
     });
-    const addedCustomer = await response.json();
-    setCustomers((prev) => [...prev, addedCustomer]);
+    fetchCustomers();
     setNewCustomer({ name: '', email: '' });
   };
 
-  const handleDeleteCustomer = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-    setCustomers((prev) => prev.filter((c) => c.id !== id));
-  };
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h2>Customer Management</h2>
-      <input 
-        type="text" 
-        name="name" 
-        value={newCustomer.name} 
-        onChange={handleInputChange} 
-        placeholder="Customer Name" 
+      <h1>Customer Management</h1>
+      <input
+        type="text"
+        placeholder="Search Customers"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
       />
-      <input 
-        type="email" 
-        name="email" 
-        value={newCustomer.email} 
-        onChange={handleInputChange} 
-        placeholder="Customer Email" 
-      />
-      <button onClick={handleAddCustomer}>Add Customer</button>
+      <div>
+        <input
+          type="text"
+          name="name"
+          placeholder="Name"
+          value={newCustomer.name}
+          onChange={handleInputChange}
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          value={newCustomer.email}
+          onChange={handleInputChange}
+        />
+        <button onClick={handleAddCustomer}>Add Customer</button>
+      </div>
       <ul>
-        {customers.map((customer) => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-            <button onClick={() => handleDeleteCustomer(customer.id)}>Delete</button>
-          </li>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
