@@ -1,39 +1,51 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
     fetch('/api/customers')
       .then(response => response.json())
-      .then(data => {
-        setCustomers(data);
-        setLoading(false);
-      });
+      .then(data => setCustomers(data));
   }, []);
 
-  const handleDelete = id => {
-    fetch(`/api/customers/${id}`, { method: 'DELETE' })
-      .then(() => setCustomers(customers.filter(customer => customer.id !== id)));
+  const addCustomer = () => {
+    fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    }).then(response => response.json()).then(data => {
+      setCustomers([...customers, data]);
+      setNewCustomer({ name: '', email: '' });
+    });
   };
-
-  if (loading) return <div>Loading...</div>;
 
   return (
     <div>
-      <h2>Customer List</h2>
+      <h2>Customer Management</h2>
+      <input
+        type="text"
+        placeholder="Name"
+        value={newCustomer.name}
+        onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })}
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={newCustomer.email}
+        onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })}
+      />
+      <button onClick={addCustomer}>Add Customer</button>
       <ul>
         {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} <button onClick={() => handleDelete(customer.id)}>Delete</button>
-          </li>
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
