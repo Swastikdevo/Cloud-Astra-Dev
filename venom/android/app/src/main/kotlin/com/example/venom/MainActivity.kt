@@ -13,56 +13,67 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomeScreen(),
+      home: MyHomePage(),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home Screen'),
+        title: Text('Flutter Basic App'),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Welcome to Flutter!',
-              style: TextStyle(fontSize: 24),
+              'You have pushed the button this many times:',
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SecondScreen()),
-                );
-              },
-              child: Text('Go to Second Screen'),
-            ),
+            CounterDisplay(),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Action on button press
+        },
+        tooltip: 'Increment',
+        child: Icon(Icons.add),
       ),
     );
   }
 }
 
-class SecondScreen extends StatelessWidget {
+class CounterDisplay extends StatefulWidget {
+  @override
+  _CounterDisplayState createState() => _CounterDisplayState();
+}
+
+class _CounterDisplayState extends State<CounterDisplay> {
+  int _counter = 0;
+
+  void _incrementCounter() {
+    setState(() {
+      _counter++;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Second Screen'),
-      ),
-      body: Center(
-        child: Text(
-          'This is the Second Screen',
-          style: TextStyle(fontSize: 24),
+    return Column(
+      children: <Widget>[
+        Text(
+          '$_counter',
+          style: Theme.of(context).textTheme.headline4,
         ),
-      ),
+        ElevatedButton(
+          onPressed: _incrementCounter,
+          child: Text('Increment'),
+        ),
+      ],
     );
   }
 }
