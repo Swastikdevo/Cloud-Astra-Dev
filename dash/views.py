@@ -1,60 +1,47 @@
 ```python
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm, TransferForm
+from .forms import AccountForm, TransactionForm
 
 @login_required
-def bank_dashboard(request):
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/dashboard.html', {'accounts': accounts})
+@csrf_exempt
+def manage_account(request):
+    """View function to manage bank account creation and transaction."""
 
-@login_required
-@require_POST
-def deposit(request, account_id):
-    account = get_object_or_404(Account, id=account_id, user=request.user)
-    form = DepositForm(request.POST)
-    if form.is_valid():
-        amount = form.cleaned_data['amount']
-        account.balance += amount
-        account.save()
-        Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-        return redirect('bank:bank_dashboard')
-    return render(request, 'bank/deposit.html', {'form': form, 'account': account})
+    if request.method == 'POST':
+        if 'create_account' in request.POST:
+            form = AccountForm(request.POST)
+            if form.is_valid():
+                account = form.save(commit=False)
+                account.user = request.user
+                account.save()
+                return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Invalid form data!'})
+                
+        elif 'make_transaction' in request.POST:
+            form = TransactionForm(request.POST)
+            if form.is_valid():
+                transaction = form.save(commit=False)
+                transaction.user = request.user
+                transaction.save()
+                return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully!'})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Invalid transaction data!'})
 
-@login_required
-@require_POST
-def withdraw(request, account_id):
-    account = get_object_or_404(Account, id=account_id, user=request.user)
-    form = WithdrawalForm(request.POST)
-    if form.is_valid():
-        amount = form.cleaned_data['amount']
-        if amount > account.balance:
-            return HttpResponse("Insufficient funds", status=400)
-        account.balance -= amount
-        account.save()
-        Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-        return redirect('bank:bank_dashboard')
-    return render(request, 'bank/withdraw.html', {'form': form, 'account': account})
+    elif request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        transactions = Transaction.objects.filter(user=request.user).order_by('-date')
 
-@login_required
-@require_POST
-def transfer(request, from_account_id, to_account_id):
-    from_account = get_object_or_404(Account, id=from_account_id, user=request.user)
-    to_account = get_object_or_404(Account, id=to_account_id, user=request.user)
-    form = TransferForm(request.POST)
-    if form.is_valid():
-        amount = form.cleaned_data['amount']
-        if amount > from_account.balance:
-            return HttpResponse("Insufficient funds", status=400)
-        from_account.balance -= amount
-        to_account.balance += amount
-        from_account.save()
-        to_account.save()
-        Transaction.objects.create(account=from_account, amount=amount, transaction_type='Transfer Out')
-        Transaction.objects.create(account=to_account, amount=amount, transaction_type='Transfer In')
-        return redirect('bank:bank_dashboard')
-    return render(request, 'bank/transfer.html', {'form': form, 'from_account': from_account, 'to_account': to_account})
+        return render(request, 'manage_account.html', {
+            'accounts': accounts,
+            'transactions': transactions,
+            'account_form': AccountForm(),
+            'transaction_form': TransactionForm(),
+        })
+        
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method!'})
 ```
