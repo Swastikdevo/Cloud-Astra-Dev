@@ -1,55 +1,91 @@
 ```javascript
 import React, { useState } from 'react';
 
-const CustomerForm = ({ onAddCustomer }) => {
-  const [customer, setCustomer] = useState({ name: '', email: '', phone: '' });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setCustomer({ ...customer, [name]: value });
-  };
+const CustomerForm = ({ addCustomer }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onAddCustomer(customer);
-    setCustomer({ name: '', email: '', phone: '' });
+    if (name && email && phone) {
+      addCustomer({ name, email, phone });
+      setName('');
+      setEmail('');
+      setPhone('');
+    }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <input type="text" name="name" value={customer.name} onChange={handleChange} placeholder="Name" required />
-      <input type="email" name="email" value={customer.email} onChange={handleChange} placeholder="Email" required />
-      <input type="tel" name="phone" value={customer.phone} onChange={handleChange} placeholder="Phone" required />
+      <input
+        type="text"
+        placeholder="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+      />
+      <input
+        type="tel"
+        placeholder="Phone"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        required
+      />
       <button type="submit">Add Customer</button>
     </form>
   );
 };
 
-const CustomerList = ({ customers }) => {
+const CustomerList = ({ customers, editCustomer, deleteCustomer }) => {
   return (
     <ul>
       {customers.map((customer, index) => (
-        <li key={index}>{customer.name} - {customer.email} - {customer.phone}</li>
+        <li key={index}>
+          {customer.name} - {customer.email} - {customer.phone}
+          <button onClick={() => editCustomer(index)}>Edit</button>
+          <button onClick={() => deleteCustomer(index)}>Delete</button>
+        </li>
       ))}
     </ul>
   );
 };
 
-const CustomerManagementSystem = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
 
-  const handleAddCustomer = (newCustomer) => {
-    setCustomers([...customers, newCustomer]);
+  const addCustomer = (customer) => {
+    setCustomers([...customers, customer]);
+  };
+
+  const editCustomer = (index) => {
+    const updatedCustomers = [...customers];
+    const editedName = prompt("Enter new name", updatedCustomers[index].name);
+    if (editedName !== null) {
+      updatedCustomers[index].name = editedName;
+      setCustomers(updatedCustomers);
+    }
+  };
+
+  const deleteCustomer = (index) => {
+    setCustomers(customers.filter((_, i) => i !== index));
   };
 
   return (
     <div>
-      <h1>Customer Management System</h1>
-      <CustomerForm onAddCustomer={handleAddCustomer} />
-      <CustomerList customers={customers} />
+      <h2>Customer Management System</h2>
+      <CustomerForm addCustomer={addCustomer} />
+      <CustomerList customers={customers} editCustomer={editCustomer} deleteCustomer={deleteCustomer} />
     </div>
   );
 };
 
-export default CustomerManagementSystem;
+export default CustomerManagement;
 ```
