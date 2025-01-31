@@ -1,41 +1,49 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .models import Account, Transaction
-from .forms import TransferForm
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawalForm
 
 @login_required
-@csrf_exempt
-def bank_management_view(request):
-    if request.method == 'POST':
-        if request.POST.get('action') == 'transfer':
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                with transaction.atomic():
-                    sender_account = Account.objects.get(id=form.cleaned_data['sender_account_id'])
-                    receiver_account = Account.objects.get(id=form.cleaned_data['receiver_account_id'])
-                    
-                    amount = form.cleaned_data['amount']
-                    if sender_account.balance >= amount:
-                        sender_account.balance -= amount
-                        receiver_account.balance += amount
-                        sender_account.save()
-                        receiver_account.save()
+@require_http_methods(["GET", "POST"])
+def account_view(request):
+    account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
 
-                        Transaction.objects.create(
-                            sender=sender_account,
-                            receiver=receiver_account,
-                            amount=amount,
-                        )
-                        return JsonResponse({'status': 'success', 'message': 'Transfer successful!'})
-                    else:
-                        return JsonResponse({'status': 'error', 'message': 'Insufficient funds.'})
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Invalid form data.'})
+    if request.method == "POST":
+        if 'deposit' in request.POST:
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                return redirect('account_view')
+        elif 'withdraw' in request.POST:
+            form = WithdrawalForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                if amount <= account.balance:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=-amount, transaction_type='Withdrawal')
+                    return redirect('account_view')
+                else:
+                    return render(request, 'account/view.html', {
+                        'account': account,
+                        'transactions': transactions,
+                        'error': 'Insufficient funds'
+                    })
+
+    deposit_form = DepositForm()
+    withdrawal_form = WithdrawalForm()
     
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank_management.html', {'accounts': accounts})
+    return render(request, 'account/view.html', {
+        'account': account,
+        'transactions': transactions,
+        'deposit_form': deposit_form,
+        'withdrawal_form': withdrawal_form,
+    })
 ```
