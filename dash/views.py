@@ -3,59 +3,54 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm, TransferForm
+from .forms import AccountForm, TransactionForm
 
 @login_required
-def manage_account(request):
-    account = Account.objects.get(user=request.user)
+def account_overview(request):
+    user_accounts = Account.objects.filter(owner=request.user)
+    
+    if request.method == 'POST':
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            new_account = form.save(commit=False)
+            new_account.owner = request.user
+            new_account.save()
+            return redirect('account_overview')
+    else:
+        form = AccountForm()
+
+    return render(request, 'accounts/overview.html', {
+        'accounts': user_accounts,
+        'form': form
+    })
+
+@login_required
+def transaction_history(request, account_id):
+    account = Account.objects.get(id=account_id, owner=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+
+    return render(request, 'transactions/history.html', {
+        'account': account,
+        'transactions': transactions
+    })
+
+@login_required
+def perform_transaction(request, account_id):
+    account = Account.objects.get(id=account_id, owner=request.user)
 
     if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-                return JsonResponse({'status': 'success', 'balance': account.balance})
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+            return JsonResponse({'status': 'Transaction successful'})
+        else:
+            return JsonResponse({'status': 'Transaction failed', 'errors': form.errors}, status=400)
 
-        elif 'withdraw' in request.POST:
-            form = WithdrawalForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
-                    return JsonResponse({'status': 'success', 'balance': account.balance})
-                else:
-                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
-
-        elif 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                recipient_username = form.cleaned_data['recipient']
-                amount = form.cleaned_data['amount']
-                recipient_account = Account.objects.get(user__username=recipient_username)
-
-                if account.balance >= amount:
-                    account.balance -= amount
-                    recipient_account.balance += amount
-                    account.save()
-                    recipient_account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='transfer', recipient=recipient_account)
-                    return JsonResponse({'status': 'success', 'balance': account.balance})
-                else:
-                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
-
-    deposit_form = DepositForm()
-    withdrawal_form = WithdrawalForm()
-    transfer_form = TransferForm()
-
-    return render(request, 'manage_account.html', {
+    form = TransactionForm()
+    return render(request, 'transactions/perform.html', {
         'account': account,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-        'transfer_form': transfer_form,
+        'form': form
     })
 ```
