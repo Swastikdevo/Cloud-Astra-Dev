@@ -1,55 +1,45 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_http_methods
 from .models import Account, Transaction
-from .forms import TransferForm, AccountCreationForm
+from .forms import AccountForm, TransactionForm
+import json
 
 @login_required
-@require_http_methods(["GET", "POST"])
+@csrf_exempt
 def manage_account(request):
     if request.method == 'POST':
-        form = AccountCreationForm(request.POST)
+        # Create a new account
+        form = AccountForm(json.loads(request.body))
         if form.is_valid():
-            new_account = form.save(commit=False)
-            new_account.owner = request.user
-            new_account.save()
-            return redirect('account_overview')
-    else:
-        form = AccountCreationForm()
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return JsonResponse({'status': 'success', 'message': 'Account created successfully!'}, status=201)
+        return JsonResponse({'status': 'error', 'message': 'Invalid data!'}, status=400)
 
-    accounts = Account.objects.filter(owner=request.user)
+    elif request.method == 'GET':
+        # Retrieve accounts for the logged-in user
+        accounts = Account.objects.filter(user=request.user)
+        accounts_data = [{'id': account.id, 'balance': account.balance} for account in accounts]
+        return JsonResponse({'status': 'success', 'accounts': accounts_data}, status=200)
 
-    return render(request, 'bank/manage_account.html', {
-        'form': form,
-        'accounts': accounts,
-    })
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed!'}, status=405)
 
 @login_required
-@require_http_methods(["POST"])
-def transfer_funds(request):
-    form = TransferForm(request.POST)
-    if form.is_valid():
-        source_account = form.cleaned_data['source_account']
-        destination_account = form.cleaned_data['destination_account']
-        amount = form.cleaned_data['amount']
+@csrf_exempt
+def make_transaction(request):
+    if request.method == 'POST':
+        # Process a new transaction
+        form = TransactionForm(json.loads(request.body))
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully!'}, status=201)
+        return JsonResponse({'status': 'error', 'message': 'Invalid transaction data!'}, status=400)
 
-        if source_account.balance >= amount:
-            source_account.balance -= amount
-            destination_account.balance += amount
-            source_account.save()
-            destination_account.save()
-
-            Transaction.objects.create(
-                source_account=source_account,
-                destination_account=destination_account,
-                amount=amount,
-                user=request.user
-            )
-            return JsonResponse({'status': 'success', 'message': 'Transfer successful'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
-
-    return JsonResponse({'status': 'error', 'message': 'Invalid form data'})
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed!'}, status=405)
 ```
