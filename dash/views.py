@@ -1,45 +1,51 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
-import json
+from django.contrib.auth.decorators import login_required
 
 @login_required
-@csrf_exempt
+@require_http_methods(["GET", "POST"])
 def manage_account(request):
-    if request.method == 'POST':
-        # Create a new account
-        form = AccountForm(json.loads(request.body))
+    if request.method == "POST":
+        form = AccountForm(request.POST)
         if form.is_valid():
             account = form.save(commit=False)
             account.user = request.user
             account.save()
-            return JsonResponse({'status': 'success', 'message': 'Account created successfully!'}, status=201)
-        return JsonResponse({'status': 'error', 'message': 'Invalid data!'}, status=400)
+            return redirect('account_detail', account_id=account.id)
+    else:
+        form = AccountForm()
 
-    elif request.method == 'GET':
-        # Retrieve accounts for the logged-in user
-        accounts = Account.objects.filter(user=request.user)
-        accounts_data = [{'id': account.id, 'balance': account.balance} for account in accounts]
-        return JsonResponse({'status': 'success', 'accounts': accounts_data}, status=200)
-
-    return JsonResponse({'status': 'error', 'message': 'Method not allowed!'}, status=405)
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/manage_account.html', {'form': form, 'accounts': accounts})
 
 @login_required
-@csrf_exempt
-def make_transaction(request):
-    if request.method == 'POST':
-        # Process a new transaction
-        form = TransactionForm(json.loads(request.body))
+@require_http_methods(["GET", "POST"])
+def make_transaction(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    
+    if request.method == "POST":
+        form = TransactionForm(request.POST)
         if form.is_valid():
             transaction = form.save(commit=False)
+            transaction.account = account
             transaction.user = request.user
             transaction.save()
-            return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully!'}, status=201)
-        return JsonResponse({'status': 'error', 'message': 'Invalid transaction data!'}, status=400)
+            return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
+    else:
+        form = TransactionForm()
 
-    return JsonResponse({'status': 'error', 'message': 'Method not allowed!'}, status=405)
+    transactions = Transaction.objects.filter(account=account)
+    return render(request, 'bank/make_transaction.html', {'form': form, 'transactions': transactions, 'account': account})
+
+@login_required
+@require_http_methods(["GET"])
+def account_summary(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account)
+
+    return render(request, 'bank/account_summary.html', {'account': account, 'transactions': transactions})
 ```
