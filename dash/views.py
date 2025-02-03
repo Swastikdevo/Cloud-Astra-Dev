@@ -1,56 +1,52 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views import View
 from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import DepositForm, WithdrawForm, TransferForm
 
-@login_required
-def account_overview(request):
-    user_accounts = Account.objects.filter(owner=request.user)
-    
-    if request.method == 'POST':
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            new_account = form.save(commit=False)
-            new_account.owner = request.user
-            new_account.save()
-            return redirect('account_overview')
-    else:
-        form = AccountForm()
+@method_decorator(login_required, name='dispatch')
+class BankManagementView(View):
+    def get(self, request):
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank/dashboard.html', {'accounts': accounts})
 
-    return render(request, 'accounts/overview.html', {
-        'accounts': user_accounts,
-        'form': form
-    })
+    def post(self, request):
+        action = request.POST.get('action')
 
-@login_required
-def transaction_history(request, account_id):
-    account = Account.objects.get(id=account_id, owner=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
+        if action == 'deposit':
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                account = form.cleaned_data['account']
+                amount = form.cleaned_data['amount']
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                return JsonResponse({'message': 'Deposit successful!'})
+                
+        elif action == 'withdraw':
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                account = form.cleaned_data['account']
+                amount = form.cleaned_data['amount']
+                if account.balance >= amount:
+                    Transaction.objects.create(account=account, amount=-amount, transaction_type='Withdraw')
+                    return JsonResponse({'message': 'Withdrawal successful!'})
+                else:
+                    return JsonResponse({'error': 'Insufficient funds'}, status=400)
+        
+        elif action == 'transfer':
+            form = TransferForm(request.POST)
+            if form.is_valid():
+                from_account = form.cleaned_data['from_account']
+                to_account = form.cleaned_data['to_account']
+                amount = form.cleaned_data['amount']
+                if from_account.balance >= amount:
+                    Transaction.objects.create(account=from_account, amount=-amount, transaction_type='Transfer')
+                    Transaction.objects.create(account=to_account, amount=amount, transaction_type='Transfer')
+                    return JsonResponse({'message': 'Transfer successful!'})
+                else:
+                    return JsonResponse({'error': 'Insufficient funds'}, status=400)
 
-    return render(request, 'transactions/history.html', {
-        'account': account,
-        'transactions': transactions
-    })
-
-@login_required
-def perform_transaction(request, account_id):
-    account = Account.objects.get(id=account_id, owner=request.user)
-
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = account
-            transaction.save()
-            return JsonResponse({'status': 'Transaction successful'})
-        else:
-            return JsonResponse({'status': 'Transaction failed', 'errors': form.errors}, status=400)
-
-    form = TransactionForm()
-    return render(request, 'transactions/perform.html', {
-        'account': account,
-        'form': form
-    })
+        return JsonResponse({'error': 'Invalid action'}, status=400)
 ```
