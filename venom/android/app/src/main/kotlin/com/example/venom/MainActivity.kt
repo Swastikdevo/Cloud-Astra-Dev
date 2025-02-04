@@ -23,7 +23,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home Page'),
+        title: Text('Flutter Basic App'),
       ),
       body: Center(
         child: Column(
@@ -59,7 +59,7 @@ class SecondPage extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'This is the second page!',
+          'This is the Second Page',
           style: TextStyle(fontSize: 24),
         ),
       ),
