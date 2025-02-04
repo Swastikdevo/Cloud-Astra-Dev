@@ -9,7 +9,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Flutter Basic App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -38,10 +38,10 @@ class HomePage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => DetailPage()),
+                  MaterialPageRoute(builder: (context) => SecondPage()),
                 );
               },
-              child: Text('Go to Details'),
+              child: Text('Go to Second Page'),
             ),
           ],
         ),
@@ -50,16 +50,16 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class DetailPage extends StatelessWidget {
+class SecondPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Detail Page'),
+        title: Text('Second Page'),
       ),
       body: Center(
         child: Text(
-          'This is the detail page!',
+          'This is the Second Page!',
           style: TextStyle(fontSize: 24),
         ),
       ),
