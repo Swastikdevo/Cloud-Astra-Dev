@@ -1,41 +1,43 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
-from django.utils.decorators import method_decorator
-from django.views import View
 
-@method_decorator(login_required, name='dispatch')
-class BankManagementView(View):
-    template_name = 'bank_management.html'
-
-    def get(self, request):
-        accounts = Account.objects.filter(user=request.user)
-        transactions = Transaction.objects.filter(account__user=request.user).order_by('-date')[:10]  # Latest 10 transactions
-        form = TransactionForm()
-        return render(request, self.template_name, {'accounts': accounts, 'transactions': transactions, 'form': form})
-
-    def post(self, request):
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.user = request.user
-            transaction.save()
-            return JsonResponse({'status': 'success', 'message': 'Transaction recorded successfully!'})
-        return JsonResponse({'status': 'error', 'message': 'Invalid data!'}, status=400)
-
-@login_required
-def create_account(request):
+@csrf_exempt
+def manage_account(request):
     if request.method == 'POST':
         form = AccountForm(request.POST)
         if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            return redirect('bank_management')
+            account = form.save()
+            return JsonResponse({'status': 'success', 'account_id': account.id}, status=201)
     else:
-        form = AccountForm()
-    return render(request, 'create_account.html', {'form': form})
+        accounts = Account.objects.all()
+    
+    return render(request, 'bank/manage_account.html', {'accounts': accounts, 'form': AccountForm()})
+
+@csrf_exempt
+def create_transaction(request):
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save()
+            return JsonResponse({'status': 'success', 'transaction_id': transaction.id}, status=201)
+    return render(request, 'bank/create_transaction.html', {'form': TransactionForm()})
+
+def view_account_balance(request, account_id):
+    try:
+        account = Account.objects.get(id=account_id)
+        balance = account.balance
+        return JsonResponse({'status': 'success', 'balance': balance})
+    except Account.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Account not found'}, status=404)
+
+def view_transactions(request, account_id):
+    try:
+        transactions = Transaction.objects.filter(account__id=account_id).values()
+        return JsonResponse({'status': 'success', 'transactions': list(transactions)})
+    except Account.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Account not found'}, status=404)
 ```
