@@ -1,62 +1,53 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
+const CustomerForm = ({ onAddCustomer }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [address, setAddress] = useState('');
 
-  useEffect(() => {
-    // Simulating fetching customers from an API
-    const fetchCustomers = () => {
-      const initialCustomers = [
-        { id: 1, name: 'Alice', email: 'alice@example.com' },
-        { id: 2, name: 'Bob', email: 'bob@example.com' }
-      ];
-      setCustomers(initialCustomers);
-    };
-    fetchCustomers();
-  }, []);
-
-  const addCustomer = () => {
-    const newCustomer = { id: Date.now(), name, email };
-    setCustomers([...customers, newCustomer]);
-    setName('');
-    setEmail('');
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (name && email) {
+      onAddCustomer({ name, email, address });
+      setName('');
+      setEmail('');
+      setAddress('');
+    }
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
+      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      <input type="text" placeholder="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
+      <button type="submit">Add Customer</button>
+    </form>
   );
+};
+
+const CustomerList = ({ customers }) => (
+  <ul>
+    {customers.map((customer, index) => (
+      <li key={index}>
+        {customer.name} - {customer.email} {customer.address && `(${customer.address})`}
+      </li>
+    ))}
+  </ul>
+);
+
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+
+  const handleAddCustomer = (customer) => {
+    setCustomers((prev) => [...prev, customer]);
+  };
 
   return (
     <div>
-      <h2>Customer Management</h2>
-      <input 
-        type="text" 
-        placeholder="Search by name..." 
-        value={searchTerm} 
-        onChange={(e) => setSearchTerm(e.target.value)} 
-      />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
-        ))}
-      </ul>
-      <input 
-        type="text" 
-        placeholder="Name" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
-      />
-      <input 
-        type="email" 
-        placeholder="Email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
-      />
-      <button onClick={addCustomer}>Add Customer</button>
+      <h1>Customer Management</h1>
+      <CustomerForm onAddCustomer={handleAddCustomer} />
+      <CustomerList customers={customers} />
     </div>
   );
 };
