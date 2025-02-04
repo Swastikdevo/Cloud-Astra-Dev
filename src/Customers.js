@@ -6,52 +6,48 @@ const CustomerManagement = () => {
   const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
+    const fetchCustomers = async () => {
+      // Simulate fetching data
+      const data = await new Promise((resolve) =>
+        setTimeout(() => resolve([{ id: 1, name: 'John Doe', email: 'john@example.com' }]), 1000)
+      );
+      setCustomers(data);
+    };
     fetchCustomers();
   }, []);
 
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNewCustomer({ ...newCustomer, [name]: value });
   };
 
-  const handleInputChange = (e) => {
-    setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
-  };
-
-  const addCustomer = async () => {
-    const response = await fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCustomer),
-    });
-    if (response.ok) {
-      fetchCustomers();
+  const addCustomer = () => {
+    if (newCustomer.name && newCustomer.email) {
+      setCustomers([...customers, { id: customers.length + 1, ...newCustomer }]);
       setNewCustomer({ name: '', email: '' });
     }
   };
 
-  const deleteCustomer = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-    fetchCustomers();
+  const deleteCustomer = (id) => {
+    setCustomers(customers.filter((customer) => customer.id !== id));
   };
 
   return (
     <div>
-      <h1>Customer Management</h1>
+      <h2>Customer Management System</h2>
       <input
         type="text"
         name="name"
+        placeholder="Name"
         value={newCustomer.name}
-        onChange={handleInputChange}
-        placeholder="Customer Name"
+        onChange={handleChange}
       />
       <input
         type="email"
         name="email"
+        placeholder="Email"
         value={newCustomer.email}
-        onChange={handleInputChange}
-        placeholder="Customer Email"
+        onChange={handleChange}
       />
       <button onClick={addCustomer}>Add Customer</button>
       <ul>
