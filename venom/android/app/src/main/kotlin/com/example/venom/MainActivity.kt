@@ -38,10 +38,10 @@ class HomePage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => SecondPage()),
+                  MaterialPageRoute(builder: (context) => DetailPage()),
                 );
               },
-              child: Text('Go to Second Page'),
+              child: Text('Go to Details'),
             ),
           ],
         ),
@@ -50,16 +50,16 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class SecondPage extends StatelessWidget {
+class DetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Second Page'),
+        title: Text('Detail Page'),
       ),
       body: Center(
         child: Text(
-          'This is the second page!',
+          'This is the detail page!',
           style: TextStyle(fontSize: 24),
         ),
       ),
