@@ -1,33 +1,29 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState("");
-
+  const [searchTerm, setSearchTerm] = useState("");
+  
   useEffect(() => {
+    // Simulate fetching data from an API
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
     fetchCustomers();
   }, []);
 
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
   };
 
-  const addCustomer = async () => {
-    const response = await fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newCustomer }),
-    });
-    const addedCustomer = await response.json();
-    setCustomers([...customers, addedCustomer]);
-    setNewCustomer("");
-  };
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const removeCustomer = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+  const handleDelete = (id) => {
     setCustomers(customers.filter(customer => customer.id !== id));
   };
 
@@ -36,15 +32,15 @@ const CustomerList = () => {
       <h1>Customer Management</h1>
       <input 
         type="text" 
-        value={newCustomer} 
-        onChange={(e) => setNewCustomer(e.target.value)} 
-        placeholder="Add New Customer"
+        placeholder="Search customers..." 
+        value={searchTerm} 
+        onChange={handleSearch} 
       />
-      <button onClick={addCustomer}>Add</button>
       <ul>
-        {customers.map(customer => (
+        {filteredCustomers.map(customer => (
           <li key={customer.id}>
-            {customer.name} <button onClick={() => removeCustomer(customer.id)}>Remove</button>
+            {customer.name} 
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -52,5 +48,5 @@ const CustomerList = () => {
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
