@@ -1,43 +1,43 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
+from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
 from .models import Account, Transaction
-from .forms import TransactionForm
+from .forms import DepositForm, WithdrawForm
+from django.views.decorators.csrf import csrf_exempt
 
+@csrf_exempt
 @login_required
 def manage_account(request):
-    account = Account.objects.get(user=request.user)
-
     if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = account
-
-            if transaction.transaction_type == 'withdrawal':
-                if account.balance >= transaction.amount:
-                    account.balance -= transaction.amount
-                    messages.success(request, 'Withdrawal successful!')
+        if 'deposit' in request.POST:
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                return JsonResponse({'success': True, 'new_balance': account.balance})
+        
+        elif 'withdraw' in request.POST:
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
+                if amount <= account.balance:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdraw')
+                    return JsonResponse({'success': True, 'new_balance': account.balance})
                 else:
-                    messages.error(request, 'Insufficient balance!')
-                    return redirect('manage_account')
-            elif transaction.transaction_type == 'deposit':
-                account.balance += transaction.amount
-                messages.success(request, 'Deposit successful!')
-            
-            # Save the transaction and update the account
-            transaction.save()
-            account.save()
-            return redirect('manage_account')
+                    return JsonResponse({'success': False, 'error': 'Insufficient balance'})
     else:
-        form = TransactionForm()
-
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/manage_account.html', {
-        'account': account,
-        'form': form,
-        'transactions': transactions
+        deposit_form = DepositForm()
+        withdraw_form = WithdrawForm()
+    
+    return render(request, 'manage_account.html', {
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
     })
 ```
