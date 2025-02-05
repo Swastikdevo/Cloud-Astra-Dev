@@ -1,47 +1,56 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm
 from django.contrib.auth.decorators import login_required
+from .models import Account, Transaction
+from django.views.decorators.http import require_POST
+from django.contrib import messages
 
 @login_required
-@csrf_exempt
-def manage_account(request):
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        account = Account.objects.get(user=request.user)
+def account_overview(request):
+    """Display account overview for the logged-in user."""
+    user_accounts = Account.objects.filter(owner=request.user)
+    return render(request, 'bank_management/account_overview.html', {'accounts': user_accounts})
 
-        if action == 'deposit':
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return JsonResponse({'success': True, 'balance': account.balance})
+@login_required
+@require_POST
+def transfer_funds(request):
+    """Transfer funds between accounts."""
+    source_account_id = request.POST.get('source_account')
+    target_account_id = request.POST.get('target_account')
+    amount = float(request.POST.get('amount'))
 
-        elif action == 'withdraw':
-            form = WithdrawForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount <= account.balance:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdraw')
-                    return JsonResponse({'success': True, 'balance': account.balance})
-                else:
-                    return JsonResponse({'success': False, 'error': 'Insufficient funds'})
+    source_account = Account.objects.get(id=source_account_id)
+    target_account = Account.objects.get(id=target_account_id)
 
-    deposit_form = DepositForm()
-    withdraw_form = WithdrawForm()
-    transactions = account.transaction_set.all()
+    if source_account.balance >= amount:
+        source_account.balance -= amount
+        target_account.balance += amount
+        source_account.save()
+        target_account.save()
 
-    return render(request, 'account/manage_account.html', {
-        'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
-        'transactions': transactions,
-        'balance': account.balance
+        # Create transaction record
+        Transaction.objects.create(
+            from_account=source_account,
+            to_account=target_account,
+            amount=amount,
+            description=f'Transferred {amount} from {source_account} to {target_account}'
+        )
+
+        messages.success(request, 'Funds transferred successfully!')
+    else:
+        messages.error(request, 'Insufficient funds in source account.')
+
+    return redirect('account_overview')
+
+@login_required
+def account_statement(request, account_id):
+    """Display transaction history for a specific account."""
+    account = Account.objects.get(id=account_id)
+    transactions = Transaction.objects.filter(from_account=account) | Transaction.objects.filter(to_account=account)
+
+    return render(request, 'bank_management/account_statement.html', {
+        'account': account,
+        'transactions': transactions.order_by('-date')
     })
 ```
