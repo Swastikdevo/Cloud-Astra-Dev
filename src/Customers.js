@@ -1,53 +1,63 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
+const CustomerTable = ({ customers }) => {
+    const [sortedCustomers, setSortedCustomers] = useState([]);
+
+    useEffect(() => {
+        setSortedCustomers(customers.sort((a, b) => a.name.localeCompare(b.name)));
+    }, [customers]);
+
+    return (
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {sortedCustomers.map(customer => (
+                    <tr key={customer.id}>
+                        <td>{customer.name}</td>
+                        <td>{customer.email}</td>
+                        <td>{customer.isActive ? 'Active' : 'Inactive'}</td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+};
+
 const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
+    const [customers, setCustomers] = useState([]);
+    const [newCustomer, setNewCustomer] = useState({ name: '', email: '', isActive: true });
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
+    const addCustomer = () => {
+        setCustomers([...customers, { ...newCustomer, id: Date.now() }]);
+        setNewCustomer({ name: '', email: '', isActive: true });
     };
-    fetchCustomers();
-  }, []);
 
-  const addCustomer = async () => {
-    const response = await fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCustomer)
-    });
-    const addedCustomer = await response.json();
-    setCustomers([...customers, addedCustomer]);
-    setNewCustomer({ name: '', email: '' });
-  };
-
-  return (
-    <div>
-      <h2>Customer Management</h2>
-      <input
-        type="text"
-        placeholder="Name"
-        value={newCustomer.name}
-        onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        value={newCustomer.email}
-        onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
-      />
-      <button onClick={addCustomer}>Add Customer</button>
-      <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+        <div>
+            <h1>Customer Management</h1>
+            <input 
+                type="text" 
+                placeholder="Name" 
+                value={newCustomer.name} 
+                onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})} 
+            />
+            <input 
+                type="email" 
+                placeholder="Email" 
+                value={newCustomer.email} 
+                onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})} 
+            />
+            <button onClick={addCustomer}>Add Customer</button>
+            <CustomerTable customers={customers} />
+        </div>
+    );
 };
 
 export default CustomerManagement;
