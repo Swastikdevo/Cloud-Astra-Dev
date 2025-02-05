@@ -1,41 +1,48 @@
 ```python
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
-from django.views.decorators.http import require_http_methods
-from django.utils.decorators import method_decorator
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def manage_account(request):
-    if request.method == 'POST':
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            return redirect('account_summary', account_id=account.id)
-    else:
-        form = AccountForm()
-
+def account_dashboard(request):
     accounts = Account.objects.filter(user=request.user)
-    return render(request, 'account/manage_account.html', {'form': form, 'accounts': accounts})
+    return render(request, 'bank/account_dashboard.html', {'accounts': accounts})
 
 @login_required
-@require_http_methods(["POST"])
-def process_transaction(request):
+@require_POST
+def create_account(request):
+    form = AccountForm(request.POST)
+    if form.is_valid():
+        account = form.save(commit=False)
+        account.user = request.user
+        account.save()
+        return redirect('account_dashboard')
+    return render(request, 'bank/account_form.html', {'form': form})
+
+@login_required
+def account_detail(request, account_id):
+    account = get_object_or_404(Account, id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account)
+    return render(request, 'bank/account_detail.html', {'account': account, 'transactions': transactions})
+
+@login_required
+@require_POST
+def make_transaction(request, account_id):
+    account = get_object_or_404(Account, id=account_id, user=request.user)
     form = TransactionForm(request.POST)
     if form.is_valid():
         transaction = form.save(commit=False)
-        transaction.user = request.user
+        transaction.account = account
         transaction.save()
         return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
     return JsonResponse({'status': 'error', 'errors': form.errors})
 
 @login_required
-def view_transactions(request):
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
-    return render(request, 'transactions/view_transactions.html', {'transactions': transactions})
+def transaction_history(request, account_id):
+    account = get_object_or_404(Account, id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    return render(request, 'bank/transaction_history.html', {'account': account, 'transactions': transactions})
 ```
