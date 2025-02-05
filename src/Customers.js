@@ -1,42 +1,33 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerManager = () => {
-  const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState('');
+const CustomerList = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-  const handleAddCustomer = () => {
-    if (newCustomer) {
-      setCustomers([...customers, { id: Date.now(), name: newCustomer }]);
-      setNewCustomer('');
-    }
-  };
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            const response = await fetch('/api/customers');
+            const data = await response.json();
+            setCustomers(data);
+            setLoading(false);
+        };
+        fetchCustomers();
+    }, []);
 
-  const handleDeleteCustomer = (id) => {
-    setCustomers(customers.filter(customer => customer.id !== id));
-  };
+    if (loading) return <div>Loading...</div>;
 
-  return (
-    <div>
-      <h2>Customer Management</h2>
-      <input
-        type="text"
-        value={newCustomer}
-        onChange={(e) => setNewCustomer(e.target.value)}
-        placeholder="Add new customer"
-      />
-      <button onClick={handleAddCustomer}>Add Customer</button>
-      <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name}
-            <button onClick={() => handleDeleteCustomer(customer.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+        <div>
+            <h2>Customer List</h2>
+            <ul>
+                {customers.map(customer => (
+                    <li key={customer.id}>{customer.name}</li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-export default CustomerManager;
+export default CustomerList;
 ```
