@@ -1,48 +1,53 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchCustomers = async () => {
-            try {
-                let response = await fetch('/api/customers');
-                if (!response.ok) throw new Error('Network response was not ok');
-                let data = await response.json();
-                setCustomers(data);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchCustomers();
-    }, []);
-
-    const toggleStatus = (id) => {
-        setCustomers(customers.map(customer => customer.id === id ? { ...customer, active: !customer.active } : customer ));
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+      setLoading(false);
     };
+    fetchCustomers();
+  }, []);
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
+  const handleDelete = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
 
-    return (
-        <div>
-            <h2>Customer List</h2>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.active ? 'Active' : 'Inactive'}
-                        <button onClick={() => toggleStatus(customer.id)}>Toggle Status</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      <h1>Customer Management</h1>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {customers.map(customer => (
+            <tr key={customer.id}>
+              <td>{customer.name}</td>
+              <td>{customer.email}</td>
+              <td>
+                <button onClick={() => handleDelete(customer.id)}>Delete</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
