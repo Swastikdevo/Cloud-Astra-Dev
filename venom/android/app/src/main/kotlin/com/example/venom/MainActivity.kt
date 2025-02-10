@@ -31,7 +31,6 @@ class HomePage extends StatelessWidget {
           children: <Widget>[
             Text(
               'Welcome to Flutter!',
-              style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),
             ElevatedButton(
@@ -59,8 +58,7 @@ class SecondPage extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'You are on the Second Page!',
-          style: TextStyle(fontSize: 24),
+          'This is the second page!',
         ),
       ),
     );
