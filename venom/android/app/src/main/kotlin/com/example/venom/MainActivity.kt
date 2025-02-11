@@ -13,66 +13,56 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(),
+      home: HomePage(),
     );
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Flutter Demo Home Page'),
+        title: Text('Home Page'),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'You have pushed the button this many times:',
+              'Hello, Flutter!',
+              style: TextStyle(fontSize: 24),
             ),
-            CounterText(),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SecondPage()),
+                );
+              },
+              child: Text('Go to Second Page'),
+            ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
       ),
     );
   }
 }
 
-class CounterText extends StatefulWidget {
-  @override
-  _CounterTextState createState() => _CounterTextState();
-}
-
-class _CounterTextState extends State<CounterText> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
+class SecondPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        Text(
-          '$_counter',
-          style: Theme.of(context).textTheme.headline4,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Second Page'),
+      ),
+      body: Center(
+        child: Text(
+          'Welcome to the Second Page!',
+          style: TextStyle(fontSize: 24),
         ),
-        ElevatedButton(
-          onPressed: _incrementCounter,
-          child: Text('Increment'),
-        ),
-      ],
+      ),
     );
   }
 }
