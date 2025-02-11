@@ -1,39 +1,44 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+const CustomerList = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
+    useEffect(() => {
+        fetch('/api/customers')
+            .then(response => response.json())
+            .then(data => {
+                setCustomers(data);
+                setLoading(false);
+            });
+    }, []);
+
+    const handleDelete = (id) => {
+        fetch(`/api/customers/${id}`, { method: 'DELETE' })
+            .then(() => {
+                setCustomers(customers.filter(customer => customer.id !== id));
+            });
     };
-    fetchCustomers();
-  }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    if (loading) {
+        return <div>Loading...</div>;
+    }
 
-  return (
-    <div>
-      <input
-        type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+        <div>
+            <h1>Customer List</h1>
+            <ul>
+                {customers.map(customer => (
+                    <li key={customer.id}>
+                        {customer.name}
+                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
