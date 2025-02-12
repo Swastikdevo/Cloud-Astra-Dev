@@ -3,56 +3,55 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [filter, setFilter] = useState('');
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
-    const initialCustomers = [
-      { id: 1, name: 'John Doe', email: 'john@example.com' },
-      { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
-    ];
-    setCustomers(initialCustomers);
+    // Fetch customers data from API
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
   }, []);
 
-  const addCustomer = () => {
-    if (name && email) {
-      setCustomers([...customers, { id: customers.length + 1, name, email }]);
-      setName('');
-      setEmail('');
-    }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewCustomer({ ...newCustomer, [name]: value });
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  const addCustomer = () => {
+    setCustomers([...customers, newCustomer]);
+    setNewCustomer({ name: '', email: '' });
+  };
+
+  const deleteCustomer = (index) => {
+    setCustomers(customers.filter((_, i) => i !== index));
+  };
 
   return (
     <div>
-      <h2>Customer Management</h2>
-      <input 
-        type="text" 
-        placeholder="Name" 
-        value={name} 
-        onChange={e => setName(e.target.value)} 
+      <h1>Customer Management</h1>
+      <input
+        type="text"
+        name="name"
+        placeholder="Name"
+        value={newCustomer.name}
+        onChange={handleInputChange}
       />
-      <input 
-        type="email" 
-        placeholder="Email" 
-        value={email} 
-        onChange={e => setEmail(e.target.value)} 
+      <input
+        type="email"
+        name="email"
+        placeholder="Email"
+        value={newCustomer.email}
+        onChange={handleInputChange}
       />
       <button onClick={addCustomer}>Add Customer</button>
-      <input 
-        type="text" 
-        placeholder="Filter by name" 
-        value={filter} 
-        onChange={e => setFilter(e.target.value)} 
-      />
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer.name} ({customer.email})
+            <button onClick={() => deleteCustomer(index)}>Delete</button>
           </li>
         ))}
       </ul>
