@@ -9,7 +9,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Basic App',
+      title: 'Flutter Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -59,7 +59,7 @@ class SecondPage extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'You are on the Second Page!',
+          'This is the second page!',
           style: TextStyle(fontSize: 24),
         ),
       ),
