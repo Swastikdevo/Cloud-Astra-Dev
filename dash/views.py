@@ -1,53 +1,46 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.views import View
-from .models import Account, Transaction
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawForm
 
-@method_decorator(login_required, name='dispatch')
-class BankManagementView(View):
+@login_required
+@require_http_methods(["GET", "POST"])
+def manage_account(request):
+    user_account = Account.objects.get(owner=request.user)
 
-    def get(self, request):
-        accounts = Account.objects.filter(user=request.user)
-        return render(request, 'bank/accounts.html', {'accounts': accounts})
+    if request.method == 'POST':
+        if 'deposit' in request.POST:
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                user_account.balance += amount
+                user_account.save()
+                Transaction.objects.create(account=user_account, amount=amount, transaction_type='Deposit')
+                return JsonResponse({'status': 'success', 'balance': user_account.balance})
 
-    @csrf_exempt
-    def post(self, request):
-        action = request.POST.get('action')
-        if action == 'create_account':
-            account_name = request.POST.get('account_name')
-            account_balance = request.POST.get('initial_balance', 0)
-            new_account = Account.objects.create(
-                user=request.user,
-                name=account_name,
-                balance=account_balance
-            )
-            return JsonResponse({'status': 'success', 'account_id': new_account.id})
+        elif 'withdraw' in request.POST:
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                if amount <= user_account.balance:
+                    user_account.balance -= amount
+                    user_account.save()
+                    Transaction.objects.create(account=user_account, amount=-amount, transaction_type='Withdraw')
+                    return JsonResponse({'status': 'success', 'balance': user_account.balance})
+                else:
+                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
 
-        elif action == 'deposit':
-            account_id = request.POST.get('account_id')
-            amount = request.POST.get('amount', 0)
-            account = Account.objects.get(id=account_id, user=request.user)
-            account.balance += float(amount)
-            account.save()
-            Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-            return JsonResponse({'status': 'success', 'new_balance': account.balance})
-
-        elif action == 'withdraw':
-            account_id = request.POST.get('account_id')
-            amount = request.POST.get('amount', 0)
-            account = Account.objects.get(id=account_id, user=request.user)
-            if account.balance >= float(amount):
-                account.balance -= float(amount)
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='withdraw')
-                return JsonResponse({'status': 'success', 'new_balance': account.balance})
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
-
-        return JsonResponse({'status': 'error', 'message': 'Invalid action'})
+    deposit_form = DepositForm()
+    withdraw_form = WithdrawForm()
+    
+    context = {
+        'account': user_account,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+    }
+    
+    return render(request, 'bank/manage_account.html', context)
 ```
