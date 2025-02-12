@@ -2,9 +2,11 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
-from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+
 
 @login_required
 @csrf_exempt
@@ -15,34 +17,33 @@ def manage_account(request):
             account = form.save(commit=False)
             account.user = request.user
             account.save()
-            return JsonResponse({'message': 'Account created successfully!'}, status=201)
+            messages.success(request, 'Account created successfully!')
+            return redirect('account_list')
         else:
-            return JsonResponse({'errors': form.errors}, status=400)
+            messages.error(request, 'Error creating account. Please check your input.')
 
+    form = AccountForm()
     accounts = Account.objects.filter(user=request.user)
-    return render(request, 'manage_account.html', {'accounts': accounts})
+    return render(request, 'manage_account.html', {'form': form, 'accounts': accounts})
 
 
 @login_required
 @csrf_exempt
-def create_transaction(request, account_id):
+def transaction_view(request, account_id):
     account = Account.objects.get(id=account_id, user=request.user)
+
     if request.method == 'POST':
         form = TransactionForm(request.POST)
         if form.is_valid():
             transaction = form.save(commit=False)
             transaction.account = account
             transaction.save()
-            return JsonResponse({'message': 'Transaction recorded successfully!'}, status=201)
+            messages.success(request, 'Transaction completed successfully!')
+            return redirect('transaction_history', account_id=account_id)
         else:
-            return JsonResponse({'errors': form.errors}, status=400)
+            messages.error(request, 'Error processing transaction. Please check your input.')
 
-    return render(request, 'create_transaction.html', {'account': account})
-
-
-@login_required
-def account_summary(request):
-    accounts = Account.objects.filter(user=request.user)
-    transactions = Transaction.objects.filter(account__in=accounts)
-    return render(request, 'account_summary.html', {'accounts': accounts, 'transactions': transactions})
+    form = TransactionForm()
+    transactions = Transaction.objects.filter(account=account)
+    return render(request, 'transaction_view.html', {'form': form, 'transactions': transactions, 'account': account})
 ```
