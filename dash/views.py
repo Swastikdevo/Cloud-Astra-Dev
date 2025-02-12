@@ -1,46 +1,53 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.views import View
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 
-@login_required
-def account_dashboard(request):
-    account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    
-    if request.method == 'POST':
-        if 'deposit' in request.POST:
-            deposit_form = DepositForm(request.POST)
-            if deposit_form.is_valid():
-                amount = deposit_form.cleaned_data['amount']
-                account.balance += amount
+@method_decorator(login_required, name='dispatch')
+class BankManagementView(View):
+
+    def get(self, request):
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank/accounts.html', {'accounts': accounts})
+
+    @csrf_exempt
+    def post(self, request):
+        action = request.POST.get('action')
+        if action == 'create_account':
+            account_name = request.POST.get('account_name')
+            account_balance = request.POST.get('initial_balance', 0)
+            new_account = Account.objects.create(
+                user=request.user,
+                name=account_name,
+                balance=account_balance
+            )
+            return JsonResponse({'status': 'success', 'account_id': new_account.id})
+
+        elif action == 'deposit':
+            account_id = request.POST.get('account_id')
+            amount = request.POST.get('amount', 0)
+            account = Account.objects.get(id=account_id, user=request.user)
+            account.balance += float(amount)
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
+            return JsonResponse({'status': 'success', 'new_balance': account.balance})
+
+        elif action == 'withdraw':
+            account_id = request.POST.get('account_id')
+            amount = request.POST.get('amount', 0)
+            account = Account.objects.get(id=account_id, user=request.user)
+            if account.balance >= float(amount):
+                account.balance -= float(amount)
                 account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return redirect('account_dashboard')
+                Transaction.objects.create(account=account, amount=amount, transaction_type='withdraw')
+                return JsonResponse({'status': 'success', 'new_balance': account.balance})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
 
-        elif 'withdraw' in request.POST:
-            withdrawal_form = WithdrawalForm(request.POST)
-            if withdrawal_form.is_valid():
-                amount = withdrawal_form.cleaned_data['amount']
-                if amount <= account.balance:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                    return redirect('account_dashboard')
-                else:
-                    return JsonResponse({'error': 'Insufficient funds'}, status=400)
-    
-    deposit_form = DepositForm()
-    withdrawal_form = WithdrawalForm()
-    
-    context = {
-        'account': account,
-        'transactions': transactions,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-    }
-    return render(request, 'account/dashboard.html', context)
+        return JsonResponse({'status': 'error', 'message': 'Invalid action'})
 ```
