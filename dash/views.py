@@ -1,45 +1,48 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
+from django.contrib.auth.decorators import login_required
 
 @login_required
+@csrf_exempt
 def manage_account(request):
     if request.method == 'POST':
-        if 'create_account' in request.POST:
-            account_form = AccountForm(request.POST)
-            if account_form.is_valid():
-                account = account_form.save(commit=False)
-                account.user = request.user
-                account.save()
-                messages.success(request, 'Account created successfully.')
-                return redirect('manage_account')
-                
-        elif 'make_transaction' in request.POST:
-            transaction_form = TransactionForm(request.POST)
-            if transaction_form.is_valid():
-                transaction = transaction_form.save(commit=False)
-                transaction.user = request.user
-                transaction.save()
-                messages.success(request, 'Transaction completed successfully.')
-                return redirect('manage_account')
-
-    else:
-        account_form = AccountForm()
-        transaction_form = TransactionForm()
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return JsonResponse({'message': 'Account created successfully!'}, status=201)
+        else:
+            return JsonResponse({'errors': form.errors}, status=400)
 
     accounts = Account.objects.filter(user=request.user)
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    return render(request, 'manage_account.html', {'accounts': accounts})
 
-    context = {
-        'account_form': account_form,
-        'transaction_form': transaction_form,
-        'accounts': accounts,
-        'transactions': transactions,
-    }
-    
-    return render(request, 'bank/manage_account.html', context)
+
+@login_required
+@csrf_exempt
+def create_transaction(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+            return JsonResponse({'message': 'Transaction recorded successfully!'}, status=201)
+        else:
+            return JsonResponse({'errors': form.errors}, status=400)
+
+    return render(request, 'create_transaction.html', {'account': account})
+
+
+@login_required
+def account_summary(request):
+    accounts = Account.objects.filter(user=request.user)
+    transactions = Transaction.objects.filter(account__in=accounts)
+    return render(request, 'account_summary.html', {'accounts': accounts, 'transactions': transactions})
 ```
