@@ -3,21 +3,14 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-        setCustomers(data);
-      } catch (error) {
-        setError(error);
-      } finally {
-        setIsLoading(false);
-      }
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+      setLoading(false);
     };
     fetchCustomers();
   }, []);
@@ -27,21 +20,17 @@ const CustomerList = () => {
     setCustomers(customers.filter(customer => customer.id !== id));
   };
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
+  if (loading) return <div>Loading...</div>;
 
   return (
-    <div>
-      <h1>Customer List</h1>
-      <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} 
-            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ul>
+      {customers.map(customer => (
+        <li key={customer.id}>
+          <span>{customer.name}</span>
+          <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+        </li>
+      ))}
+    </ul>
   );
 };
 
