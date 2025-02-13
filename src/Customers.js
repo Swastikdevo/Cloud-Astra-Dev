@@ -1,36 +1,52 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [search, setSearch] = useState('');
+const CustomerManagement = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
-  }, []);
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            setLoading(true);
+            const response = await axios.get('/api/customers');
+            setCustomers(response.data);
+            setLoading(false);
+        };
+        fetchCustomers();
+    }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(search.toLowerCase())
-  );
+    const filteredCustomers = customers.filter(customer => 
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-  return (
-    <div>
-      <input
-        type="text"
-        placeholder="Search Customers"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
+    const handleSearch = (event) => {
+        setSearchTerm(event.target.value);
+    };
+
+    return (
+        <div>
+            <input 
+                type="text" 
+                placeholder="Search Customers" 
+                value={searchTerm} 
+                onChange={handleSearch} 
+            />
+            {loading ? (
+                <p>Loading...</p>
+            ) : (
+                <ul>
+                    {filteredCustomers.map(customer => (
+                        <li key={customer.id}>
+                            {customer.name} - {customer.email}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
