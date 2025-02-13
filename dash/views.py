@@ -1,67 +1,64 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import TransferForm, WithdrawalForm, DepositForm
+from .forms import DepositForm, WithdrawForm, TransferForm
 
 @login_required
-@csrf_exempt
-def account_management(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        return render(request, 'account_management.html', {'accounts': accounts})
-    
-    elif request.method == 'POST':
-        action = request.POST.get('action')
-        
-        if action == 'deposit':
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                account = Account.objects.get(pk=form.cleaned_data['account_id'])
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return JsonResponse({'status': 'success', 'message': 'Deposit successful'})
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Invalid deposit data'})
+@require_GET
+def account_summary(request):
+    account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    return render(request, 'account_summary.html', {'account': account, 'transactions': transactions})
 
-        elif action == 'withdrawal':
-            form = WithdrawalForm(request.POST)
-            if form.is_valid():
-                account = Account.objects.get(pk=form.cleaned_data['account_id'])
-                amount = form.cleaned_data['amount']
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                    return JsonResponse({'status': 'success', 'message': 'Withdrawal successful'})
-                else:
-                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Invalid withdrawal data'})
+@login_required
+@require_POST
+def deposit(request):
+    form = DepositForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = Account.objects.get(user=request.user)
+        account.balance += amount
+        account.save()
+        Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+        return JsonResponse({'success': True, 'new_balance': account.balance})
+    return JsonResponse({'success': False, 'errors': form.errors})
 
-        elif action == 'transfer':
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                source_account = Account.objects.get(pk=form.cleaned_data['source_account_id'])
-                target_account = Account.objects.get(pk=form.cleaned_data['target_account_id'])
-                amount = form.cleaned_data['amount']
-                
-                if source_account.balance >= amount:
-                    source_account.balance -= amount
-                    target_account.balance += amount
-                    source_account.save()
-                    target_account.save()
-                    Transaction.objects.create(account=source_account, amount=amount, transaction_type='Transfer Out')
-                    Transaction.objects.create(account=target_account, amount=amount, transaction_type='Transfer In')
-                    return JsonResponse({'status': 'success', 'message': 'Transfer successful'})
-                else:
-                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds for transfer'})
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Invalid transfer data'})
+@login_required
+@require_POST
+def withdraw(request):
+    form = WithdrawForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = Account.objects.get(user=request.user)
+        if amount <= account.balance:
+            account.balance -= amount
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+            return JsonResponse({'success': True, 'new_balance': account.balance})
+        return JsonResponse({'success': False, 'errors': {'amount': 'Insufficient funds'}})
+    return JsonResponse({'success': False, 'errors': form.errors})
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+@login_required
+@require_POST
+def transfer(request):
+    form = TransferForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        recipient_account_number = form.cleaned_data['recipient_account_number']
+        sender_account = Account.objects.get(user=request.user)
+        recipient_account = Account.objects.get(account_number=recipient_account_number)
+
+        if amount <= sender_account.balance:
+            sender_account.balance -= amount
+            recipient_account.balance += amount
+            sender_account.save()
+            recipient_account.save()
+            Transaction.objects.create(account=sender_account, amount=amount, transaction_type='Transfer Out')
+            Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transfer In')
+            return JsonResponse({'success': True, 'new_sender_balance': sender_account.balance, 'new_recipient_balance': recipient_account.balance})
+        return JsonResponse({'success': False, 'errors': {'amount': 'Insufficient funds'}})
+    return JsonResponse({'success': False, 'errors': form.errors})
 ```
