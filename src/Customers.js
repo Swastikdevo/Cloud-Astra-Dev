@@ -3,34 +3,40 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
     const [customers, setCustomers] = useState([]);
-    const [filterText, setFilterText] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        fetch('/api/customers')
-            .then(response => response.json())
-            .then(data => setCustomers(data))
-            .catch(error => console.error('Error fetching customers:', error));
+        const fetchCustomers = async () => {
+            const response = await fetch('/api/customers');
+            const data = await response.json();
+            setCustomers(data);
+            setLoading(false);
+        };
+        fetchCustomers();
     }, []);
 
-    const filteredCustomers = customers.filter(customer => 
-        customer.name.toLowerCase().includes(filterText.toLowerCase())
+    const filteredCustomers = customers.filter(customer =>
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
         <div>
-            <input 
-                type="text" 
-                placeholder="Filter customers" 
-                value={filterText} 
-                onChange={e => setFilterText(e.target.value)} 
+            <input
+                type="text"
+                placeholder="Search Customers"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <ul>
-                {filteredCustomers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.email}
-                    </li>
-                ))}
-            </ul>
+            {loading ? (
+                <p>Loading...</p>
+            ) : (
+                <ul>
+                    {filteredCustomers.map(customer => (
+                        <li key={customer.id}>{customer.name}</li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 };
