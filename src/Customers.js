@@ -3,38 +3,67 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
-  
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
+
   useEffect(() => {
+    // Fetch initial customer data
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
     fetchCustomers();
   }, []);
 
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
+  const handleChange = (e) => {
+    setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
   };
 
-  const handleFilterChange = (event) => {
-    setFilter(event.target.value);
+  const handleAddCustomer = async (e) => {
+    e.preventDefault();
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    const addedCustomer = await response.json();
+    setCustomers([...customers, addedCustomer]);
+    setNewCustomer({ name: '', email: '' });
   };
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  const handleDeleteCustomer = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter((customer) => customer.id !== id));
+  };
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <input 
-        type="text" 
-        placeholder="Filter customers" 
-        value={filter} 
-        onChange={handleFilterChange} 
-      />
+      <h2>Customer Management</h2>
+      <form onSubmit={handleAddCustomer}>
+        <input
+          type="text"
+          name="name"
+          value={newCustomer.name}
+          onChange={handleChange}
+          placeholder="Customer Name"
+          required
+        />
+        <input
+          type="email"
+          name="email"
+          value={newCustomer.email}
+          onChange={handleChange}
+          placeholder="Customer Email"
+          required
+        />
+        <button type="submit">Add Customer</button>
+      </form>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        {customers.map((customer) => (
+          <li key={customer.id}>
+            {customer.name} ({customer.email})
+            <button onClick={() => handleDeleteCustomer(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
