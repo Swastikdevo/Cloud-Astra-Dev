@@ -1,64 +1,46 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm
+from .forms import AccountForm, TransactionForm
+from django.contrib.auth.decorators import login_required
 
 @login_required
-def account_detail(request):
-    account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')[:10]
-
+@require_http_methods(["GET", "POST"])
+def manage_account(request):
     if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-                return redirect('account_detail')
-        elif 'withdraw' in request.POST:
-            form = WithdrawForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount <= account.balance:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='withdraw')
-                    return redirect('account_detail')
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return redirect('account_overview', account_id=account.id)
+    else:
+        form = AccountForm()
 
-    deposit_form = DepositForm()
-    withdraw_form = WithdrawForm()
-
-    context = {
-        'account': account,
-        'transactions': transactions,
-        'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
-    }
-    return render(request, 'account_detail.html', context)
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/manage_account.html', {'form': form, 'accounts': accounts})
 
 @login_required
-def transfer_funds(request):
+@require_http_methods(["GET", "POST"])
+def transaction_view(request):
     if request.method == 'POST':
-        sender_account = Account.objects.get(user=request.user)
-        recipient_id = request.POST.get('recipient_id')
-        amount = float(request.POST.get('amount'))
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            return JsonResponse({'status': 'success', 'transaction_id': transaction.id}, status=201)
+    else:
+        form = TransactionForm()
 
-        recipient_account = Account.objects.get(id=recipient_id)
-        
-        if amount <= sender_account.balance:
-            sender_account.balance -= amount
-            recipient_account.balance += amount
-            sender_account.save()
-            recipient_account.save()
-            Transaction.objects.create(account=sender_account, amount=amount, transaction_type='transfer_out')
-            Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='transfer_in')
-            return JsonResponse({'status': 'success', 'message': 'Transfer completed successfully.'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Insufficient funds for transfer.'})
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    return render(request, 'bank/transaction.html', {'form': form, 'transactions': transactions})
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
+@login_required
+def account_overview(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    return render(request, 'bank/account_overview.html', {'account': account, 'transactions': transactions})
 ```
