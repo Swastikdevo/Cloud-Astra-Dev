@@ -1,13 +1,11 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from .models import BankAccount, Transaction
+from .forms import AccountForm, TransactionForm
 
 @login_required
-@require_http_methods(["GET", "POST"])
 def manage_account(request):
     if request.method == 'POST':
         form = AccountForm(request.POST)
@@ -15,32 +13,39 @@ def manage_account(request):
             account = form.save(commit=False)
             account.user = request.user
             account.save()
-            return redirect('account_overview', account_id=account.id)
+            return redirect('account_detail', account_id=account.id)
     else:
         form = AccountForm()
 
-    accounts = Account.objects.filter(user=request.user)
+    accounts = BankAccount.objects.filter(user=request.user)
     return render(request, 'bank/manage_account.html', {'form': form, 'accounts': accounts})
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def transaction_view(request):
+def make_transaction(request, account_id):
+    account = BankAccount.objects.get(id=account_id, user=request.user)
+    
     if request.method == 'POST':
         form = TransactionForm(request.POST)
         if form.is_valid():
             transaction = form.save(commit=False)
-            transaction.user = request.user
+            transaction.account = account
             transaction.save()
-            return JsonResponse({'status': 'success', 'transaction_id': transaction.id}, status=201)
-    else:
-        form = TransactionForm()
+            return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
 
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
-    return render(request, 'bank/transaction.html', {'form': form, 'transactions': transactions})
+    form = TransactionForm()
+    return render(request, 'bank/make_transaction.html', {'form': form, 'account': account})
 
 @login_required
-def account_overview(request, account_id):
-    account = Account.objects.get(id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/account_overview.html', {'account': account, 'transactions': transactions})
+def account_summary(request, account_id):
+    account = BankAccount.objects.get(id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account)
+
+    total_balance = account.balance
+    transaction_data = [{'date': txn.date, 'amount': txn.amount, 'description': txn.description} for txn in transactions]
+
+    return render(request, 'bank/account_summary.html', {
+        'account': account,
+        'transactions': transaction_data,
+        'total_balance': total_balance
+    })
 ```
