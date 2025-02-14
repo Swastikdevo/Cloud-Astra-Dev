@@ -13,50 +13,48 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(),
+      home: HomeScreen(),
     );
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Flutter Basic App'),
+        title: Text('Home Screen'),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'Welcome to Flutter!',
-              style: TextStyle(fontSize: 24),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text('Hello!'),
-                      content: Text('This is a basic Flutter app.'),
-                      actions: [
-                        TextButton(
-                          child: Text('Close'),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-              child: Text('Show Dialog'),
-            ),
-          ],
+        child: Text(
+          'Hello, Flutter!',
+          style: TextStyle(fontSize: 24),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => SecondScreen()),
+          );
+        },
+        child: Icon(Icons.navigate_next),
+      ),
+    );
+  }
+}
+
+class SecondScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Second Screen'),
+      ),
+      body: Center(
+        child: Text(
+          'Welcome to the Second Screen!',
+          style: TextStyle(fontSize: 24),
         ),
       ),
     );
