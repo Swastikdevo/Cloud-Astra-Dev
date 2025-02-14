@@ -1,45 +1,36 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerManager = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const addCustomer = () => {
-    if (name && email) {
-      setCustomers([...customers, { name, email }]);
-      setName('');
-      setEmail('');
-    }
-  };
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
+  }, []);
 
-  const removeCustomer = (index) => {
-    const updatedCustomers = customers.filter((_, i) => i !== index);
-    setCustomers(updatedCustomers);
-  };
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h2>Customer Management</h2>
-      <input 
-        type="text" 
-        placeholder="Name" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
+      <h1>Customer Management</h1>
+      <input
+        type="text"
+        placeholder="Search Customers"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
       />
-      <input 
-        type="email" 
-        placeholder="Email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
-      />
-      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>
             {customer.name} - {customer.email}
-            <button onClick={() => removeCustomer(index)}>Remove</button>
           </li>
         ))}
       </ul>
@@ -47,5 +38,5 @@ const CustomerManager = () => {
   );
 };
 
-export default CustomerManager;
+export default CustomerList;
 ```
