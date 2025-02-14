@@ -1,45 +1,59 @@
 ```python
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404
+from django.contrib import messages
 from .models import Account, Transaction
-from django.utils.decorators import method_decorator
-from django.views import View
+from .forms import DepositForm, WithdrawalForm
 
-@method_decorator(login_required, name='dispatch')
-class BankView(View):
+@login_required
+def account_overview(request):
+    account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    return render(request, 'bank/account_overview.html', {
+        'account': account,
+        'transactions': transactions,
+    })
 
-    @require_http_methods(["POST"])
-    def deposit(self, request):
-        account_id = request.POST.get('account_id')
-        amount = float(request.POST.get('amount'))
-        account = get_object_or_404(Account, id=account_id)
+@login_required
+@require_POST
+def deposit(request):
+    form = DepositForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = Account.objects.get(user=request.user)
         account.balance += amount
         account.save()
-        transaction = Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-        return JsonResponse({'message': 'Deposit successful', 'new_balance': account.balance})
+        Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
+        messages.success(request, 'Deposit successful!')
+        return redirect('account_overview')
+    messages.error(request, 'Invalid deposit amount.')
+    return redirect('account_overview')
 
-    @require_http_methods(["POST"])
-    def withdraw(self, request):
-        account_id = request.POST.get('account_id')
-        amount = float(request.POST.get('amount'))
-        account = get_object_or_404(Account, id=account_id)
-        if amount > account.balance:
-            return JsonResponse({'error': 'Insufficient funds'}, status=400)
-        account.balance -= amount
-        account.save()
-        transaction = Transaction.objects.create(account=account, amount=amount, transaction_type='Withdraw')
-        return JsonResponse({'message': 'Withdrawal successful', 'new_balance': account.balance})
+@login_required
+@require_POST
+def withdraw(request):
+    form = WithdrawalForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = Account.objects.get(user=request.user)
+        if account.balance >= amount:
+            account.balance -= amount
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
+            messages.success(request, 'Withdrawal successful!')
+        else:
+            messages.error(request, 'Insufficient balance.')
+    else:
+        messages.error(request, 'Invalid withdrawal amount.')
+    return redirect('account_overview')
 
-    @require_http_methods(["GET"])
-    def get_balance(self, request, account_id):
-        account = get_object_or_404(Account, id=account_id)
-        return JsonResponse({'account_id': account.id, 'balance': account.balance})
-
-    @require_http_methods(["GET"])
-    def transaction_history(self, request, account_id):
-        account = get_object_or_404(Account, id=account_id)
-        transactions = account.transaction_set.all().values('id', 'amount', 'transaction_type', 'created_at')
-        return JsonResponse({'account_id': account.id, 'transactions': list(transactions)})
+@login_required
+def transaction_history(request):
+    account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    return render(request, 'bank/transaction_history.html', {
+        'transactions': transactions,
+    })
 ```
