@@ -20,18 +20,16 @@ const CustomerList = () => {
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <input
-        type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+      <h2>Customer Management</h2>
+      <input 
+        type="text" 
+        placeholder="Search Customers" 
+        value={searchTerm} 
+        onChange={e => setSearchTerm(e.target.value)} 
       />
       <ul>
         {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
+          <li key={customer.id}>{customer.name}</li>
         ))}
       </ul>
     </div>
