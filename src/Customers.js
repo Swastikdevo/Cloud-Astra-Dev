@@ -1,51 +1,54 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [newCustomer, setNewCustomer] = useState('');
+  const [filterTerm, setFilterTerm] = useState('');
+
+  useEffect(() => {
+    // Simulated fetch
+    const fetchCustomers = () => {
+      setCustomers(['Alice', 'Bob', 'Charlie', 'David']);
+    };
+    fetchCustomers();
+  }, []);
 
   const addCustomer = () => {
-    if (name && email) {
-      setCustomers([...customers, { name, email }]);
-      setName('');
-      setEmail('');
+    if (newCustomer) {
+      setCustomers([...customers, newCustomer]);
+      setNewCustomer('');
     }
   };
 
-  const removeCustomer = (index) => {
-    const newCustomers = customers.filter((_, i) => i !== index);
-    setCustomers(newCustomers);
-  };
+  const filteredCustomers = customers.filter(customer =>
+    customer.toLowerCase().includes(filterTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h2>Customer Management</h2>
+      <h1>Customer Management</h1>
       <input 
         type="text" 
-        placeholder="Customer Name" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
+        value={newCustomer} 
+        onChange={e => setNewCustomer(e.target.value)} 
+        placeholder="Add New Customer" 
       />
+      <button onClick={addCustomer}>Add</button>
       <input 
-        type="email" 
-        placeholder="Customer Email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
+        type="text" 
+        value={filterTerm} 
+        onChange={e => setFilterTerm(e.target.value)} 
+        placeholder="Search Customers" 
       />
-      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
-            {customer.name} - {customer.email} 
-            <button onClick={() => removeCustomer(index)}>Remove</button>
-          </li>
+        {filteredCustomers.map((customer, index) => (
+          <li key={index}>{customer}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
