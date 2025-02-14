@@ -1,32 +1,50 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    
-    useEffect(() => {
-        fetch('/api/customers')
-            .then(response => response.json())
-            .then(data => setCustomers(data));
-    }, []);
+  const [customers, setCustomers] = useState([]);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
-    const deleteCustomer = (id) => {
-        fetch(`/api/customers/${id}`, { method: 'DELETE' })
-            .then(() => setCustomers(customers.filter(customer => customer.id !== id)));
-    };
+  const addCustomer = () => {
+    if (name && email) {
+      setCustomers([...customers, { name, email }]);
+      setName('');
+      setEmail('');
+    }
+  };
 
-    return (
-        <div>
-            <h1>Customer List</h1>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  const removeCustomer = (index) => {
+    const newCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(newCustomers);
+  };
+
+  return (
+    <div>
+      <h2>Customer Management</h2>
+      <input 
+        type="text" 
+        placeholder="Customer Name" 
+        value={name} 
+        onChange={(e) => setName(e.target.value)} 
+      />
+      <input 
+        type="email" 
+        placeholder="Customer Email" 
+        value={email} 
+        onChange={(e) => setEmail(e.target.value)} 
+      />
+      <button onClick={addCustomer}>Add Customer</button>
+      <ul>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer.name} - {customer.email} 
+            <button onClick={() => removeCustomer(index)}>Remove</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
 export default CustomerList;
