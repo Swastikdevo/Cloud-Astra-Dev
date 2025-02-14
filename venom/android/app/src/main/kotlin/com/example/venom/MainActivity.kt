@@ -13,47 +13,53 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomeScreen(),
+      home: HomePage(),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home Screen'),
+        title: Text('Home Page'),
       ),
       body: Center(
-        child: Text(
-          'Hello, Flutter!',
-          style: TextStyle(fontSize: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text(
+              'Welcome to Flutter!',
+              style: TextStyle(fontSize: 24),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SecondPage()),
+                );
+              },
+              child: Text('Go to Second Page'),
+            ),
+          ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => SecondScreen()),
-          );
-        },
-        child: Icon(Icons.navigate_next),
-      ),
     );
   }
 }
 
-class SecondScreen extends StatelessWidget {
+class SecondPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Second Screen'),
+        title: Text('Second Page'),
       ),
       body: Center(
         child: Text(
-          'Welcome to the Second Screen!',
+          'This is the Second Page!',
           style: TextStyle(fontSize: 24),
         ),
       ),
