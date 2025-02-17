@@ -10,9 +10,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
       home: HomeScreen(),
     );
   }
@@ -59,7 +56,7 @@ class SecondScreen extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'This is the second screen',
+          'You are on the Second Screen',
           style: TextStyle(fontSize: 24),
         ),
       ),
