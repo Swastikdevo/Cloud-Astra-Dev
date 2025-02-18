@@ -1,44 +1,62 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
-from django.views.decorators.http import require_http_methods
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Account, Transaction
-from .forms import TransactionForm
-from django.core.exceptions import SuspiciousOperation
+from .forms import AccountForm, TransactionForm
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def manage_account(request):
-    account = get_object_or_404(Account, user=request.user)
+def account_management(request):
+    if request.method == 'POST':
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            messages.success(request, 'Account created successfully!')
+            return redirect('account_management')
+    else:
+        form = AccountForm()
 
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/account_management.html', {'form': form, 'accounts': accounts})
+
+@login_required
+def transfer_funds(request):
     if request.method == 'POST':
         form = TransactionForm(request.POST)
         if form.is_valid():
-            transaction_type = form.cleaned_data['transaction_type']
+            sender_account = form.cleaned_data['sender_account']
+            receiver_account = form.cleaned_data['receiver_account']
             amount = form.cleaned_data['amount']
 
-            if transaction_type == 'deposit':
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return redirect('manage_account')
-            
-            elif transaction_type == 'withdrawal':
-                if amount > account.balance:
-                    raise SuspiciousOperation("Insufficient funds for this withdrawal.")
-                account.balance -= amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                return redirect('manage_account')
+            if sender_account.balance >= amount:
+                sender_account.balance -= amount
+                receiver_account.balance += amount
+                sender_account.save()
+                receiver_account.save()
 
-    else:
-        form = TransactionForm()
+                transaction = Transaction(sender=sender_account, receiver=receiver_account, amount=amount)
+                transaction.save()
 
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/manage_account.html', {
-        'account': account,
-        'form': form,
-        'transactions': transactions,
-    })
+                messages.success(request, 'Transfer completed successfully!')
+                return redirect('transfer_funds')
+            else:
+                messages.error(request, 'Insufficient balance for the transaction.')
+
+    form = TransactionForm()
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/transfer_funds.html', {'form': form, 'accounts': accounts})
+
+@login_required
+def view_transactions(request):
+    transactions = Transaction.objects.filter(sender__user=request.user).order_by('-date')
+    return render(request, 'bank/view_transactions.html', {'transactions': transactions})
+
+@login_required
+def check_balance(request):
+    accounts = Account.objects.filter(user=request.user)
+    balance_data = {account.account_number: account.balance for account in accounts}
+    return JsonResponse(balance_data)
 ```
