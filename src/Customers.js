@@ -1,36 +1,42 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
-  }, []);
+  const addCustomer = () => {
+    setCustomers([...customers, { id: Date.now(), name, email }]);
+    setName('');
+    setEmail('');
+  };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const deleteCustomer = (id) => {
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <input
-        type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
+      <h2>Customer Management</h2>
+      <input 
+        type="text" 
+        value={name} 
+        placeholder="Customer Name" 
+        onChange={(e) => setName(e.target.value)} 
       />
+      <input 
+        type="email" 
+        value={email} 
+        placeholder="Customer Email" 
+        onChange={(e) => setEmail(e.target.value)} 
+      />
+      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map(customer => (
+        {customers.map(customer => (
           <li key={customer.id}>
-            {customer.name} - {customer.email}
+            {customer.name} - {customer.email} 
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -38,5 +44,5 @@ const CustomerList = () => {
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
