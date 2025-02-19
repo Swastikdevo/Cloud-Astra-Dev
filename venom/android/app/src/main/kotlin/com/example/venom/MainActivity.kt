@@ -23,14 +23,14 @@ class MyHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Flutter Basic App'),
+        title: Text('Flutter Basic Structure'),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Welcome to Flutter!',
+              'Hello, Flutter!',
               style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),
@@ -40,7 +40,7 @@ class MyHomePage extends StatelessWidget {
                   SnackBar(content: Text('Button Pressed!')),
                 );
               },
-              child: Text('Press me'),
+              child: Text('Press Me'),
             ),
           ],
         ),
