@@ -33,14 +33,36 @@ class HomePage extends StatelessWidget {
               'Welcome to Flutter!',
               style: TextStyle(fontSize: 24),
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                // Action for button press
-              },
-              child: Text('Press Me'),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SecondPage()),
+                  );
+                },
+                child: Text('Go to Second Page'),
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class SecondPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Second Page'),
+      ),
+      body: Center(
+        child: Text(
+          'This is the second page!',
+          style: TextStyle(fontSize: 24),
         ),
       ),
     );
