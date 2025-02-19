@@ -1,51 +1,41 @@
 ```javascript
-import React, { useState } from 'react';
-
-const CustomerForm = ({ onSubmit }) => {
-    const [customer, setCustomer] = useState({ name: '', email: '', phone: '' });
-
-    const handleChange = (e) => {
-        setCustomer({ ...customer, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSubmit(customer);
-        setCustomer({ name: '', email: '', phone: '' });
-    };
-
-    return (
-        <form onSubmit={handleSubmit}>
-            <input type="text" name="name" placeholder="Name" value={customer.name} onChange={handleChange} required />
-            <input type="email" name="email" placeholder="Email" value={customer.email} onChange={handleChange} required />
-            <input type="tel" name="phone" placeholder="Phone" value={customer.phone} onChange={handleChange} required />
-            <button type="submit">Add Customer</button>
-        </form>
-    );
-};
-
-const CustomerList = ({ customers }) => (
-    <ul>
-        {customers.map((customer, index) => (
-            <li key={index}>{customer.name} - {customer.email} - {customer.phone}</li>
-        ))}
-    </ul>
-);
+import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
-    const [customers, setCustomers] = useState([]);
-
-    const addCustomer = (customer) => {
-        setCustomers([...customers, customer]);
+  const [customers, setCustomers] = useState([]);
+  const [fetching, setFetching] = useState(true);
+  
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      setFetching(true);
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+      setFetching(false);
     };
+    fetchCustomers();
+  }, []);
 
-    return (
-        <div>
-            <h1>Customer Management System</h1>
-            <CustomerForm onSubmit={addCustomer} />
-            <CustomerList customers={customers} />
-        </div>
-    );
+  const handleDelete = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
+
+  if (fetching) return <div>Loading...</div>;
+
+  return (
+    <div>
+      <h1>Customer Management</h1>
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
 export default CustomerManagement;
