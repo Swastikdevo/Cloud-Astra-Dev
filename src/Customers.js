@@ -1,7 +1,7 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -23,15 +23,14 @@ const CustomerList = () => {
       <h1>Customer Management</h1>
       <input 
         type="text" 
-        placeholder="Search Customers" 
+        placeholder="Search customers..." 
         value={searchTerm} 
-        onChange={(e) => setSearchTerm(e.target.value)} 
+        onChange={e => setSearchTerm(e.target.value)} 
       />
       <ul>
         {filteredCustomers.map(customer => (
           <li key={customer.id}>
             {customer.name} - {customer.email}
-            <button onClick={() => alert(`Details for ${customer.name}`)}>View Details</button>
           </li>
         ))}
       </ul>
@@ -39,5 +38,5 @@ const CustomerList = () => {
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
