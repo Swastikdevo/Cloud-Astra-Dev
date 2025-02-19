@@ -1,38 +1,64 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import DepositForm, WithdrawForm, TransferForm
 
 @login_required
-@csrf_exempt
-def bank_management_view(request):
+@require_http_methods(["GET", "POST"])
+def manage_account(request):
+    user_account = Account.objects.get(user=request.user)
+
     if request.method == 'POST':
-        if 'create_account' in request.POST:
-            form = AccountForm(request.POST)
+        if 'deposit' in request.POST:
+            form = DepositForm(request.POST)
             if form.is_valid():
-                new_account = form.save(commit=False)
-                new_account.user = request.user
-                new_account.save()
-                return JsonResponse({'status': 'success', 'message': 'Account created successfully!'}, status=201)
-        
-        elif 'make_transaction' in request.POST:
-            form = TransactionForm(request.POST)
+                amount = form.cleaned_data['amount']
+                user_account.balance += amount
+                user_account.save()
+                Transaction.objects.create(account=user_account, amount=amount, transaction_type='Deposit')
+                return redirect('manage_account')
+
+        elif 'withdraw' in request.POST:
+            form = WithdrawForm(request.POST)
             if form.is_valid():
-                new_transaction = form.save(commit=False)
-                new_transaction.user = request.user
-                new_transaction.save()
-                return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully!'}, status=201)
-    
-    accounts = Account.objects.filter(user=request.user)
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
-    
-    return render(request, 'bank_management.html', {
-        'accounts': accounts,
-        'transactions': transactions,
-        'account_form': AccountForm(),
-        'transaction_form': TransactionForm(),
+                amount = form.cleaned_data['amount']
+                if amount <= user_account.balance:
+                    user_account.balance -= amount
+                    user_account.save()
+                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Withdraw')
+                    return redirect('manage_account')
+                else:
+                    return JsonResponse({'error': 'Insufficient balance.'}, status=400)
+
+        elif 'transfer' in request.POST:
+            form = TransferForm(request.POST)
+            if form.is_valid():
+                recipient_username = form.cleaned_data['recipient']
+                amount = form.cleaned_data['amount']
+                recipient_account = Account.objects.get(user__username=recipient_username)
+
+                if amount <= user_account.balance:
+                    user_account.balance -= amount
+                    recipient_account.balance += amount
+                    user_account.save()
+                    recipient_account.save()
+                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Transferout')
+                    Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transferin')
+                    return redirect('manage_account')
+                else:
+                    return JsonResponse({'error': 'Insufficient balance.'}, status=400)
+
+    deposit_form = DepositForm()
+    withdraw_form = WithdrawForm()
+    transfer_form = TransferForm()
+
+    return render(request, 'manage_account.html', {
+        'user_account': user_account,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+        'transfer_form': transfer_form,
     })
 ```
