@@ -1,56 +1,43 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerTable = () => {
-    const [customers, setCustomers] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        const fetchCustomers = async () => {
-            const response = await fetch('/api/customers');
-            const data = await response.json();
-            setCustomers(data);
-        };
-        fetchCustomers();
-    }, []);
-
-    const handleSearch = (event) => {
-        setSearchTerm(event.target.value);
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
     };
+    fetchCustomers();
+  }, []);
 
-    const filteredCustomers = customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const handleSearch = (event) => {
+    setSearchQuery(event.target.value);
+  };
 
-    return (
-        <div>
-            <input
-                type="text"
-                placeholder="Search customers..."
-                value={searchTerm}
-                onChange={handleSearch}
-            />
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Phone</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {filteredCustomers.map(customer => (
-                        <tr key={customer.id}>
-                            <td>{customer.name}</td>
-                            <td>{customer.email}</td>
-                            <td>{customer.phone}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div>
+      <input 
+        type="text" 
+        placeholder="Search Customers" 
+        value={searchQuery} 
+        onChange={handleSearch} 
+      />
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerTable;
+export default CustomerManagement;
 ```
