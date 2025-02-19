@@ -1,46 +1,56 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState('');
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
     const fetchCustomers = async () => {
-      const response = await axios.get('/api/customers');
-      setCustomers(response.data);
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
     };
     fetchCustomers();
   }, []);
 
-  const handleAddCustomer = async () => {
-    const response = await axios.post('/api/customers', { name: newCustomer });
-    setCustomers([...customers, response.data]);
-    setNewCustomer('');
+  const addCustomer = async () => {
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    const data = await response.json();
+    setCustomers([...customers, data]);
+    setNewCustomer({ name: '', email: '' });
   };
 
-  const handleDeleteCustomer = async (id) => {
-    await axios.delete(`/api/customers/${id}`);
-    setCustomers(customers.filter(customer => customer.id !== id));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNewCustomer({ ...newCustomer, [name]: value });
   };
 
   return (
     <div>
-      <h2>Customer Management</h2>
-      <input 
-        type="text" 
-        value={newCustomer} 
-        onChange={(e) => setNewCustomer(e.target.value)} 
-        placeholder="Add new customer"
+      <h1>Customer Management</h1>
+      <input
+        type="text"
+        name="name"
+        value={newCustomer.name}
+        onChange={handleChange}
+        placeholder="Customer Name"
       />
-      <button onClick={handleAddCustomer}>Add Customer</button>
+      <input
+        type="email"
+        name="email"
+        value={newCustomer.email}
+        onChange={handleChange}
+        placeholder="Customer Email"
+      />
+      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name}
-            <button onClick={() => handleDeleteCustomer(customer.id)}>Delete</button>
-          </li>
+        {customers.map((customer) => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
