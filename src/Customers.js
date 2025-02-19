@@ -2,38 +2,41 @@
 import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const [customers, setCustomers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        const fetchCustomers = async () => {
-            const response = await fetch('/api/customers');
-            const data = await response.json();
-            setCustomers(data);
-            setLoading(false);
-        };
-        fetchCustomers();
-    }, []);
-
-    const removeCustomer = (id) => {
-        setCustomers(customers.filter(customer => customer.id !== id));
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
     };
+    fetchCustomers();
+  }, []);
 
-    if (loading) return <div>Loading...</div>;
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
 
-    return (
-        <div>
-            <h2>Customer List</h2>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.email}
-                        <button onClick={() => removeCustomer(customer.id)}>Remove</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Search customers"
+        value={searchTerm}
+        onChange={handleSearch}
+      />
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
 export default CustomerList;
