@@ -1,52 +1,44 @@
 ```python
 from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm, TransferForm
+from .forms import AccountForm, TransactionForm
 
 @login_required
-def bank_management_view(request):
-    user = request.user
-    accounts = Account.objects.filter(owner=user)
-    context = {'accounts': accounts}
-
+def manage_account(request):
     if request.method == 'POST':
-        if 'deposit' in request.POST:
-            deposit_form = DepositForm(request.POST)
-            if deposit_form.is_valid():
-                deposit_form.save(user)
-                return redirect('bank_management')
-        
-        elif 'withdraw' in request.POST:
-            withdrawal_form = WithdrawalForm(request.POST)
-            if withdrawal_form.is_valid():
-                withdrawal_form.save(user)
-                return redirect('bank_management')
-        
-        elif 'transfer' in request.POST:
-            transfer_form = TransferForm(request.POST)
-            if transfer_form.is_valid():
-                transfer_form.save(user)
-                return redirect('bank_management')
-
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return redirect('account_list')
     else:
-        deposit_form = DepositForm()
-        withdrawal_form = WithdrawalForm()
-        transfer_form = TransferForm()
+        form = AccountForm()
 
-    context.update({
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-        'transfer_form': transfer_form,
-    })
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/manage_account.html', {'form': form, 'accounts': accounts})
 
-    return render(request, 'bank_management.html', context)
+@login_required
+def make_transaction(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+            return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
 
-def ajax_account_balance(request):
-    if request.is_ajax() and request.method == "GET":
-        account_id = request.GET.get('account_id')
-        account = Account.objects.get(id=account_id)
-        return JsonResponse({'balance': account.balance})
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+    form = TransactionForm()
+    return render(request, 'bank/make_transaction.html', {'form': form, 'account': account})
+
+@login_required
+def transaction_history(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account)
+
+    return render(request, 'bank/transaction_history.html', {'account': account, 'transactions': transactions})
 ```
