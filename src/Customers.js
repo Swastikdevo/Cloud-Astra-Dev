@@ -1,38 +1,46 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [newCustomer, setNewCustomer] = useState('');
 
   useEffect(() => {
     const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
+      const response = await axios.get('/api/customers');
+      setCustomers(response.data);
     };
     fetchCustomers();
   }, []);
 
-  const handleSearch = (event) => {
-    setSearchQuery(event.target.value);
+  const handleAddCustomer = async () => {
+    const response = await axios.post('/api/customers', { name: newCustomer });
+    setCustomers([...customers, response.data]);
+    setNewCustomer('');
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleDeleteCustomer = async (id) => {
+    await axios.delete(`/api/customers/${id}`);
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
 
   return (
     <div>
+      <h2>Customer Management</h2>
       <input 
         type="text" 
-        placeholder="Search Customers" 
-        value={searchQuery} 
-        onChange={handleSearch} 
+        value={newCustomer} 
+        onChange={(e) => setNewCustomer(e.target.value)} 
+        placeholder="Add new customer"
       />
+      <button onClick={handleAddCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name}
+            <button onClick={() => handleDeleteCustomer(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
