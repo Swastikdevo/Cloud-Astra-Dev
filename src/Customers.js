@@ -1,56 +1,54 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch customers from an API or local storage
     const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
+      try {
+        const response = await fetch('/api/customers');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchCustomers();
   }, []);
 
-  const addCustomer = () => {
-    if (newCustomer) {
-      setCustomers([...customers, { name: newCustomer }]);
-      setNewCustomer('');
-    }
-  };
-
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <input 
-        type="text" 
-        value={newCustomer} 
-        onChange={e => setNewCustomer(e.target.value)} 
-        placeholder="Add new customer" 
-      />
-      <button onClick={addCustomer}>Add Customer</button>
-      <input 
-        type="text" 
-        value={searchTerm} 
-        onChange={e => setSearchTerm(e.target.value)} 
-        placeholder="Search customers" 
-      />
-      <ul>
-        {filteredCustomers.map((customer, index) => (
-          <li key={index}>{customer.name}</li>
-        ))}
-      </ul>
+      <h1>Customer List</h1>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+          </tr>
+        </thead>
+        <tbody>
+          {customers.map(customer => (
+            <tr key={customer.id}>
+              <td>{customer.name}</td>
+              <td>{customer.email}</td>
+              <td>{customer.phone}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
