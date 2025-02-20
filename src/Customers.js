@@ -1,54 +1,49 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const CustomerManagement = () => {
+    const [customers, setCustomers] = useState([]);
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-        setCustomers(data);
-      } catch (error) {
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
+    const addCustomer = () => {
+        setCustomers([...customers, { name, email }]);
+        setName('');
+        setEmail('');
     };
-    fetchCustomers();
-  }, []);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+    const deleteCustomer = (index) => {
+        const newCustomers = customers.filter((_, i) => i !== index);
+        setCustomers(newCustomers);
+    };
 
-  return (
-    <div>
-      <h1>Customer List</h1>
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-          </tr>
-        </thead>
-        <tbody>
-          {customers.map(customer => (
-            <tr key={customer.id}>
-              <td>{customer.name}</td>
-              <td>{customer.email}</td>
-              <td>{customer.phone}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+    return (
+        <div>
+            <h2>Customer Management</h2>
+            <input 
+                type="text" 
+                placeholder="Name" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)} 
+            />
+            <input 
+                type="email" 
+                placeholder="Email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+            />
+            <button onClick={addCustomer}>Add Customer</button>
+            <ul>
+                {customers.map((customer, index) => (
+                    <li key={index}>
+                        {customer.name} - {customer.email}
+                        <button onClick={() => deleteCustomer(index)}>Delete</button>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
