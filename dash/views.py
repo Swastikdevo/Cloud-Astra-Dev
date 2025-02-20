@@ -1,50 +1,41 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from .models import Account, Transaction, UserProfile
+from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
 
 @login_required
-@csrf_exempt
+@require_http_methods(["GET", "POST"])
 def manage_account(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        return render(request, 'account/manage.html', {'accounts': accounts})
-
-    elif request.method == 'POST':
+    if request.method == "POST":
         form = AccountForm(request.POST)
         if form.is_valid():
             account = form.save(commit=False)
             account.user = request.user
             account.save()
-            return JsonResponse({'success': True, 'message': 'Account created successfully!'})
-        return JsonResponse({'success': False, 'errors': form.errors})
+            return redirect('account_detail', account_id=account.id)
+    else:
+        form = AccountForm()
+
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/manage_account.html', {'form': form, 'accounts': accounts})
 
 @login_required
-@csrf_exempt
-def transfer_funds(request):
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            sender_account = form.cleaned_data['sender_account']
-            receiver_account = form.cleaned_data['receiver_account']
-            amount = form.cleaned_data['amount']
+@require_http_methods(["POST"])
+def make_transaction(request):
+    form = TransactionForm(request.POST)
+    if form.is_valid():
+        transaction = form.save(commit=False)
+        transaction.user = request.user
+        transaction.save()
+        return JsonResponse({'success': True, 'transaction_id': transaction.id})
+    return JsonResponse({'success': False, 'errors': form.errors})
 
-            if sender_account.balance >= amount:
-                sender_account.balance -= amount
-                receiver_account.balance += amount
-                sender_account.save()
-                receiver_account.save()
-
-                transaction = Transaction(sender=sender_account, receiver=receiver_account, amount=amount)
-                transaction.save()
-                return JsonResponse({'success': True, 'message': 'Transfer successful!'})
-            else:
-                return JsonResponse({'success': False, 'message': 'Insufficient balance!'})
-
-        return JsonResponse({'success': False, 'errors': form.errors})
-
-    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
+@login_required
+@require_http_methods(["GET"])
+def transaction_history(request):
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
 ```
