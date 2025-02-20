@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -16,28 +15,16 @@ const CustomerList = () => {
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  if (loading) return <p>Loading...</p>;
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <input
-        type="text"
-        placeholder="Search customers..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <ul>
-          {filteredCustomers.map(customer => (
-            <li key={customer.id}>{customer.name}</li>
-          ))}
-        </ul>
-      )}
+      <h2>Customer List</h2>
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>{customer.name}</li>
+        ))}
+      </ul>
     </div>
   );
 };
