@@ -1,46 +1,36 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
+from django.utils.decorators import method_decorator
+from django.views import View
 
-@login_required
-def account_overview(request):
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/account_overview.html', {'accounts': accounts})
+@method_decorator(login_required, name='dispatch')
+class BankView(View):
+    def get(self, request):
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank/home.html', {'accounts': accounts})
 
-@login_required
-@require_POST
-def create_account(request):
-    form = AccountForm(request.POST)
-    if form.is_valid():
-        account = form.save(commit=False)
-        account.user = request.user
-        account.save()
-        return JsonResponse({'status': 'success', 'account_id': account.id})
-    return JsonResponse({'status': 'error', 'errors': form.errors})
+    @csrf_exempt
+    def post(self, request):
+        if 'create_account' in request.POST:
+            form = AccountForm(request.POST)
+            if form.is_valid():
+                account = form.save(commit=False)
+                account.user = request.user
+                account.save()
+                return JsonResponse({'status': 'success', 'message': 'Account created successfully!'}, status=201)
+        
+        elif 'make_transaction' in request.POST:
+            form = TransactionForm(request.POST)
+            if form.is_valid():
+                transaction = form.save(commit=False)
+                transaction.account = Account.objects.get(id=request.POST['account_id'])
+                transaction.save()
+                return JsonResponse({'status': 'success', 'message': 'Transaction completed!'}, status=201)
 
-@login_required
-def account_detail(request, account_id):
-    account = Account.objects.get(id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account)
-    return render(request, 'bank/account_detail.html', {'account': account, 'transactions': transactions})
-
-@login_required
-@require_POST
-def make_transaction(request, account_id):
-    form = TransactionForm(request.POST)
-    if form.is_valid():
-        transaction = form.save(commit=False)
-        transaction.account = Account.objects.get(id=account_id, user=request.user)
-        transaction.save()
-        return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
-    return JsonResponse({'status': 'error', 'errors': form.errors})
-
-@login_required
-def transaction_history(request):
-    transactions = Transaction.objects.filter(account__user=request.user).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
+        return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
 ```
