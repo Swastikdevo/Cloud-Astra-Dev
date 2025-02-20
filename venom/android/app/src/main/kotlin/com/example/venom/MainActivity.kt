@@ -28,7 +28,7 @@ class HomePage extends StatelessWidget {
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
+          children: [
             Text(
               'Welcome to Flutter!',
               style: TextStyle(fontSize: 24),
@@ -59,7 +59,7 @@ class SecondPage extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'This is the Second Page',
+          'This is the Second Page!',
           style: TextStyle(fontSize: 24),
         ),
       ),
