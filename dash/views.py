@@ -1,40 +1,53 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
+from django.contrib import messages
 from .models import Account, Transaction
-from .forms import TransferForm
+import json
 
+@csrf_exempt
 @login_required
-def account_dashboard(request):
-    user_accounts = Account.objects.filter(owner=request.user)
-    transactions = Transaction.objects.filter(account__in=user_accounts).order_by('-date')
-    form = TransferForm()
+def account_management(request):
+    if request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'account_management.html', {'accounts': accounts})
+    
+    elif request.method == 'POST':
+        data = json.loads(request.body)
+        action = data.get('action')
 
-    if request.method == 'POST':
-        form = TransferForm(request.POST)
-        if form.is_valid():
-            source_account = form.cleaned_data['source_account']
-            target_account = form.cleaned_data['target_account']
-            amount = form.cleaned_data['amount']
-            if source_account.balance >= amount:
-                source_account.balance -= amount
-                target_account.balance += amount
-                source_account.save()
-                target_account.save()
-                
-                Transaction.objects.create(account=source_account, amount=-amount)
-                Transaction.objects.create(account=target_account, amount=amount)
+        if action == 'create_account':
+            account_type = data.get('account_type')
+            initial_balance = data.get('initial_balance', 0)
+            account = Account.objects.create(user=request.user, account_type=account_type, balance=initial_balance)
+            messages.success(request, 'Account created successfully.')
+            return JsonResponse({'account_id': account.id})
 
-                return JsonResponse({'success': True, 'message': 'Transfer successful'})
+        elif action == 'deposit':
+            account_id = data.get('account_id')
+            amount = data.get('amount')
+            account = Account.objects.get(id=account_id, user=request.user)
+            account.balance += amount
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
+            messages.success(request, 'Deposit successful.')
+            return JsonResponse({'new_balance': account.balance})
+
+        elif action == 'withdraw':
+            account_id = data.get('account_id')
+            amount = data.get('amount')
+            account = Account.objects.get(id=account_id, user=request.user)
+            if account.balance >= amount:
+                account.balance -= amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
+                messages.success(request, 'Withdrawal successful.')
+                return JsonResponse({'new_balance': account.balance})
             else:
-                return JsonResponse({'success': False, 'message': 'Insufficient funds'})
+                return JsonResponse({'error': 'Insufficient funds'}, status=400)
 
-    context = {
-        'accounts': user_accounts,
-        'transactions': transactions,
-        'form': form
-    }
-    return render(request, 'bank/account_dashboard.html', context)
+        else:
+            return JsonResponse({'error': 'Invalid action'}, status=400)
 ```
