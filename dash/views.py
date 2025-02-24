@@ -1,70 +1,56 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from .models import BankAccount, Transaction
-from .forms import BankAccountForm, TransactionForm
-from django.utils.decorators import method_decorator
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawalForm
 
-@method_decorator(login_required, name='dispatch')
-def account_overview(request):
-    accounts = BankAccount.objects.filter(user=request.user)
-    return render(request, 'bank/account_overview.html', {'accounts': accounts})
-
-@require_GET
 @login_required
-def view_account(request, account_id):
-    try:
-        account = BankAccount.objects.get(id=account_id, user=request.user)
-    except BankAccount.DoesNotExist:
-        messages.error(request, "Account does not exist.")
-        return redirect('account_overview')
+def account_dashboard(request):
+    user_account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=user_account).order_by('-date')
     
-    transactions = Transaction.objects.filter(account=account)
-    return render(request, 'bank/view_account.html', {'account': account, 'transactions': transactions})
+    if request.method == 'POST':
+        deposit_form = DepositForm(request.POST) if 'deposit' in request.POST else WithdrawalForm(request.POST)
+        
+        if deposit_form.is_valid():
+            amount = deposit_form.cleaned_data['amount']
+            if 'deposit' in request.POST:
+                user_account.balance += amount
+                user_account.save()
+                Transaction.objects.create(account=user_account, amount=amount, transaction_type='Deposit')
+                return redirect('account_dashboard')
+            elif 'withdraw' in request.POST and amount <= user_account.balance:
+                user_account.balance -= amount
+                user_account.save()
+                Transaction.objects.create(account=user_account, amount=amount, transaction_type='Withdrawal')
+                return redirect('account_dashboard')
 
-@require_POST
+    deposit_form = DepositForm()
+    withdrawal_form = WithdrawalForm()
+    
+    context = {
+        'account': user_account,
+        'transactions': transactions,
+        'deposit_form': deposit_form,
+        'withdrawal_form': withdrawal_form,
+    }
+    
+    return render(request, 'account/dashboard.html', context)
+
 @login_required
-def create_account(request):
-    form = BankAccountForm(request.POST)
-    if form.is_valid():
-        account = form.save(commit=False)
-        account.user = request.user
-        account.save()
-        messages.success(request, "Account created successfully.")
-        return redirect('account_overview')
-    else:
-        messages.error(request, "Failed to create account. Please correct the errors.")
-    return render(request, 'bank/create_account.html', {'form': form})
+def transaction_history(request):
+    user_account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=user_account).order_by('-date')
+    
+    return render(request, 'account/transaction_history.html', {'transactions': transactions})
 
-@require_POST
 @login_required
-def make_transaction(request, account_id):
-    try:
-        account = BankAccount.objects.get(id=account_id, user=request.user)
-    except BankAccount.DoesNotExist:
-        return JsonResponse({'error': 'Account not found.'}, status=404)
-
-    form = TransactionForm(request.POST)
-    if form.is_valid():
-        transaction = form.save(commit=False)
-        transaction.account = account
-        transaction.save()
-        messages.success(request, "Transaction completed successfully.")
-        return JsonResponse({'message': 'Transaction successful.'}, status=200)
-    else:
-        return JsonResponse({'error': 'Transaction failed. Please correct the errors.'}, status=400)
-
-@require_GET
-@login_required
-def transaction_history(request, account_id):
-    try:
-        account = BankAccount.objects.get(id=account_id, user=request.user)
-        transactions = Transaction.objects.filter(account=account)
-        return render(request, 'bank/transaction_history.html', {'transactions': transactions, 'account': account})
-    except BankAccount.DoesNotExist:
-        messages.error(request, "Account does not exist.")
-        return redirect('account_overview')
+def account_summary(request):
+    user_account = Account.objects.get(user=request.user)
+    return JsonResponse({
+        'account_number': user_account.account_number,
+        'balance': user_account.balance,
+        'owner': user_account.user.username
+    })
 ```
