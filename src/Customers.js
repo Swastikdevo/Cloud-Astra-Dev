@@ -1,47 +1,50 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
     const [customers, setCustomers] = useState([]);
-    const [filteredCustomers, setFilteredCustomers] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
 
     useEffect(() => {
-        fetch('/api/customers')
-            .then(response => response.json())
-            .then(data => setCustomers(data));
+        const fetchCustomers = async () => {
+            const response = await fetch('/api/customers');
+            const data = await response.json();
+            setCustomers(data);
+        };
+        fetchCustomers();
     }, []);
 
-    useEffect(() => {
-        setFilteredCustomers(
-            customers.filter(customer => 
-                customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-        );
-    }, [searchTerm, customers]);
-
-    const handleSearchChange = (event) => {
-        setSearchTerm(event.target.value);
+    const addCustomer = async (e) => {
+        e.preventDefault();
+        const newCustomer = { name, email };
+        const response = await fetch('/api/customers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newCustomer),
+        });
+        const addedCustomer = await response.json();
+        setCustomers([...customers, addedCustomer]);
+        setName('');
+        setEmail('');
     };
 
     return (
         <div>
-            <input 
-                type="text" 
-                placeholder="Search Customers" 
-                value={searchTerm} 
-                onChange={handleSearchChange} 
-            />
+            <h2>Customer Management System</h2>
+            <form onSubmit={addCustomer}>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" required />
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
+                <button type="submit">Add Customer</button>
+            </form>
             <ul>
-                {filteredCustomers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.email}
-                    </li>
+                {customers.map((customer) => (
+                    <li key={customer.id}>{customer.name} - {customer.email}</li>
                 ))}
             </ul>
         </div>
     );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
