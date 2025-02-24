@@ -1,50 +1,48 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import TransactionForm
 
-@require_http_methods(["GET", "POST"])
-def manage_accounts(request):
-    if request.method == 'POST':
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('manage_accounts')
-    else:
-        form = AccountForm()
+@login_required
+def account_dashboard(request):
+    accounts = Account.objects.filter(owner=request.user)
+    return render(request, 'bank/account_dashboard.html', {'accounts': accounts})
 
-    accounts = Account.objects.all()
-    return render(request, 'bank/manage_accounts.html', {'form': form, 'accounts': accounts})
+@login_required
+def create_transaction(request, account_id):
+    account = Account.objects.get(id=account_id, owner=request.user)
 
-@require_http_methods(["GET", "POST"])
-def record_transaction(request):
     if request.method == 'POST':
         form = TransactionForm(request.POST)
         if form.is_valid():
-            transaction = form.save()
-            return JsonResponse({'success': True, 'transaction_id': transaction.id})
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+            return redirect('account_dashboard')
     else:
         form = TransactionForm()
 
-    return render(request, 'bank/record_transaction.html', {'form': form})
+    return render(request, 'bank/create_transaction.html', {'form': form, 'account': account})
 
-@require_http_methods(["GET"])
-def account_balance(request, account_id):
-    try:
-        account = Account.objects.get(id=account_id)
-        balance = account.get_balance()
-        return JsonResponse({'account_id': account_id, 'balance': balance})
-    except Account.DoesNotExist:
-        return JsonResponse({'error': 'Account not found'}, status=404)
+@login_required
+def transaction_history(request, account_id):
+    account = Account.objects.get(id=account_id, owner=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
 
-@require_http_methods(["GET"])
-def list_transactions(request, account_id):
-    try:
-        account = Account.objects.get(id=account_id)
-        transactions = Transaction.objects.filter(account=account)
-        return render(request, 'bank/list_transactions.html', {'transactions': transactions, 'account': account})
-    except Account.DoesNotExist:
-        return JsonResponse({'error': 'Account not found'}, status=404)
+    return render(request, 'bank/transaction_history.html', {'transactions': transactions, 'account': account})
+
+@login_required
+def account_summary(request, account_id):
+    account = Account.objects.get(id=account_id, owner=request.user)
+    total_balance = account.balance
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    
+    return render(request, 'bank/account_summary.html', {'account': account, 'total_balance': total_balance, 'transactions': transactions})
+
+@login_required
+def ajax_balance_check(request, account_id):
+    account = Account.objects.get(id=account_id, owner=request.user)
+    return JsonResponse({'balance': account.balance}, status=200)
 ```
