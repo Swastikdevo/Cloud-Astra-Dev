@@ -1,14 +1,14 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const CustomerForm = ({ onAddCustomer }) => {
+const CustomerForm = ({ onSubmit }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onAddCustomer({ name, email, phone });
+    onSubmit({ name, email, phone });
     setName('');
     setEmail('');
     setPhone('');
@@ -16,38 +16,62 @@ const CustomerForm = ({ onAddCustomer }) => {
 
   return (
     <form onSubmit={handleSubmit}>
-      <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      <input type="text" placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+      <input
+        type="text"
+        placeholder="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+      />
+      <input
+        type="tel"
+        placeholder="Phone"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        required
+      />
       <button type="submit">Add Customer</button>
     </form>
   );
 };
 
-const CustomerList = () => {
+const CustomerList = ({ customers, onDelete }) => (
+  <ul>
+    {customers.map((customer, index) => (
+      <li key={index}>
+        {customer.name} - {customer.email} - {customer.phone}
+        <button onClick={() => onDelete(index)}>Delete</button>
+      </li>
+    ))}
+  </ul>
+);
+
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
 
   const addCustomer = (customer) => {
     setCustomers((prev) => [...prev, customer]);
   };
 
-  const filteredCustomers = customers.filter((customer) => customer.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const deleteCustomer = (index) => {
+    setCustomers((prev) => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <div>
-      <CustomerForm onAddCustomer={addCustomer} />
-      <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-      <ul>
-        {filteredCustomers.map((customer, index) => (
-          <li key={index}>
-            {customer.name} - {customer.email} - {customer.phone}
-          </li>
-        ))}
-      </ul>
+      <h1>Customer Management</h1>
+      <CustomerForm onSubmit={addCustomer} />
+      <CustomerList customers={customers} onDelete={deleteCustomer} />
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
