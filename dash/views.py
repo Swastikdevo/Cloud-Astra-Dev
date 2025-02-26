@@ -1,62 +1,64 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from .models import BankAccount, Transaction
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.views import View
-from django.core.exceptions import ObjectDoesNotExist
+from django.http import JsonResponse
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawForm, TransferForm
 
-@method_decorator(login_required, name='dispatch')
-class BankAccountView(View):
+@login_required
+def bank_dashboard(request):
+    user_accounts = Account.objects.filter(user=request.user)
+    account_balance = sum(account.balance for account in user_accounts)
 
-    def get(self, request):
-        accounts = BankAccount.objects.filter(user=request.user)
-        return render(request, 'bank/accounts.html', {'accounts': accounts})
-
-    @csrf_exempt
-    def post(self, request):
-        action = request.POST.get('action')
-
-        if action == 'create':
-            account_type = request.POST.get('account_type')
-            initial_balance = request.POST.get('initial_balance', 0)
-            account = BankAccount.objects.create(
-                user=request.user,
-                account_type=account_type,
-                balance=initial_balance
-            )
-            return JsonResponse({'status': 'success', 'account_id': account.id})
-
-        elif action == 'deposit':
-            account_id = request.POST.get('account_id')
-            amount = float(request.POST.get('amount', 0))
-
-            try:
-                account = BankAccount.objects.get(id=account_id, user=request.user)
+    if request.method == 'POST':
+        action_type = request.POST.get('action')
+        if action_type == 'deposit':
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                account = form.cleaned_data['account']
+                amount = form.cleaned_data['amount']
                 account.balance += amount
                 account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-                return JsonResponse({'status': 'success', 'new_balance': account.balance})
-            except ObjectDoesNotExist:
-                return JsonResponse({'status': 'error', 'message': 'Account not found'})
-
-        elif action == 'withdraw':
-            account_id = request.POST.get('account_id')
-            amount = float(request.POST.get('amount', 0))
-
-            try:
-                account = BankAccount.objects.get(id=account_id, user=request.user)
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                return redirect('bank_dashboard')
+        
+        elif action_type == 'withdraw':
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                account = form.cleaned_data['account']
+                amount = form.cleaned_data['amount']
                 if account.balance >= amount:
                     account.balance -= amount
                     account.save()
-                    Transaction.objects.create(account=account, amount=-amount, transaction_type='withdrawal')
-                    return JsonResponse({'status': 'success', 'new_balance': account.balance})
-                else:
-                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
-            except ObjectDoesNotExist:
-                return JsonResponse({'status': 'error', 'message': 'Account not found'})
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                    return redirect('bank_dashboard')
+        
+        elif action_type == 'transfer':
+            form = TransferForm(request.POST)
+            if form.is_valid():
+                from_account = form.cleaned_data['from_account']
+                to_account = form.cleaned_data['to_account']
+                amount = form.cleaned_data['amount']
+                if from_account.balance >= amount:
+                    from_account.balance -= amount
+                    to_account.balance += amount
+                    from_account.save()
+                    to_account.save()
+                    Transaction.objects.create(account=from_account, amount=amount, transaction_type='Transfer Out')
+                    Transaction.objects.create(account=to_account, amount=amount, transaction_type='Transfer In')
+                    return redirect('bank_dashboard')
 
-        return JsonResponse({'status': 'error', 'message': 'Invalid action'})
+    deposit_form = DepositForm()
+    withdraw_form = WithdrawForm()
+    transfer_form = TransferForm()
+    
+    context = {
+        'accounts': user_accounts,
+        'total_balance': account_balance,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+        'transfer_form': transfer_form,
+    }
+
+    return render(request, 'bank/dashboard.html', context)
 ```
