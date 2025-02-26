@@ -1,64 +1,41 @@
 ```python
 from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm, TransferForm
+from .forms import AccountForm, TransactionForm
 
 @login_required
-def bank_dashboard(request):
-    user_accounts = Account.objects.filter(user=request.user)
-    account_balance = sum(account.balance for account in user_accounts)
+@require_http_methods(["GET", "POST"])
+def manage_account(request):
+    if request.method == "POST":
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return redirect('account_list')
+    else:
+        form = AccountForm()
 
-    if request.method == 'POST':
-        action_type = request.POST.get('action')
-        if action_type == 'deposit':
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                account = form.cleaned_data['account']
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return redirect('bank_dashboard')
-        
-        elif action_type == 'withdraw':
-            form = WithdrawForm(request.POST)
-            if form.is_valid():
-                account = form.cleaned_data['account']
-                amount = form.cleaned_data['amount']
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                    return redirect('bank_dashboard')
-        
-        elif action_type == 'transfer':
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                from_account = form.cleaned_data['from_account']
-                to_account = form.cleaned_data['to_account']
-                amount = form.cleaned_data['amount']
-                if from_account.balance >= amount:
-                    from_account.balance -= amount
-                    to_account.balance += amount
-                    from_account.save()
-                    to_account.save()
-                    Transaction.objects.create(account=from_account, amount=amount, transaction_type='Transfer Out')
-                    Transaction.objects.create(account=to_account, amount=amount, transaction_type='Transfer In')
-                    return redirect('bank_dashboard')
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/manage_account.html', {'form': form, 'accounts': accounts})
 
-    deposit_form = DepositForm()
-    withdraw_form = WithdrawForm()
-    transfer_form = TransferForm()
-    
-    context = {
-        'accounts': user_accounts,
-        'total_balance': account_balance,
-        'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
-        'transfer_form': transfer_form,
-    }
+@login_required
+@require_http_methods(["POST"])
+def create_transaction(request):
+    form = TransactionForm(request.POST)
+    if form.is_valid():
+        transaction = form.save(commit=False)
+        transaction.user = request.user
+        transaction.save()
+        return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
+    return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
 
-    return render(request, 'bank/dashboard.html', context)
+@login_required
+@require_http_methods(["GET"])
+def transaction_history(request):
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
 ```
