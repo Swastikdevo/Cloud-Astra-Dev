@@ -2,36 +2,49 @@
 import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
-  }, []);
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            try {
+                const response = await fetch('/api/customers');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                setCustomers(data);
+            } catch (error) {
+                setError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCustomers();
+    }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
+    const deleteCustomer = async (id) => {
+        const response = await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            setCustomers(customers.filter(customer => customer.id !== id));
+        }
+    };
 
-  return (
-    <div>
-      <input
-        type="text"
-        placeholder="Search customers..."
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>Error: {error}</div>;
+
+    return (
+        <div>
+            <h2>Customer List</h2>
+            <ul>
+                {customers.map(customer => (
+                    <li key={customer.id}>
+                        {customer.name}
+                        <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
 export default CustomerList;
