@@ -1,63 +1,58 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
     const [customers, setCustomers] = useState([]);
-    const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
-    const [loading, setLoading] = useState(true);
+    const [newCustomer, setNewCustomer] = useState('');
 
     useEffect(() => {
-        const fetchCustomers = async () => {
-            setLoading(true);
-            try {
-                const response = await axios.get('/api/customers');
-                setCustomers(response.data);
-            } catch (error) {
-                console.error('Error fetching customers', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchCustomers();
+        fetch('/api/customers')
+            .then(response => response.json())
+            .then(data => setCustomers(data));
     }, []);
 
-    const handleChange = (e) => {
-        setNewCustomer({
-            ...newCustomer,
-            [e.target.name]: e.target.value,
-        });
+    const addCustomer = () => {
+        if (newCustomer) {
+            const updatedCustomers = [...customers, { name: newCustomer }];
+            setCustomers(updatedCustomers);
+            setNewCustomer('');
+            // Simulating a POST request
+            fetch('/api/customers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newCustomer })
+            });
+        }
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await axios.post('/api/customers', newCustomer);
-            setCustomers([...customers, response.data]);
-            setNewCustomer({ name: '', email: '' });
-        } catch (error) {
-            console.error('Error adding customer', error);
-        }
+    const removeCustomer = (name) => {
+        const updatedCustomers = customers.filter(customer => customer.name !== name);
+        setCustomers(updatedCustomers);
+        // Simulating a DELETE request
+        fetch(`/api/customers/${name}`, { method: 'DELETE' });
     };
 
     return (
         <div>
-            <h1>Customer Management</h1>
-            {loading ? <p>Loading...</p> : (
-                <ul>
-                    {customers.map(customer => (
-                        <li key={customer.id}>{customer.name} - {customer.email}</li>
-                    ))}
-                </ul>
-            )}
-            <form onSubmit={handleSubmit}>
-                <input type="text" name="name" value={newCustomer.name} onChange={handleChange} placeholder="Name" required />
-                <input type="email" name="email" value={newCustomer.email} onChange={handleChange} placeholder="Email" required />
-                <button type="submit">Add Customer</button>
-            </form>
+            <h2>Customer Management</h2>
+            <input
+                type="text"
+                value={newCustomer}
+                onChange={e => setNewCustomer(e.target.value)}
+                placeholder="Add new customer"
+            />
+            <button onClick={addCustomer}>Add</button>
+            <ul>
+                {customers.map((customer, index) => (
+                    <li key={index}>
+                        {customer.name}
+                        <button onClick={() => removeCustomer(customer.name)}>Remove</button>
+                    </li>
+                ))}
+            </ul>
         </div>
     );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
