@@ -3,60 +3,41 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [search, setSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/customers')
+    fetch('https://api.example.com/customers')
       .then(response => response.json())
-      .then(data => setCustomers(data));
+      .then(data => {
+        setCustomers(data);
+        setIsLoading(false);
+      });
   }, []);
 
-  const addCustomer = () => {
-    const newCustomer = { name, email };
-    fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCustomer),
-    }).then(() => {
-      setCustomers([...customers, newCustomer]);
-      setName('');
-      setEmail('');
-    });
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSearch = (event) => {
+    setSearchTerm(event.target.value);
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(search.toLowerCase())
-  );
+  if (isLoading) return <div>Loading...</div>;
 
   return (
     <div>
-      <h1>Customer Management</h1>
       <input
         type="text"
-        placeholder="Search customers"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
+        placeholder="Search customers..."
+        value={searchTerm}
+        onChange={handleSearch}
       />
-      <div>
-        <input
-          type="text"
-          placeholder="Name"
-          value={name}
-          onChange={e => setName(e.target.value)}
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-        />
-        <button onClick={addCustomer}>Add Customer</button>
-      </div>
       <ul>
-        {filteredCustomers.map((customer, index) => (
-          <li key={index}>{customer.name} - {customer.email}</li>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+          </li>
         ))}
       </ul>
     </div>
