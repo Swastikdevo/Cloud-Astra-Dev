@@ -1,47 +1,52 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm
-from django.core.exceptions import PermissionDenied
+import json
 
 @login_required
-def manage_account(request, account_id):
-    account = get_object_or_404(Account, id=account_id, owner=request.user)
+@csrf_exempt
+def manage_account(request):
+    if request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'account/manage.html', {'accounts': accounts})
     
-    if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, type='deposit')
-                return redirect('account_detail', account_id=account.id)
-        elif 'withdraw' in request.POST:
-            form = WithdrawForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount <= account.balance:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, type='withdraw')
-                    return redirect('account_detail', account_id=account.id)
-                else:
-                    form.add_error('amount', 'Insufficient funds')
-        else:
-            raise PermissionDenied()
-    else:
-        form = DepositForm()
-        withdraw_form = WithdrawForm()
-    
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    
-    return render(request, 'account/manage_account.html', {
-        'account': account,
-        'form': form,
-        'withdraw_form': withdraw_form,
-        'transactions': transactions,
-    })
+    elif request.method == 'POST':
+        data = json.loads(request.body)
+        action = data.get('action')
+
+        if action == 'create':
+            account_type = data.get('account_type')
+            balance = data.get('balance', 0)
+            new_account = Account.objects.create(user=request.user, account_type=account_type, balance=balance)
+            messages.success(request, f'Account {new_account.account_type} created successfully.')
+            return JsonResponse({'status': 'success', 'account_id': new_account.id})
+
+        elif action == 'deposit':
+            account_id = data.get('account_id')
+            amount = data.get('amount', 0)
+            account = Account.objects.get(id=account_id, user=request.user)
+            account.balance += amount
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+            messages.success(request, 'Deposit successful.')
+            return JsonResponse({'status': 'success', 'new_balance': account.balance})
+
+        elif action == 'withdraw':
+            account_id = data.get('account_id')
+            amount = data.get('amount', 0)
+            account = Account.objects.get(id=account_id, user=request.user)
+            if amount > account.balance:
+                messages.error(request, 'Insufficient balance.')
+                return JsonResponse({'status': 'error', 'message': 'Insufficient balance.'})
+            account.balance -= amount
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+            messages.success(request, 'Withdrawal successful.')
+            return JsonResponse({'status': 'success', 'new_balance': account.balance})
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request.'})
 ```
