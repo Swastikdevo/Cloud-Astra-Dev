@@ -5,27 +5,28 @@ const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
 
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
   const fetchCustomers = async () => {
     const response = await fetch('/api/customers');
     const data = await response.json();
     setCustomers(data);
   };
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
-
-  const filteredCustomers = customers.filter(customer => 
+  const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search Customers" 
-        value={searchTerm} 
-        onChange={e => setSearchTerm(e.target.value)} 
+      <h2>Customer List</h2>
+      <input
+        type="text"
+        placeholder="Search customers"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
       />
       <ul>
         {filteredCustomers.map(customer => (
