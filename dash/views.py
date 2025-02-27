@@ -2,53 +2,65 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib import messages
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm
+from .forms import AccountForm, TransactionForm
 
 @login_required
-@csrf_exempt
-def manage_account(request):
-    account = Account.objects.get(user=request.user)
-
+def account_management_view(request):
     if request.method == 'POST':
-        action = request.POST.get('action')
-
-        if action == 'deposit':
-            form = DepositForm(request.POST)
+        if 'create_account' in request.POST:
+            form = AccountForm(request.POST)
             if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
+                account = form.save(commit=False)
+                account.user = request.user
                 account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                messages.success(request, 'Deposit successful!')
-                return redirect('manage_account')
-
-        elif action == 'withdraw':
-            form = WithdrawalForm(request.POST)
+                return redirect('account_management')
+        
+        elif 'make_transaction' in request.POST:
+            form = TransactionForm(request.POST)
             if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                    messages.success(request, 'Withdrawal successful!')
-                else:
-                    messages.error(request, 'Insufficient funds!')
-                return redirect('manage_account')
+                transaction = form.save(commit=False)
+                transaction.user = request.user
+                transaction.save()
+                return redirect('account_management')
+    
+    accounts = Account.objects.filter(user=request.user)
+    transactions = Transaction.objects.filter(user=request.user)
 
-    else:
-        deposit_form = DepositForm()
-        withdrawal_form = WithdrawalForm()
+    account_form = AccountForm()
+    transaction_form = TransactionForm()
 
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    context = {
+        'accounts': accounts,
+        'transactions': transactions,
+        'account_form': account_form,
+        'transaction_form': transaction_form,
+    }
+
+    return render(request, 'bank/account_management.html', context)
+
+@login_required
+def account_details_view(request, account_id):
+    try:
+        account = Account.objects.get(id=account_id, user=request.user)
+    except Account.DoesNotExist:
+        return JsonResponse({'error': 'Account not found'}, status=404)
+
+    transactions = Transaction.objects.filter(account=account)
 
     context = {
         'account': account,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
         'transactions': transactions,
     }
-    return render(request, 'bank/manage_account.html', context)
+
+    return render(request, 'bank/account_details.html', context)
+
+@login_required
+def delete_account_view(request, account_id):
+    try:
+        account = Account.objects.get(id=account_id, user=request.user)
+        account.delete()
+        return JsonResponse({'success': 'Account deleted successfully.'}, status=200)
+    except Account.DoesNotExist:
+        return JsonResponse({'error': 'Account not found'}, status=404)
 ```
