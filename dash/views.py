@@ -1,48 +1,47 @@
 ```python
-from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
-
-@csrf_exempt
-@login_required
-def manage_account(request, account_id=None):
-    if request.method == 'GET':
-        if account_id:
-            account = Account.objects.get(pk=account_id)
-            form = AccountForm(instance=account)
-            transactions = Transaction.objects.filter(account=account)
-            return render(request, 'bank/account_detail.html', {'account': account, 'form': form, 'transactions': transactions})
-        else:
-            form = AccountForm()
-            return render(request, 'bank/account_form.html', {'form': form})
-
-    elif request.method == 'POST':
-        if account_id:
-            account = Account.objects.get(pk=account_id)
-            form = AccountForm(request.POST, instance=account)
-        else:
-            form = AccountForm(request.POST)
-
-        if form.is_valid():
-            account = form.save()
-            return redirect('account_detail', account_id=account.id)
-
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+from .forms import DepositForm, WithdrawForm
+from django.core.exceptions import PermissionDenied
 
 @login_required
-def create_transaction(request, account_id):
-    if request.method == 'POST':
-        account = Account.objects.get(pk=account_id)
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = account
-            transaction.save()
-            return redirect('account_detail', account_id=account.id)
+def manage_account(request, account_id):
+    account = get_object_or_404(Account, id=account_id, owner=request.user)
     
-    form = TransactionForm()
-    return render(request, 'bank/transaction_form.html', {'form': form, 'account_id': account_id})
+    if request.method == 'POST':
+        if 'deposit' in request.POST:
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, type='deposit')
+                return redirect('account_detail', account_id=account.id)
+        elif 'withdraw' in request.POST:
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                if amount <= account.balance:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, type='withdraw')
+                    return redirect('account_detail', account_id=account.id)
+                else:
+                    form.add_error('amount', 'Insufficient funds')
+        else:
+            raise PermissionDenied()
+    else:
+        form = DepositForm()
+        withdraw_form = WithdrawForm()
+    
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    
+    return render(request, 'account/manage_account.html', {
+        'account': account,
+        'form': form,
+        'withdraw_form': withdraw_form,
+        'transactions': transactions,
+    })
 ```
