@@ -3,32 +3,37 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch('https://api.example.com/customers');
+        if (!response.ok) throw new Error('Failed to fetch customers');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCustomers();
   }, []);
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
+  if (loading) return <div>Loading customers...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search customers"
-        value={searchTerm}
-        onChange={handleSearch}
-      />
+      <h1>Customer List</h1>
       <ul>
-        {customers
-          .filter(customer => customer.name.toLowerCase().includes(searchTerm.toLowerCase()))
-          .map(customer => (
-            <li key={customer.id}>{customer.name}</li>
-          ))}
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+          </li>
+        ))}
       </ul>
     </div>
   );
