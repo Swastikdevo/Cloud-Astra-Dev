@@ -1,69 +1,66 @@
 ```python
 from django.shortcuts import render, redirect
-from django.views.decorators.http import require_http_methods
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import Account, Transaction
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm, TransferForm
+from django.core.exceptions import ObjectDoesNotExist
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def bank_operations(request):
-    if request.method == 'POST':
+@csrf_exempt
+def bank_management_view(request):
+    if request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank_management.html', {'accounts': accounts})
+
+    elif request.method == 'POST':
         action = request.POST.get('action')
 
-        if action == 'deposit':
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account = Account.objects.get(user=request.user)
+        if action == 'create_account':
+            account_name = request.POST.get('account_name')
+            account_balance = request.POST.get('initial_balance', 0)
+            account = Account.objects.create(
+                user=request.user,
+                name=account_name,
+                balance=account_balance
+            )
+            messages.success(request, f'Account "{account.name}" created successfully!')
+            return redirect('bank_management')
+
+        elif action == 'deposit':
+            account_id = request.POST.get('account_id')
+            amount = float(request.POST.get('amount', 0))
+            try:
+                account = Account.objects.get(id=account_id, user=request.user)
                 account.balance += amount
                 account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                messages.success(request, 'Deposit successful!')
-                return redirect('bank_operations')
+                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
+                messages.success(request, f'Deposited ${amount} to "{account.name}".')
+            except ObjectDoesNotExist:
+                messages.error(request, 'Account not found.')
+            return redirect('bank_management')
 
         elif action == 'withdraw':
-            form = WithdrawForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account = Account.objects.get(user=request.user)
-                if amount <= account.balance:
+            account_id = request.POST.get('account_id')
+            amount = float(request.POST.get('amount', 0))
+            try:
+                account = Account.objects.get(id=account_id, user=request.user)
+                if account.balance >= amount:
                     account.balance -= amount
                     account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdraw')
-                    messages.success(request, 'Withdrawal successful!')
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='withdraw')
+                    messages.success(request, f'Withdrew ${amount} from "{account.name}".')
                 else:
-                    messages.error(request, 'Insufficient funds!')
-                return redirect('bank_operations')
+                    messages.error(request, 'Insufficient funds.')
+            except ObjectDoesNotExist:
+                messages.error(request, 'Account not found.')
+            return redirect('bank_management')
 
-        elif action == 'transfer':
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                recipient_username = form.cleaned_data['recipient']
-                account = Account.objects.get(user=request.user)
-                recipient_account = Account.objects.get(user__username=recipient_username)
-                if amount <= account.balance:
-                    account.balance -= amount
-                    recipient_account.balance += amount
-                    account.save()
-                    recipient_account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer to ' + recipient_username)
-                    Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transfer from ' + request.user.username)
-                    messages.success(request, 'Transfer successful!')
-                else:
-                    messages.error(request, 'Insufficient funds!')
-                return redirect('bank_operations')
+        elif action == 'view_transactions':
+            account_id = request.POST.get('account_id')
+            transactions = Transaction.objects.filter(account_id=account_id)
+            return JsonResponse({'transactions': list(transactions.values())})
 
-    else:
-        deposit_form = DepositForm()
-        withdraw_form = WithdrawForm()
-        transfer_form = TransferForm()
-
-    return render(request, 'bank_operations.html', {
-        'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
-        'transfer_form': transfer_form,
-    })
+    return JsonResponse({'error': 'Invalid request method.'}, status=400)
 ```
