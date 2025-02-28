@@ -9,7 +9,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'My First Flutter App',
+      title: 'Flutter Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -59,7 +59,7 @@ class SecondScreen extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'This is the Second Screen!',
+          'This is the second screen!',
           style: TextStyle(fontSize: 24),
         ),
       ),
