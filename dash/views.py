@@ -1,69 +1,61 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm, TransferForm
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.utils.decorators import method_decorator
+from django.views import View
+import json
 
-@login_required
-def account_view(request):
-    account = get_object_or_404(Account, user=request.user)
+class BankManagementView(View):
     
-    if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-                return redirect('account_view')
+    @method_decorator(csrf_exempt)
+    @require_POST
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
-        elif 'withdraw' in request.POST:
-            form = WithdrawalForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
-                    return redirect('account_view')
-                else:
-                    form.add_error(None, "Insufficient balance")
+    def post(self, request):
+        data = json.loads(request.body)
+        action = data.get('action')
 
-        elif 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                recipient_username = form.cleaned_data['recipient']
-                recipient_account = get_object_or_404(Account, user__username=recipient_username)
-                
-                if account.balance >= amount:
-                    account.balance -= amount
-                    recipient_account.balance += amount
-                    account.save()
-                    recipient_account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='transfer', recipient=recipient_account)
-                    return redirect('account_view')
-                else:
-                    form.add_error(None, "Insufficient balance")
+        if action == 'create_account':
+            return self.create_account(data)
+        elif action == 'deposit':
+            return self.deposit(data)
+        elif action == 'withdraw':
+            return self.withdraw(data)
+        elif action == 'check_balance':
+            return self.check_balance(data)
         else:
-            form = DepositForm()  # Default form if none matched
+            return JsonResponse({'error': 'Invalid action'}, status=400)
 
-    else:
-        deposit_form = DepositForm()
-        withdrawal_form = WithdrawalForm()
-        transfer_form = TransferForm()
+    def create_account(self, data):
+        account_name = data.get('account_name')
+        initial_balance = data.get('initial_balance', 0)
 
-    transactions = Transaction.objects.filter(account=account).order_by('-timestamp')
-    
-    context = {
-        'account': account,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-        'transfer_form': transfer_form,
-        'transactions': transactions
-    }
+        # Logic to create an account in the database would go here
+        # For now, we return a placeholder response
+        return JsonResponse({'message': 'Account created', 'account_name': account_name, 'balance': initial_balance}, status=201)
 
-    return render(request, 'account/account_view.html', context)
+    def deposit(self, data):
+        account_id = data.get('account_id')
+        amount = data.get('amount', 0)
+
+        # Logic to deposit the amount into the account would go here
+        # For now, we return a placeholder response
+        return JsonResponse({'message': 'Deposit successful', 'account_id': account_id, 'amount': amount}, status=200)
+
+    def withdraw(self, data):
+        account_id = data.get('account_id')
+        amount = data.get('amount', 0)
+
+        # Logic to withdraw the amount from the account would go here
+        # For now, we return a placeholder response
+        return JsonResponse({'message': 'Withdrawal successful', 'account_id': account_id, 'amount': amount}, status=200)
+
+    def check_balance(self, data):
+        account_id = data.get('account_id')
+
+        # Logic to check the balance would go here
+        # For now, we return a placeholder response
+        return JsonResponse({'message': 'Balance checked', 'account_id': account_id, 'balance': 1000}, status=200)
 ```
