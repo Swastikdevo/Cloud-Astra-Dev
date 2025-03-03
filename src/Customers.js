@@ -1,48 +1,51 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-    const [customers, setCustomers] = useState([]);
-    const [newCustomer, setNewCustomer] = useState({ name: '', email: '', phone: '' });
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    useEffect(() => {
-        // Simulating fetching customer data from an API
-        const fetchCustomers = async () => {
-            const response = await fetch('/api/customers');
-            const data = await response.json();
-            setCustomers(data);
-        };
-        fetchCustomers();
-    }, []);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setNewCustomer({ ...newCustomer, [name]: value });
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch('/api/customers');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchCustomers();
+  }, []);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        setCustomers([...customers, newCustomer]);
-        setNewCustomer({ name: '', email: '', phone: '' });
-    };
+  const handleDelete = async (id) => {
+    try {
+      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      setCustomers(customers.filter(customer => customer.id !== id));
+    } catch (err) {
+      setError(err);
+    }
+  };
 
-    return (
-        <div>
-            <h1>Customer Management</h1>
-            <form onSubmit={handleSubmit}>
-                <input type="text" name="name" value={newCustomer.name} onChange={handleChange} placeholder="Name" required />
-                <input type="email" name="email" value={newCustomer.email} onChange={handleChange} placeholder="Email" required />
-                <input type="tel" name="phone" value={newCustomer.phone} onChange={handleChange} placeholder="Phone" required />
-                <button type="submit">Add Customer</button>
-            </form>
-            <ul>
-                {customers.map((customer, index) => (
-                    <li key={index}>{customer.name} - {customer.email} - {customer.phone}</li>
-                ))}
-            </ul>
-        </div>
-    );
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error loading customers.</p>;
+
+  return (
+    <div>
+      <h1>Customer List</h1>
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} <button onClick={() => handleDelete(customer.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
