@@ -21,15 +21,6 @@ const CustomerList = () => {
     };
     fetchCustomers();
   }, []);
-  
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-      setCustomers(customers.filter(customer => customer.id !== id));
-    } catch (err) {
-      setError(err.message);
-    }
-  };
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -39,13 +30,38 @@ const CustomerList = () => {
       <h2>Customer List</h2>
       <ul>
         {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-            <button onClick={() => handleDelete(customer.id)}>Delete</button>
-          </li>
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
+      <AddCustomerForm onAddCustomer={newCustomer => setCustomers([...customers, newCustomer])} />
     </div>
+  );
+};
+
+const AddCustomerForm = ({ onAddCustomer }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const newCustomer = { name, email };
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    const data = await response.json();
+    onAddCustomer(data);
+    setName('');
+    setEmail('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Customer Name" required />
+      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Customer Email" required />
+      <button type="submit">Add Customer</button>
+    </form>
   );
 };
 
