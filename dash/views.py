@@ -1,57 +1,67 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Account, Transaction
-from .forms import TransferForm
+from .forms import DepositForm, WithdrawForm, AccountCreationForm
 
 @login_required
-def bank_dashboard(request):
-    user_accounts = Account.objects.filter(owner=request.user)
+def manage_account(request):
+    try:
+        account = Account.objects.get(user=request.user)
+
+        if request.method == 'POST':
+            if 'deposit' in request.POST:
+                form = DepositForm(request.POST)
+                if form.is_valid():
+                    amount = form.cleaned_data['amount']
+                    account.balance += amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                    messages.success(request, 'Deposit successful!')
+                    return redirect('manage_account')
+
+            elif 'withdraw' in request.POST:
+                form = WithdrawForm(request.POST)
+                if form.is_valid():
+                    amount = form.cleaned_data['amount']
+                    if amount > account.balance:
+                        messages.error(request, 'Insufficient funds.')
+                    else:
+                        account.balance -= amount
+                        account.save()
+                        Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                        messages.success(request, 'Withdrawal successful!')
+                        return redirect('manage_account')
+
+        else:
+            deposit_form = DepositForm()
+            withdraw_form = WithdrawForm()
+
+    except Account.DoesNotExist:
+        messages.error(request, 'Account not found.')
+        return redirect('create_account')
+
     context = {
-        'accounts': user_accounts,
-        'total_balance': sum(account.balance for account in user_accounts),
+        'account': account,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
     }
-    return render(request, 'bank/dashboard.html', context)
+    return render(request, 'bank/manage_account.html', context)
 
 @login_required
-def transfer_funds(request):
+def create_account(request):
     if request.method == 'POST':
-        form = TransferForm(request.POST)
+        form = AccountCreationForm(request.POST)
         if form.is_valid():
-            amount = form.cleaned_data['amount']
-            source_account = form.cleaned_data['source_account']
-            destination_account = form.cleaned_data['destination_account']
-
-            if source_account.balance >= amount:
-                source_account.balance -= amount
-                destination_account.balance += amount
-                source_account.save()
-                destination_account.save()
-
-                Transaction.objects.create(
-                    account=source_account,
-                    amount=-amount,
-                    transaction_type='Transfer',
-                    description=f'Transferred to {destination_account.account_number}'
-                )
-                Transaction.objects.create(
-                    account=destination_account,
-                    amount=amount,
-                    transaction_type='Transfer',
-                    description=f'Received from {source_account.account_number}'
-                )
-
-                return JsonResponse({'status': 'success', 'message': 'Transfer completed!'})
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Insufficient funds.'})
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            messages.success(request, 'Account created successfully!')
+            return redirect('manage_account')
     else:
-        form = TransferForm()
+        form = AccountCreationForm()
 
-    return render(request, 'bank/transfer.html', {'form': form})
-
-@login_required
-def transaction_history(request):
-    transactions = Transaction.objects.filter(account__owner=request.user).order_by('-date')
-    return render(request, 'bank/transactions.html', {'transactions': transactions})
+    return render(request, 'bank/create_account.html', {'form': form})
 ```
