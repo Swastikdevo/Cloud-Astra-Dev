@@ -2,47 +2,46 @@
 import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+    const [customers, setCustomers] = useState([]);
+    const [newCustomer, setNewCustomer] = useState({ name: '', email: '', phone: '' });
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-      setLoading(false);
+    useEffect(() => {
+        // Simulating fetching customer data from an API
+        const fetchCustomers = async () => {
+            const response = await fetch('/api/customers');
+            const data = await response.json();
+            setCustomers(data);
+        };
+        fetchCustomers();
+    }, []);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setNewCustomer({ ...newCustomer, [name]: value });
     };
-    fetchCustomers();
-  }, []);
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        setCustomers([...customers, newCustomer]);
+        setNewCustomer({ name: '', email: '', phone: '' });
+    };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  return (
-    <div>
-      <input
-        type="text"
-        placeholder="Search customers"
-        value={searchTerm}
-        onChange={handleSearch}
-      />
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <ul>
-          {filteredCustomers.map(customer => (
-            <li key={customer.id}>{customer.name} - {customer.email}</li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+    return (
+        <div>
+            <h1>Customer Management</h1>
+            <form onSubmit={handleSubmit}>
+                <input type="text" name="name" value={newCustomer.name} onChange={handleChange} placeholder="Name" required />
+                <input type="email" name="email" value={newCustomer.email} onChange={handleChange} placeholder="Email" required />
+                <input type="tel" name="phone" value={newCustomer.phone} onChange={handleChange} placeholder="Phone" required />
+                <button type="submit">Add Customer</button>
+            </form>
+            <ul>
+                {customers.map((customer, index) => (
+                    <li key={index}>{customer.name} - {customer.email} - {customer.phone}</li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
 export default CustomerManagement;
