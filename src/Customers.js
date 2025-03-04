@@ -1,73 +1,42 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerForm = ({ onSubmit }) => {
-  const [customer, setCustomer] = useState({ name: '', email: '', phone: '' });
+const CustomerList = () => {
+    const [customers, setCustomers] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setCustomer((prev) => ({ ...prev, [name]: value }));
-  };
+    useEffect(() => {
+        fetch('/api/customers')
+            .then(response => response.json())
+            .then(data => setCustomers(data));
+    }, []);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(customer);
-    setCustomer({ name: '', email: '', phone: '' });
-  };
+    const handleSearch = (event) => {
+        setSearchTerm(event.target.value);
+    };
 
-  return (
-    <form onSubmit={handleSubmit}>
-      <input type="text" name="name" value={customer.name} onChange={handleChange} placeholder="Name" required />
-      <input type="email" name="email" value={customer.email} onChange={handleChange} placeholder="Email" required />
-      <input type="tel" name="phone" value={customer.phone} onChange={handleChange} placeholder="Phone" required />
-      <button type="submit">Add Customer</button>
-    </form>
-  );
+    const filteredCustomers = customers.filter(customer => 
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+        <div>
+            <input 
+                type="text" 
+                placeholder="Search customers..." 
+                value={searchTerm} 
+                onChange={handleSearch} 
+            />
+            <ul>
+                {filteredCustomers.map(customer => (
+                    <li key={customer.id}>
+                        {customer.name} - {customer.email}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-const CustomerList = ({ customers, onDelete }) => {
-  return (
-    <ul>
-      {customers.map((customer, index) => (
-        <li key={index}>
-          {customer.name} - {customer.email} - {customer.phone}
-          <button onClick={() => onDelete(index)}>Delete</button>
-        </li>
-      ))}
-    </ul>
-  );
-};
-
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-
-  const addCustomer = (customer) => {
-    setCustomers((prev) => [...prev, customer]);
-  };
-
-  const deleteCustomer = (index) => {
-    setCustomers((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  useEffect(() => {
-    const storedCustomers = JSON.parse(localStorage.getItem('customers'));
-    if (storedCustomers) {
-      setCustomers(storedCustomers);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('customers', JSON.stringify(customers));
-  }, [customers]);
-
-  return (
-    <div>
-      <h1>Customer Management</h1>
-      <CustomerForm onSubmit={addCustomer} />
-      <CustomerList customers={customers} onDelete={deleteCustomer} />
-    </div>
-  );
-};
-
-export default CustomerManagement;
+export default CustomerList;
 ```
