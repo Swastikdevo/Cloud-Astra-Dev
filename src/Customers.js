@@ -1,49 +1,43 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const CustomerTable = () => {
+function CustomerManagement() {
   const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
 
-  useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
-  }, []);
-
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  const addCustomer = () => {
+    if (customerName && customerEmail) {
+      setCustomers([...customers, { name: customerName, email: customerEmail }]);
+      setCustomerName('');
+      setCustomerEmail('');
+    }
+  };
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search customers"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
+      <h2>Customer Management</h2>
+      <input 
+        type="text" 
+        value={customerName} 
+        onChange={(e) => setCustomerName(e.target.value)} 
+        placeholder="Customer Name" 
       />
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredCustomers.map(customer => (
-            <tr key={customer.id}>
-              <td>{customer.name}</td>
-              <td>{customer.email}</td>
-              <td>{customer.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <input 
+        type="email" 
+        value={customerEmail} 
+        onChange={(e) => setCustomerEmail(e.target.value)} 
+        placeholder="Customer Email" 
+      />
+      <button onClick={addCustomer}>Add Customer</button>
+      <ul>
+        {customers.map((customer, index) => (
+          <li key={index}>{customer.name} - {customer.email}</li>
+        ))}
+      </ul>
     </div>
   );
-};
+}
 
-export default CustomerTable;
+export default CustomerManagement;
 ```
