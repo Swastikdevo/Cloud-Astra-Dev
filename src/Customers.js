@@ -1,8 +1,9 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
@@ -10,38 +11,39 @@ const CustomerManagement = () => {
       const response = await fetch('/api/customers');
       const data = await response.json();
       setCustomers(data);
+      setLoading(false);
     };
     fetchCustomers();
   }, []);
+
+  const handleFilterChange = (e) => {
+    setFilter(e.target.value);
+  };
 
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(filter.toLowerCase())
   );
 
-  const handleDelete = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-    setCustomers(customers.filter(customer => customer.id !== id));
-  };
-
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search customers" 
-        value={filter} 
-        onChange={(e) => setFilter(e.target.value)} 
+      <input
+        type="text"
+        placeholder="Search Customers"
+        value={filter}
+        onChange={handleFilterChange}
       />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name}
-            <button onClick={() => handleDelete(customer.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <ul>
+          {filteredCustomers.map(customer => (
+            <li key={customer.id}>{customer.name}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
