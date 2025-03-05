@@ -9,7 +9,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Basic App',
+      title: 'Flutter Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -30,8 +30,8 @@ class HomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Welcome to the Flutter App!',
-              style: TextStyle(fontSize: 20),
+              'Welcome to Flutter!',
+              style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),
             ElevatedButton(
@@ -59,8 +59,8 @@ class SecondPage extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'This is the Second Page!',
-          style: TextStyle(fontSize: 20),
+          'This is the second page!',
+          style: TextStyle(fontSize: 24),
         ),
       ),
     );
