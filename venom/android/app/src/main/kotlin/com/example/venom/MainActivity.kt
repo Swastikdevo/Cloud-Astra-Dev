@@ -30,7 +30,7 @@ class HomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Welcome to Flutter!',
+              'Welcome to Flutter',
               style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),
