@@ -1,24 +1,15 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerTable = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-      setLoading(false);
-    };
-    fetchCustomers();
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => setCustomers(data));
   }, []);
-
-  const handleFilterChange = (e) => {
-    setFilter(e.target.value);
-  };
 
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(filter.toLowerCase())
@@ -28,22 +19,31 @@ const CustomerList = () => {
     <div>
       <input
         type="text"
-        placeholder="Search Customers"
+        placeholder="Search customers"
         value={filter}
-        onChange={handleFilterChange}
+        onChange={(e) => setFilter(e.target.value)}
       />
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <ul>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
           {filteredCustomers.map(customer => (
-            <li key={customer.id}>{customer.name}</li>
+            <tr key={customer.id}>
+              <td>{customer.name}</td>
+              <td>{customer.email}</td>
+              <td>{customer.status}</td>
+            </tr>
           ))}
-        </ul>
-      )}
+        </tbody>
+      </table>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerTable;
 ```
