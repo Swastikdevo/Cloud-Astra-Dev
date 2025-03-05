@@ -1,50 +1,41 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm
+from .forms import AccountForm, TransactionForm
+import json
 
-@login_required
-def account_dashboard(request):
-    account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')[:10]
+@csrf_exempt
+def account_management(request):
+    if request.method == 'GET':
+        accounts = Account.objects.all()
+        return render(request, 'bank/accounts.html', {'accounts': accounts})
 
+    elif request.method == 'POST':
+        data = json.loads(request.body)
+        form = AccountForm(data)
+
+        if form.is_valid():
+            account = form.save()
+            return JsonResponse({'id': account.id, 'message': 'Account created successfully!'}, status=201)
+        else:
+            return JsonResponse({'errors': form.errors}, status=400)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+def make_transaction(request):
     if request.method == 'POST':
-        if 'deposit' in request.POST:
-            deposit_form = DepositForm(request.POST)
-            if deposit_form.is_valid():
-                amount = deposit_form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return redirect('account_dashboard')
-        elif 'withdraw' in request.POST:
-            withdrawal_form = WithdrawalForm(request.POST)
-            if withdrawal_form.is_valid():
-                amount = withdrawal_form.cleaned_data['amount']
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                    return redirect('account_dashboard')
+        data = json.loads(request.body)
+        form = TransactionForm(data)
 
-    else:
-        deposit_form = DepositForm()
-        withdrawal_form = WithdrawalForm()
+        if form.is_valid():
+            transaction = form.save()
+            account = transaction.account
+            return JsonResponse({'id': transaction.id, 'balance': account.balance, 'message': 'Transaction successful!'}, status=201)
+        else:
+            return JsonResponse({'errors': form.errors}, status=400)
 
-    context = {
-        'account': account,
-        'transactions': transactions,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form
-    }
-    return render(request, 'bank/account_dashboard.html', context)
-
-@login_required
-def recent_transactions(request):
-    account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')[:5]
-    transaction_data = [{"date": txn.date, "amount": txn.amount, "type": txn.transaction_type} for txn in transactions]
-    return JsonResponse(transaction_data, safe=False)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
 ```
