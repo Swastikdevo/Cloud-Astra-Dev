@@ -59,7 +59,7 @@ class SecondPage extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'This is the Second Page',
+          'This is the second page',
           style: TextStyle(fontSize: 24),
         ),
       ),
