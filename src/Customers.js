@@ -1,60 +1,53 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
-    useEffect(() => {
-        fetch('/api/customers')
-            .then(response => response.json())
-            .then(data => {
-                setCustomers(data);
-                setLoading(false);
-            })
-            .catch(err => {
-                setError(err);
-                setLoading(false);
-            });
-    }, []);
+  useEffect(() => {
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => setCustomers(data))
+      .catch(error => console.error('Error fetching customers:', error));
+  }, []);
 
-    const deleteCustomer = id => {
-        fetch(`/api/customers/${id}`, { method: 'DELETE' })
-            .then(() => {
-                setCustomers(customers.filter(customer => customer.id !== id));
-            });
-    };
+  const addCustomer = () => {
+    fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    })
+      .then(response => response.json())
+      .then(data => setCustomers([...customers, data]))
+      .catch(error => console.error('Error adding customer:', error));
+    setNewCustomer({ name: '', email: '' });
+  };
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error loading customers</div>;
-
-    return (
-        <div>
-            <h1>Customer Management</h1>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {customers.map(customer => (
-                        <tr key={customer.id}>
-                            <td>{customer.name}</td>
-                            <td>{customer.email}</td>
-                            <td>
-                                <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
+  return (
+    <div>
+      <h2>Customer Management</h2>
+      <input
+        type="text"
+        placeholder="Name"
+        value={newCustomer.name}
+        onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={newCustomer.email}
+        onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+      />
+      <button onClick={addCustomer}>Add Customer</button>
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
