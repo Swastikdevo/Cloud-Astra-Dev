@@ -1,47 +1,56 @@
 ```python
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
-import json
+from .forms import AccountForm
 
-@login_required
 @csrf_exempt
-def bank_management_view(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        transactions = Transaction.objects.filter(account__in=accounts).order_by('-date')
-        context = {
-            'accounts': accounts,
-            'transactions': transactions,
-            'account_form': AccountForm(),
-            'transaction_form': TransactionForm(),
-        }
-        return render(request, 'bank_management.html', context)
+@require_http_methods(["GET", "POST"])
+def manage_account(request, account_id=None):
+    if request.method == "POST":
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            if account_id:
+                account = get_object_or_404(Account, id=account_id)
+                for attr, value in form.cleaned_data.items():
+                    setattr(account, attr, value)
+                account.save()
+                return JsonResponse({'message': 'Account updated successfully!'})
+            else:
+                new_account = form.save()
+                return JsonResponse({'message': 'Account created successfully!', 'account_id': new_account.id})
+        return JsonResponse({'errors': form.errors}, status=400)
 
-    elif request.method == 'POST':
-        data = json.loads(request.body)
-        action = data.get('action')
+    elif request.method == "GET":
+        if account_id:
+            account = get_object_or_404(Account, id=account_id)
+            return render(request, 'accounts/account_detail.html', {'account': account})
+        else:
+            accounts = Account.objects.all()
+            return render(request, 'accounts/account_list.html', {'accounts': accounts})
 
-        if action == 'create_account':
-            form = AccountForm(data)
-            if form.is_valid():
-                new_account = form.save(commit=False)
-                new_account.user = request.user
-                new_account.save()
-                return JsonResponse({'status': 'success', 'account_id': new_account.id}, status=201)
-            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+@csrf_exempt
+@require_http_methods(["POST"])
+def transfer_funds(request):
+    data = request.POST
+    try:
+        from_account = get_object_or_404(Account, id=data['from_account_id'])
+        to_account = get_object_or_404(Account, id=data['to_account_id'])
+        amount = float(data['amount'])
 
-        elif action == 'create_transaction':
-            form = TransactionForm(data)
-            if form.is_valid():
-                new_transaction = form.save(commit=False)
-                new_transaction.account = Account.objects.get(id=data.get('account_id'))
-                new_transaction.save()
-                return JsonResponse({'status': 'success', 'transaction_id': new_transaction.id}, status=201)
-            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+        if from_account.balance < amount:
+            return JsonResponse({'error': 'Insufficient funds'}, status=400)
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+        from_account.balance -= amount
+        to_account.balance += amount
+        from_account.save()
+        to_account.save()
+
+        Transaction.objects.create(from_account=from_account, to_account=to_account, amount=amount)
+
+        return JsonResponse({'message': 'Transfer successful!'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 ```
