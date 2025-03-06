@@ -22,26 +22,25 @@ const CustomerList = () => {
     fetchCustomers();
   }, []);
 
-  const deleteCustomer = async (id) => {
-    try {
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm('Are you sure you want to delete this customer?');
+    if (confirmed) {
       await fetch(`/api/customers/${id}`, { method: 'DELETE' });
       setCustomers(customers.filter(customer => customer.id !== id));
-    } catch (err) {
-      setError(err.message);
     }
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
-
   return (
     <div>
-      <h2>Customer List</h2>
+      <h1>Customer List</h1>
       <ul>
         {customers.map(customer => (
           <li key={customer.id}>
             {customer.name} - {customer.email}
-            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
