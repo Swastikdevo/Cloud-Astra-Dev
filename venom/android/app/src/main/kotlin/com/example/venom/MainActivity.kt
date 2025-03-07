@@ -59,7 +59,7 @@ class SecondScreen extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'This is the Second Screen!',
+          'This is the second screen!',
           style: TextStyle(fontSize: 24),
         ),
       ),
