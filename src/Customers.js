@@ -1,76 +1,66 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerForm = ({ onSave, customer }) => {
-  const [name, setName] = useState(customer ? customer.name : '');
-  const [email, setEmail] = useState(customer ? customer.email : '');
-  const [phone, setPhone] = useState(customer ? customer.phone : '');
+const CustomerForm = ({ onSubmit }) => {
+  const [customer, setCustomer] = useState({ name: '', email: '', phone: '' });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setCustomer({ ...customer, [name]: value });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ name, email, phone });
-    setName('');
-    setEmail('');
-    setPhone('');
+    onSubmit(customer);
+    setCustomer({ name: '', email: '', phone: '' });
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" required />
-      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
-      <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" required />
-      <button type="submit">Save</button>
+      <input type="text" name="name" value={customer.name} onChange={handleChange} placeholder="Name" required />
+      <input type="email" name="email" value={customer.email} onChange={handleChange} placeholder="Email" required />
+      <input type="tel" name="phone" value={customer.phone} onChange={handleChange} placeholder="Phone" required />
+      <button type="submit">Add Customer</button>
     </form>
   );
 };
 
-const CustomerList = ({ customers, onDelete, onEdit }) => {
-  return (
-    <ul>
-      {customers.map((customer) => (
-        <li key={customer.id}>
-          {customer.name} - {customer.email} - {customer.phone}
-          <button onClick={() => onEdit(customer)}>Edit</button>
-          <button onClick={() => onDelete(customer.id)}>Delete</button>
-        </li>
-      ))}
-    </ul>
-  );
-};
+const CustomerList = ({ customers, onDelete }) => (
+  <ul>
+    {customers.map((customer, index) => (
+      <li key={index}>
+        {customer.name} - {customer.email} - {customer.phone}
+        <button onClick={() => onDelete(index)}>Delete</button>
+      </li>
+    ))}
+  </ul>
+);
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [editingCustomer, setEditingCustomer] = useState(null);
+
+  const addCustomer = (customer) => {
+    setCustomers([...customers, customer]);
+  };
+
+  const deleteCustomer = (index) => {
+    setCustomers(customers.filter((_, i) => i !== index));
+  };
 
   useEffect(() => {
-    // Fetch initial customer data here
-    setCustomers([
-      { id: 1, name: 'Alice', email: 'alice@example.com', phone: '123-456-7890' },
-      { id: 2, name: 'Bob', email: 'bob@example.com', phone: '234-567-8901' }
-    ]);
+    const savedCustomers = JSON.parse(localStorage.getItem('customers'));
+    if (savedCustomers) setCustomers(savedCustomers);
   }, []);
 
-  const handleSave = (customerData) => {
-    if (editingCustomer) {
-      setCustomers(customers.map(customer => customer.id === editingCustomer.id ? { ...customer, ...customerData } : customer));
-      setEditingCustomer(null);
-    } else {
-      setCustomers([...customers, { id: Date.now(), ...customerData }]);
-    }
-  };
-
-  const handleDelete = (id) => {
-    setCustomers(customers.filter(customer => customer.id !== id));
-  };
-
-  const handleEdit = (customer) => {
-    setEditingCustomer(customer);
-  };
+  useEffect(() => {
+    localStorage.setItem('customers', JSON.stringify(customers));
+  }, [customers]);
 
   return (
     <div>
-      <CustomerForm onSave={handleSave} customer={editingCustomer} />
-      <CustomerList customers={customers} onDelete={handleDelete} onEdit={handleEdit} />
+      <h1>Customer Management</h1>
+      <CustomerForm onSubmit={addCustomer} />
+      <CustomerList customers={customers} onDelete={deleteCustomer} />
     </div>
   );
 };
