@@ -9,7 +9,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Basic Flutter App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -30,7 +30,7 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Welcome to Flutter!',
+              'Welcome to my Flutter App!',
               style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),
@@ -38,10 +38,10 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => DetailScreen()),
+                  MaterialPageRoute(builder: (context) => SecondScreen()),
                 );
               },
-              child: Text('Go to Details'),
+              child: Text('Go to Second Screen'),
             ),
           ],
         ),
@@ -50,16 +50,16 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class DetailScreen extends StatelessWidget {
+class SecondScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Detail Screen'),
+        title: Text('Second Screen'),
       ),
       body: Center(
         child: Text(
-          'This is the detail screen.',
+          'This is the Second Screen!',
           style: TextStyle(fontSize: 24),
         ),
       ),
