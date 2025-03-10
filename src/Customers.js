@@ -1,69 +1,54 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerForm = ({ onSubmit }) => {
-  const [customer, setCustomer] = useState({ name: '', email: '', phone: '' });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setCustomer({ ...customer, [name]: value });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit(customer);
-    setCustomer({ name: '', email: '', phone: '' });
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input type="text" name="name" value={customer.name} onChange={handleChange} placeholder="Name" required />
-      <input type="email" name="email" value={customer.email} onChange={handleChange} placeholder="Email" required />
-      <input type="tel" name="phone" value={customer.phone} onChange={handleChange} placeholder="Phone" required />
-      <button type="submit">Add Customer</button>
-    </form>
-  );
-};
-
-const CustomerList = ({ customers, onDelete }) => (
-  <ul>
-    {customers.map((customer, index) => (
-      <li key={index}>
-        {customer.name} - {customer.email} - {customer.phone}
-        <button onClick={() => onDelete(index)}>Delete</button>
-      </li>
-    ))}
-  </ul>
-);
-
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-
-  const addCustomer = (customer) => {
-    setCustomers([...customers, customer]);
-  };
-
-  const deleteCustomer = (index) => {
-    setCustomers(customers.filter((_, i) => i !== index));
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const savedCustomers = JSON.parse(localStorage.getItem('customers'));
-    if (savedCustomers) setCustomers(savedCustomers);
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch('/api/customers');
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCustomers();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('customers', JSON.stringify(customers));
-  }, [customers]);
+  const handleDelete = async (id) => {
+    try {
+      const response = await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setCustomers(customers.filter(customer => customer.id !== id));
+      }
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
-    <div>
-      <h1>Customer Management</h1>
-      <CustomerForm onSubmit={addCustomer} />
-      <CustomerList customers={customers} onDelete={deleteCustomer} />
-    </div>
+    <ul>
+      {customers.map(customer => (
+        <li key={customer.id}>
+          {customer.name}
+          <button onClick={() => handleDelete(customer.id)}>Delete</button>
+        </li>
+      ))}
+    </ul>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
