@@ -3,42 +3,66 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
+    fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(filter.toLowerCase())
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
+  };
+
+  const handleAddCustomer = async () => {
+    await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    setModalOpen(false);
+    fetchCustomers();
+  };
+
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const handleFilterChange = (event) => {
-    setFilter(event.target.value);
-  };
-
-  const handleDelete = (id) => {
-    fetch(`/api/customers/${id}`, { method: 'DELETE' })
-      .then(() => setCustomers(customers.filter(customer => customer.id !== id)));
-  };
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <input 
-        type="text" 
-        placeholder="Filter by name" 
-        value={filter} 
-        onChange={handleFilterChange} 
+      <h2>Customer Management</h2>
+      <input
+        type="text"
+        placeholder="Search customers"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
       />
+      <button onClick={() => setModalOpen(true)}>Add Customer</button>
+      {modalOpen && (
+        <div>
+          <h3>Add New Customer</h3>
+          <input
+            type="text"
+            placeholder="Name"
+            value={newCustomer.name}
+            onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={newCustomer.email}
+            onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+          />
+          <button onClick={handleAddCustomer}>Submit</button>
+          <button onClick={() => setModalOpen(false)}>Cancel</button>
+        </div>
+      )}
       <ul>
         {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} 
-            <button onClick={() => handleDelete(customer.id)}>Delete</button>
-          </li>
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
