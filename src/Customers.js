@@ -1,26 +1,34 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = ({ customers }) => {
-    const [sortedCustomers, setSortedCustomers] = useState([]);
+const CustomerList = () => {
+    const [customers, setCustomers] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        setSortedCustomers([...customers].sort((a, b) => a.name.localeCompare(b.name)));
-    }, [customers]);
+        const fetchCustomers = async () => {
+            const response = await fetch('https://api.example.com/customers');
+            const data = await response.json();
+            setCustomers(data);
+        };
+        fetchCustomers();
+    }, []);
 
-    const handleDelete = (id) => {
-        // logic to delete customer (usually involves calling API)
-    };
+    const filteredCustomers = customers.filter(customer =>
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div>
-            <h2>Customer List</h2>
+            <input
+                type="text"
+                placeholder="Search customers..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+            />
             <ul>
-                {sortedCustomers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.email}
-                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
-                    </li>
+                {filteredCustomers.map(customer => (
+                    <li key={customer.id}>{customer.name} - {customer.email}</li>
                 ))}
             </ul>
         </div>
