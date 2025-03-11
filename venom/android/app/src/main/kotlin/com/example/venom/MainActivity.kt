@@ -63,12 +63,6 @@ class SecondPage extends StatelessWidget {
           style: TextStyle(fontSize: 24),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pop(context);
-        },
-        child: Icon(Icons.arrow_back),
-      ),
     );
   }
 }
