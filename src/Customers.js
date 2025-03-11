@@ -1,36 +1,25 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-    const [customers, setCustomers] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
+const CustomerList = ({ customers }) => {
+    const [sortedCustomers, setSortedCustomers] = useState([]);
 
     useEffect(() => {
-        const fetchCustomers = async () => {
-            const response = await fetch('https://api.example.com/customers');
-            const data = await response.json();
-            setCustomers(data);
-        };
-        fetchCustomers();
-    }, []);
+        setSortedCustomers([...customers].sort((a, b) => a.name.localeCompare(b.name)));
+    }, [customers]);
 
-    const filteredCustomers = customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleDelete = (id) => {
+        // logic to delete customer (usually involves calling API)
+    };
 
     return (
         <div>
-            <h1>Customer Management</h1>
-            <input 
-                type="text" 
-                placeholder="Search customers..." 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-            />
+            <h2>Customer List</h2>
             <ul>
-                {filteredCustomers.map(customer => (
+                {sortedCustomers.map(customer => (
                     <li key={customer.id}>
                         {customer.name} - {customer.email}
+                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
                     </li>
                 ))}
             </ul>
@@ -38,5 +27,5 @@ const CustomerManagement = () => {
     );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
