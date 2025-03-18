@@ -4,55 +4,57 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from .models import Account, Transaction
+from .forms import TransferForm, DepositForm, WithdrawalForm
 
 @login_required
-def account_overview(request):
-    """Render account overview with account details and transaction history."""
-    user_accounts = Account.objects.filter(owner=request.user)
-    context = {
-        'accounts': user_accounts,
-    }
-    return render(request, 'bank/account_overview.html', context)
+def account_dashboard(request):
+    accounts = Account.objects.filter(owner=request.user)
+    return render(request, 'bank/account_dashboard.html', {'accounts': accounts})
 
 @login_required
 @require_POST
-def create_account(request):
-    """Create a new bank account for the logged-in user."""
-    account_name = request.POST.get('account_name')
-    account_type = request.POST.get('account_type')
-    
-    if account_name and account_type:
-        new_account = Account.objects.create(
-            owner=request.user,
-            name=account_name,
-            account_type=account_type
-        )
-        return JsonResponse({'status': 'success', 'account_id': new_account.id})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid account details'})
-
-@login_required
-@require_POST
-def make_transaction(request):
-    """Process a transaction for a specified account."""
-    account_id = request.POST.get('account_id')
-    amount = request.POST.get('amount')
-    transaction_type = request.POST.get('transaction_type')  # 'deposit' or 'withdraw'
-    
-    account = Account.objects.filter(id=account_id, owner=request.user).first()
-    
-    if account and amount.isdigit():
-        amount = float(amount)
-        if transaction_type == 'deposit':
-            account.balance += amount
-        elif transaction_type == 'withdraw' and account.balance >= amount:
-            account.balance -= amount
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
-
+def deposit(request):
+    form = DepositForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = form.cleaned_data['account']
+        account.balance += amount
         account.save()
-        Transaction.objects.create(account=account, amount=amount, transaction_type=transaction_type)
-        return JsonResponse({'status': 'success', 'new_balance': account.balance})
-    
-    return JsonResponse({'status': 'error', 'message': 'Transaction failed'})
+        Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+        return JsonResponse({'status': 'success', 'message': 'Deposit successful.'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid input.'})
+
+@login_required
+@require_POST
+def withdraw(request):
+    form = WithdrawalForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = form.cleaned_data['account']
+        if account.balance >= amount:
+            account.balance -= amount
+            account.save()
+            Transaction.objects.create(account=account, amount=-amount, transaction_type='Withdrawal')
+            return JsonResponse({'status': 'success', 'message': 'Withdrawal successful.'})
+        return JsonResponse({'status': 'error', 'message': 'Insufficient funds.'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid input.'})
+
+@login_required
+@require_POST
+def transfer(request):
+    form = TransferForm(request.POST)
+    if form.is_valid():
+        from_account = form.cleaned_data['from_account']
+        to_account = form.cleaned_data['to_account']
+        amount = form.cleaned_data['amount']
+        if from_account.balance >= amount:
+            from_account.balance -= amount
+            to_account.balance += amount
+            from_account.save()
+            to_account.save()
+            Transaction.objects.create(account=from_account, amount=-amount, transaction_type='Transfer')
+            Transaction.objects.create(account=to_account, amount=amount, transaction_type='Transfer')
+            return JsonResponse({'status': 'success', 'message': 'Transfer successful.'})
+        return JsonResponse({'status': 'error', 'message': 'Insufficient funds.'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid input.'})
 ```
