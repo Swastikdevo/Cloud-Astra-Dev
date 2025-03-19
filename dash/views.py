@@ -1,66 +1,48 @@
 ```python
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from django.shortcuts import get_object_or_404
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-import json
+from .forms import AccountForm, TransactionForm
 
-@csrf_exempt
-@require_http_methods(["POST"])
+@login_required
+def account_summary(request):
+    user_accounts = Account.objects.filter(owner=request.user)
+    total_balance = sum(account.balance for account in user_accounts)
+    
+    return render(request, 'bank/account_summary.html', {
+        'accounts': user_accounts,
+        'total_balance': total_balance,
+    })
+
+@login_required
+@require_POST
 def create_account(request):
-    data = json.loads(request.body)
-    account_holder = data.get('account_holder')
-    initial_balance = data.get('initial_balance', 0)
+    form = AccountForm(request.POST)
+    if form.is_valid():
+        new_account = form.save(commit=False)
+        new_account.owner = request.user
+        new_account.save()
+        return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid form data.'})
 
-    if not account_holder:
-        return JsonResponse({'error': 'Account holder name is required.'}, status=400)
+@login_required
+@require_POST
+def make_transaction(request):
+    form = TransactionForm(request.POST)
+    if form.is_valid():
+        new_transaction = form.save(commit=False)
+        new_transaction.account = form.cleaned_data['account']
+        new_transaction.save()
+        return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully!'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid transaction data.'})
 
-    account = Account.objects.create(holder_name=account_holder, balance=initial_balance)
-    return JsonResponse({'account_id': account.id, 'holder_name': account.holder_name, 'balance': account.balance}, status=201)
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def deposit(request, account_id):
-    data = json.loads(request.body)
-    amount = data.get('amount', 0)
-
-    account = get_object_or_404(Account, id=account_id)
+@login_required
+def transaction_history(request):
+    user_transactions = Transaction.objects.filter(account__owner=request.user).order_by('-date')
     
-    if amount <= 0:
-        return JsonResponse({'error': 'Deposit amount must be positive.'}, status=400)
-
-    account.balance += amount
-    account.save()
-
-    Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-    
-    return JsonResponse({'account_id': account.id, 'new_balance': account.balance}, status=200)
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def withdraw(request, account_id):
-    data = json.loads(request.body)
-    amount = data.get('amount', 0)
-
-    account = get_object_or_404(Account, id=account_id)
-
-    if amount <= 0:
-        return JsonResponse({'error': 'Withdrawal amount must be positive.'}, status=400)
-
-    if account.balance < amount:
-        return JsonResponse({'error': 'Insufficient funds.'}, status=400)
-
-    account.balance -= amount
-    account.save()
-
-    Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
-    
-    return JsonResponse({'account_id': account.id, 'new_balance': account.balance}, status=200)
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def account_details(request, account_id):
-    account = get_object_or_404(Account, id=account_id)
-    return JsonResponse({'account_id': account.id, 'holder_name': account.holder_name, 'balance': account.balance}, status=200)
+    return render(request, 'bank/transaction_history.html', {
+        'transactions': user_transactions,
+    })
 ```
