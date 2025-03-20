@@ -1,48 +1,52 @@
 ```python
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
+from django.contrib import messages
 
 @login_required
-def account_summary(request):
-    user_accounts = Account.objects.filter(owner=request.user)
-    total_balance = sum(account.balance for account in user_accounts)
-    
-    return render(request, 'bank/account_summary.html', {
-        'accounts': user_accounts,
-        'total_balance': total_balance,
-    })
+def manage_account(request, account_id=None):
+    if account_id:
+        account = get_object_or_404(Account, pk=account_id)
+    else:
+        account = None
+
+    if request.method == 'POST':
+        if account:
+            form = AccountForm(request.POST, instance=account)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Account updated successfully.")
+                return redirect('manage_account', account_id=account.id)
+        else:
+            form = AccountForm(request.POST)
+            if form.is_valid():
+                new_account = form.save(commit=False)
+                new_account.user = request.user
+                new_account.save()
+                messages.success(request, "New account created successfully.")
+                return redirect('manage_account', account_id=new_account.id)
+    else:
+        form = AccountForm(instance=account)
+
+    return render(request, 'bank/manage_account.html', {'form': form, 'account': account})
 
 @login_required
-@require_POST
-def create_account(request):
-    form = AccountForm(request.POST)
-    if form.is_valid():
-        new_account = form.save(commit=False)
-        new_account.owner = request.user
-        new_account.save()
-        return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
-    return JsonResponse({'status': 'error', 'message': 'Invalid form data.'})
+def perform_transaction(request):
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            messages.success(request, "Transaction performed successfully.")
+            return JsonResponse({'status': 'success', 'transaction_id': transaction.id}, status=200)
+        else:
+            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+    else:
+        form = TransactionForm()
 
-@login_required
-@require_POST
-def make_transaction(request):
-    form = TransactionForm(request.POST)
-    if form.is_valid():
-        new_transaction = form.save(commit=False)
-        new_transaction.account = form.cleaned_data['account']
-        new_transaction.save()
-        return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully!'})
-    return JsonResponse({'status': 'error', 'message': 'Invalid transaction data.'})
-
-@login_required
-def transaction_history(request):
-    user_transactions = Transaction.objects.filter(account__owner=request.user).order_by('-date')
-    
-    return render(request, 'bank/transaction_history.html', {
-        'transactions': user_transactions,
-    })
+    return render(request, 'bank/perform_transaction.html', {'form': form})
 ```
