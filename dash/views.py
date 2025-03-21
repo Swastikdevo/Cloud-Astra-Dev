@@ -1,14 +1,16 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm
+from .forms import DepositForm, WithdrawalForm
 
 @login_required
-def account_overview(request):
-    account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
+@csrf_exempt
+def manage_account(request):
+    user = request.user
+    account = Account.objects.get(owner=user)
 
     if request.method == 'POST':
         if 'deposit' in request.POST:
@@ -18,28 +20,27 @@ def account_overview(request):
                 account.balance += amount
                 account.save()
                 Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return redirect('account_overview')
+                return JsonResponse({'message': 'Deposit successful', 'new_balance': account.balance})
+
         elif 'withdraw' in request.POST:
-            form = WithdrawForm(request.POST)
+            form = WithdrawalForm(request.POST)
             if form.is_valid():
                 amount = form.cleaned_data['amount']
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdraw')
-                    return redirect('account_overview')
-                else:
+                if amount > account.balance:
                     return JsonResponse({'error': 'Insufficient funds'}, status=400)
-    
-    deposit_form = DepositForm()
-    withdraw_form = WithdrawForm()
+                account.balance -= amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                return JsonResponse({'message': 'Withdrawal successful', 'new_balance': account.balance})
 
-    context = {
+    deposit_form = DepositForm()
+    withdrawal_form = WithdrawalForm()
+    transactions = Transaction.objects.filter(account=account).order_by('-timestamp')
+
+    return render(request, 'bank/manage_account.html', {
         'account': account,
-        'transactions': transactions,
         'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
-    }
-    
-    return render(request, 'bank/account_overview.html', context)
+        'withdrawal_form': withdrawal_form,
+        'transactions': transactions
+    })
 ```
