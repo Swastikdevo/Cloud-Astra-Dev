@@ -1,44 +1,48 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
-from .models import Account, Transaction
-from .forms import TransactionForm
 from django.contrib import messages
-from django.db import transaction
-
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawalForm
 
 @login_required
-def perform_transaction(request, account_id):
-    account = Account.objects.get(id=account_id)
+def manage_account(request):
+    account = Account.objects.get(user=request.user)
     
     if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        
-        if form.is_valid():
-            transaction_type = form.cleaned_data['transaction_type']
-            amount = form.cleaned_data['amount']
-
-            if transaction_type == 'deposit':
+        if 'deposit' in request.POST:
+            deposit_form = DepositForm(request.POST)
+            if deposit_form.is_valid():
+                amount = deposit_form.cleaned_data['amount']
                 account.balance += amount
-                transaction = Transaction(account=account, amount=amount, transaction_type='Deposit')
-            elif transaction_type == 'withdraw':
-                if amount > account.balance:
-                    messages.error(request, "Insufficient funds.")
-                    return redirect('perform_transaction', account_id=account_id)
-                account.balance -= amount
-                transaction = Transaction(account=account, amount=amount, transaction_type='Withdraw')
-
-            with transaction.atomic():
                 account.save()
-                transaction.save()
-                messages.success(request, "Transaction successful!")
-                return redirect('account_detail', account_id=account_id)
-        else:
-            messages.error(request, "Invalid data. Please correct the errors.")
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                messages.success(request, f'Deposited ${amount:.2f} successfully!')
+                return redirect('manage_account')
+        elif 'withdraw' in request.POST:
+            withdrawal_form = WithdrawalForm(request.POST)
+            if withdrawal_form.is_valid():
+                amount = withdrawal_form.cleaned_data['amount']
+                if account.balance >= amount:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                    messages.success(request, f'Withdrew ${amount:.2f} successfully!')
+                else:
+                    messages.error(request, 'Insufficient funds!')
+                return redirect('manage_account')
     
-    else:
-        form = TransactionForm()
+    deposit_form = DepositForm()
+    withdrawal_form = WithdrawalForm()
+    transactions = Transaction.objects.filter(account=account).order_by('-created_at')
+
+    context = {
+        'account': account,
+        'deposit_form': deposit_form,
+        'withdrawal_form': withdrawal_form,
+        'transactions': transactions,
+    }
     
-    return render(request, 'perform_transaction.html', {'form': form, 'account': account})
+    return render(request, 'bank/manage_account.html', context)
 ```
