@@ -1,42 +1,45 @@
 ```python
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404
-from .models import Account, Transaction
-import json
+from .models import BankAccount, Transaction
+from .forms import BankAccountForm, TransactionForm
 
 @csrf_exempt
 @login_required
-@require_http_methods(['POST'])
-def create_transaction(request):
-    data = json.loads(request.body)
-    account_id = data.get('account_id')
-    transaction_type = data.get('transaction_type')  # "deposit" or "withdrawal"
-    amount = data.get('amount')
+def manage_bank_accounts(request):
+    if request.method == 'POST':
+        # Handle new account creation
+        form = BankAccountForm(request.POST)
+        if form.is_valid():
+            new_account = form.save(commit=False)
+            new_account.user = request.user
+            new_account.save()
+            return JsonResponse({'message': 'Account created successfully!'})
+        else:
+            return JsonResponse({'error': form.errors}, status=400)
 
-    if not account_id or not transaction_type or amount is None:
-        return JsonResponse({"error": "Missing required fields."}, status=400)
+    accounts = BankAccount.objects.filter(user=request.user)
+    return render(request, 'bank/manage_accounts.html', {'accounts': accounts})
 
-    account = get_object_or_404(Account, id=account_id)
+@login_required
+def make_transaction(request):
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            return JsonResponse({'message': 'Transaction successful!'})
+        else:
+            return JsonResponse({'error': form.errors}, status=400)
 
-    if transaction_type not in ['deposit', 'withdrawal']:
-        return JsonResponse({"error": "Invalid transaction type."}, status=400)
+    return render(request, 'bank/make_transaction.html', {'form': TransactionForm()})
 
-    if transaction_type == 'withdrawal' and account.balance < amount:
-        return JsonResponse({"error": "Insufficient funds."}, status=400)
-
-    # Process transaction
-    if transaction_type == 'deposit':
-        account.balance += amount
-    else:  # withdrawal
-        account.balance -= amount
-
-    account.save()
-
-    # Create a transaction record
-    Transaction.objects.create(account=account, type=transaction_type, amount=amount)
-
-    return JsonResponse({"message": "Transaction successful.", "new_balance": account.balance}, status=201)
+@login_required
+def account_summary(request, account_id):
+    account = BankAccount.objects.get(id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account)
+    return render(request, 'bank/account_summary.html', {'account': account, 'transactions': transactions})
 ```
