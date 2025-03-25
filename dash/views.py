@@ -1,66 +1,53 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_http_methods
 from .models import Account, Transaction
-from .forms import TransferForm, DepositForm, WithdrawalForm
+from .forms import AccountForm, TransactionForm
 
 @login_required
-@require_http_methods(["GET", "POST"])
+@csrf_exempt
 def manage_account(request):
-    if request.method == 'POST':
-        if 'transfer' in request.POST:
-            transfer_form = TransferForm(request.POST)
-            if transfer_form.is_valid():
-                sender_account = request.user.account
-                recipient_account = Account.objects.get(account_number=transfer_form.cleaned_data['recipient_account_number'])
-                amount = transfer_form.cleaned_data['amount']
+    if request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank/manage_account.html', {'accounts': accounts})
 
-                if sender_account.balance >= amount:
-                    sender_account.balance -= amount
-                    recipient_account.balance += amount
-                    sender_account.save()
-                    recipient_account.save()
+    elif request.method == 'POST':
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
+        return JsonResponse({'status': 'error', 'message': 'Invalid data'}, status=400)
 
-                    Transaction.objects.create(account=sender_account, amount=-amount, transaction_type='Transfer')
-                    Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transfer Received')
-                    return redirect('account_summary')
+@login_required
+@csrf_exempt
+def transaction_history(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account)
 
-        elif 'deposit' in request.POST:
-            deposit_form = DepositForm(request.POST)
-            if deposit_form.is_valid():
-                account = request.user.account
-                amount = deposit_form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
+    if request.method == 'GET':
+        return render(request, 'bank/transaction_history.html', {'transactions': transactions, 'account': account})
 
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return redirect('account_summary')
+    elif request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.user = request.user
+            transaction.save()
+            return JsonResponse({'status': 'success', 'message': 'Transaction recorded successfully!'})
+        return JsonResponse({'status': 'error', 'message': 'Invalid transaction data'}, status=400)
 
-        elif 'withdraw' in request.POST:
-            withdrawal_form = WithdrawalForm(request.POST)
-            if withdrawal_form.is_valid():
-                account = request.user.account
-                amount = withdrawal_form.cleaned_data['amount']
+@login_required
+@csrf_exempt
+def delete_account(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
 
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-
-                    Transaction.objects.create(account=account, amount=-amount, transaction_type='Withdrawal')
-                    return redirect('account_summary')
-
-    else:
-        transfer_form = TransferForm()
-        deposit_form = DepositForm()
-        withdrawal_form = WithdrawalForm()
-
-    context = {
-        'transfer_form': transfer_form,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-        'current_balance': request.user.account.balance,
-    }
-    return render(request, 'bank/manage_account.html', context)
+    if request.method == 'DELETE':
+        account.delete()
+        return JsonResponse({'status': 'success', 'message': 'Account deleted successfully!'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
 ```
