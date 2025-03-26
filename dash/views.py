@@ -1,42 +1,54 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.views.decorators.csrf import csrf_exempt
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def manage_account(request):
-    if request.method == "POST":
+@csrf_exempt
+def bank_dashboard(request):
+    if request.method == 'GET':
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank/dashboard.html', {'accounts': accounts})
+
+    elif request.method == 'POST':
         form = AccountForm(request.POST)
         if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            return redirect('account_summary', account_id=account.id)
-    else:
-        form = AccountForm()
-    return render(request, 'bank/manage_account.html', {'form': form})
+            new_account = form.save(commit=False)
+            new_account.user = request.user
+            new_account.save()
+            messages.success(request, 'New account created successfully!')
+            return redirect('bank_dashboard')
+        else:
+            messages.error(request, 'Error creating account. Please try again.')
+
+    return HttpResponseBadRequest("Invalid request method.")
+
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def process_transaction(request):
-    if request.method == "POST":
+@csrf_exempt
+def perform_transaction(request, account_id):
+    if request.method == 'POST':
         form = TransactionForm(request.POST)
         if form.is_valid():
             transaction = form.save(commit=False)
-            transaction.account = Account.objects.get(id=form.cleaned_data['account_id'], user=request.user)
+            transaction.account = Account.objects.get(id=account_id, user=request.user)
             transaction.save()
-            return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
-    else:
-        form = TransactionForm()
-    return render(request, 'bank/process_transaction.html', {'form': form})
+            messages.success(request, 'Transaction completed successfully!')
+            return JsonResponse({'status': 'success', 'message': 'Transaction Completed!'})
+        else:
+            messages.error(request, 'Error processing transaction. Please check your input.')
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid transaction data!'}, status=400)
+
 
 @login_required
-def account_summary(request, account_id):
+def view_account_details(request, account_id):
     account = Account.objects.get(id=account_id, user=request.user)
     transactions = Transaction.objects.filter(account=account)
-    return render(request, 'bank/account_summary.html', {'account': account, 'transactions': transactions})
+    return render(request, 'bank/account_details.html', {'account': account, 'transactions': transactions})
 ```
