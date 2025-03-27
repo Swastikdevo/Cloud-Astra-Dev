@@ -1,40 +1,48 @@
 ```python
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
 
+@login_required
 @csrf_exempt
-def bank_management_view(request):
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        
-        if action == 'create_account':
-            form = AccountForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return JsonResponse({'status': 'success', 'message': 'Account created successfully.'})
+def manage_account(request, account_id=None):
+    if request.method == 'GET':
+        if account_id:
+            account = get_object_or_404(Account, id=account_id)
+            return render(request, 'account_detail.html', {'account': account})
+        else:
+            accounts = Account.objects.filter(user=request.user)
+            return render(request, 'account_list.html', {'accounts': accounts})
 
-        elif action == 'make_transaction':
-            form = TransactionForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully.'})
+    elif request.method == 'POST':
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return redirect('manage_account')
+        else:
+            return render(request, 'account_form.html', {'form': form})
 
-        elif action == 'view_balance':
-            account_id = request.POST.get('account_id')
-            account = Account.objects.filter(id=account_id).first()
-            if account:
-                return JsonResponse({'status': 'success', 'balance': account.balance})
-            return JsonResponse({'status': 'error', 'message': 'Account not found.'})
+@login_required
+@csrf_exempt
+def transaction_view(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
 
-        elif action == 'get_transactions':
-            account_id = request.POST.get('account_id')
-            transactions = Transaction.objects.filter(account_id=account_id).values()
-            return JsonResponse({'status': 'success', 'transactions': list(transactions)})
+    if request.method == 'GET':
+        transactions = Transaction.objects.filter(account=account)
+        return render(request, 'transaction_list.html', {'transactions': transactions, 'account': account})
 
-    accounts = Account.objects.all()
-    transactions = Transaction.objects.all()
-    return render(request, 'bank_management.html', {'accounts': accounts, 'transactions': transactions})
+    elif request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+            return JsonResponse({'message': 'Transaction added successfully!'})
+        else:
+            return JsonResponse({'error': 'Invalid data'}, status=400)
 ```
