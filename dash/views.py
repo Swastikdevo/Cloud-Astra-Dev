@@ -1,44 +1,47 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import TransferForm, AccountCreationForm
+from .forms import TransactionForm
 
+@csrf_exempt
 @login_required
-@require_http_methods(["GET", "POST"])
-def bank_management_view(request):
-    if request.method == "POST":
-        transfer_form = TransferForm(request.POST)
-        if transfer_form.is_valid():
-            sender_account = Account.objects.get(user=request.user)
-            recipient_account = Account.objects.get(account_number=transfer_form.cleaned_data['recipient'])
-            amount = transfer_form.cleaned_data['amount']
+def manage_account(request):
+    """
+    View to manage bank account operations: view balance, make deposits/withdrawals.
+    This view features enhanced transaction history and account summaries.
+    """
+    if request.method == 'GET':
+        account = Account.objects.get(user=request.user)
+        transactions = Transaction.objects.filter(account=account).order_by('-date')
+        total_balance = account.balance
 
-            if sender_account.balance >= amount:
-                sender_account.balance -= amount
-                recipient_account.balance += amount
-                sender_account.save()
-                recipient_account.save()
+        return render(request, 'account/manage_account.html', {
+            'account': account,
+            'transactions': transactions,
+            'total_balance': total_balance,
+            'form': TransactionForm()
+        })
 
-                # Record the transaction
-                Transaction.objects.create(
-                    sender=sender_account,
-                    recipient=recipient_account,
-                    amount=amount,
-                    description=transfer_form.cleaned_data.get('description', '')
-                )
-                return JsonResponse({"status": "success", "message": "Transfer completed successfully!"})
+    elif request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = Account.objects.get(user=request.user)
+
+            if transaction.transaction_type == 'deposit':
+                transaction.account.balance += transaction.amount
+            elif transaction.transaction_type == 'withdraw' and transaction.amount <= transaction.account.balance:
+                transaction.account.balance -= transaction.amount
             else:
-                return JsonResponse({"status": "error", "message": "Insufficient balance."})
+                return JsonResponse({'error': 'Insufficient funds for withdrawal'}, status=400)
 
-    else:
-        transfer_form = TransferForm()
+            transaction.save()
+            transaction.account.save()
 
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank_management.html', {
-        'transfer_form': transfer_form,
-        'accounts': accounts
-    })
+            return JsonResponse({'message': 'Transaction successful', 'new_balance': transaction.account.balance})
+
+        return JsonResponse({'error': 'Invalid form submission'}, status=400)
 ```
