@@ -1,5 +1,5 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
@@ -8,27 +8,33 @@ from .forms import AccountForm, TransactionForm
 
 @login_required
 @csrf_exempt
-def bank_management_view(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(owner=request.user)
-        return render(request, 'bank_management/dashboard.html', {'accounts': accounts})
-
-    elif request.method == 'POST':
-        if 'create_account' in request.POST:
+def manage_account(request):
+    if request.method == 'POST':
+        if 'add_account' in request.POST:
             form = AccountForm(request.POST)
             if form.is_valid():
                 account = form.save(commit=False)
-                account.owner = request.user
+                account.user = request.user
                 account.save()
-                return redirect('bank_management')
+                return JsonResponse({'status': 'success', 'message': 'Account created successfully.'})
 
         elif 'make_transaction' in request.POST:
             form = TransactionForm(request.POST)
             if form.is_valid():
                 transaction = form.save(commit=False)
-                transaction.account = get_object_or_404(Account, id=request.POST['account_id'], owner=request.user)
+                transaction.user = request.user
                 transaction.save()
-                return redirect('bank_management')
+                return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully.'})
 
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+    accounts = Account.objects.filter(user=request.user)
+    transactions = Transaction.objects.filter(user=request.user)
+    account_form = AccountForm()
+    transaction_form = TransactionForm()
+    
+    return render(request, 'bank/manage_account.html', {
+        'accounts': accounts,
+        'transactions': transactions,
+        'account_form': account_form,
+        'transaction_form': transaction_form
+    })
 ```
