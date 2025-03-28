@@ -3,43 +3,43 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm
+from .forms import AccountForm, TransactionForm
+from django.contrib import messages
+from django.db import transaction
 
 @login_required
 def manage_account(request):
-    user_account = Account.objects.get(user=request.user)
-    
     if request.method == 'POST':
-        if 'deposit' in request.POST:
-            deposit_form = DepositForm(request.POST)
-            if deposit_form.is_valid():
-                amount = deposit_form.cleaned_data['amount']
-                user_account.balance += amount
-                user_account.save()
-                Transaction.objects.create(account=user_account, amount=amount, transaction_type='Deposit')
-                return redirect('manage_account')
-        elif 'withdraw' in request.POST:
-            withdrawal_form = WithdrawalForm(request.POST)
-            if withdrawal_form.is_valid():
-                amount = withdrawal_form.cleaned_data['amount']
-                if user_account.balance >= amount:
-                    user_account.balance -= amount
-                    user_account.save()
-                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Withdrawal')
-                    return redirect('manage_account')
-                else:
-                    return JsonResponse({'error': 'Insufficient funds'}, status=400)
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            messages.success(request, 'Account created successfully!')
+            return redirect('manage_account')
+    else:
+        form = AccountForm()
     
-    deposit_form = DepositForm()
-    withdrawal_form = WithdrawalForm()
-    transactions = Transaction.objects.filter(account=user_account).order_by('-date_created')
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/manage_account.html', {'form': form, 'accounts': accounts})
 
-    context = {
-        'account': user_account,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-        'transactions': transactions,
-    }
-    
-    return render(request, 'bank/manage_account.html', context)
+@login_required
+def transactions(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            with transaction.atomic():
+                transaction = form.save(commit=False)
+                transaction.account = account
+                transaction.user = request.user
+                transaction.save()
+                messages.success(request, 'Transaction recorded successfully!')
+                return redirect('transactions', account_id=account.id)
+    else:
+        form = TransactionForm()
+
+    transactions = Transaction.objects.filter(account=account)
+    return render(request, 'bank/transactions.html', {'form': form, 'transactions': transactions, 'account': account})
 ```
