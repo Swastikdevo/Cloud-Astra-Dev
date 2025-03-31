@@ -1,54 +1,63 @@
 ```python
-from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST, require_GET
-from django.contrib.auth.decorators import login_required
-from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm
+from django.views import View
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+import json
 
-@login_required
-@require_GET
-def account_overview(request):
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/account_overview.html', {'accounts': accounts})
+class BankAccountView(View):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.accounts = {}  # A simple in-memory storage for demo purposes
 
-@login_required
-@require_POST
-def deposit(request, account_id):
-    form = DepositForm(request.POST)
-    if form.is_valid():
-        account = Account.objects.get(id=account_id, user=request.user)
-        amount = form.cleaned_data['amount']
-        account.balance += amount
-        account.save()
-        
-        Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-        
-        return JsonResponse({'success': True, 'new_balance': account.balance})
-    return JsonResponse({'success': False, 'errors': form.errors})
+    @method_decorator(csrf_exempt)
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
-@login_required
-@require_POST
-def withdraw(request, account_id):
-    form = WithdrawForm(request.POST)
-    if form.is_valid():
-        account = Account.objects.get(id=account_id, user=request.user)
-        amount = form.cleaned_data['amount']
-        
-        if account.balance >= amount:
-            account.balance -= amount
-            account.save()
-            
-            Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
-            
-            return JsonResponse({'success': True, 'new_balance': account.balance})
-        return JsonResponse({'success': False, 'error': 'Insufficient funds.'})
-    return JsonResponse({'success': False, 'errors': form.errors})
+    def post(self, request):
+        data = json.loads(request.body)
+        action = data.get('action')
 
-@login_required
-@require_GET
-def transaction_history(request, account_id):
-    account = Account.objects.get(id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
+        if action == 'create_account':
+            account_id = len(self.accounts) + 1
+            self.accounts[account_id] = {
+                'balance': 0.0,
+                'owner': data.get('owner')
+            }
+            return JsonResponse({'status': 'success', 'account_id': account_id}, status=201)
+
+        elif action == 'deposit':
+            account_id = data.get('account_id')
+            amount = data.get('amount', 0)
+            if account_id in self.accounts:
+                self.accounts[account_id]['balance'] += amount
+                return JsonResponse({'status': 'success', 'balance': self.accounts[account_id]['balance']})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Account not found'}, status=404)
+
+        elif action == 'withdraw':
+            account_id = data.get('account_id')
+            amount = data.get('amount', 0)
+            if account_id in self.accounts:
+                if self.accounts[account_id]['balance'] >= amount:
+                    self.accounts[account_id]['balance'] -= amount
+                    return JsonResponse({'status': 'success', 'balance': self.accounts[account_id]['balance']})
+                else:
+                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds'}, status=400)
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Account not found'}, status=404)
+
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Invalid action'}, status=400)
+
+    def get(self, request):
+        account_id = request.GET.get('account_id')
+        if account_id and account_id.isdigit():
+            account_id = int(account_id)
+            if account_id in self.accounts:
+                return JsonResponse({'status': 'success', 'account': self.accounts[account_id]})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Account not found'}, status=404)
+
+        return JsonResponse({'status': 'error', 'message': 'No account ID provided'}, status=400)
 ```
