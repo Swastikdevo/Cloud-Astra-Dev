@@ -1,63 +1,63 @@
 ```python
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views import View
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-import json
+from django.views.decorators.http import require_POST
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawForm
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 
-class BankAccountView(View):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.accounts = {}  # A simple in-memory storage for demo purposes
+@login_required
+def account_overview(request):
+    """Displays the account overview including balance and recent transactions."""
+    account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')[:10]
+    return render(request, 'account/overview.html', {
+        'account': account,
+        'transactions': transactions
+    })
 
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
+@login_required
+@require_POST
+def deposit(request):
+    """Handles deposit requests."""
+    form = DepositForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = Account.objects.get(user=request.user)
+        account.balance += amount
+        account.save()
+        Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+        messages.success(request, f'Deposited ${amount:.2f} successfully.')
+        return redirect('account_overview')
+    messages.error(request, 'Invalid deposit amount.')
+    return redirect('account_overview')
 
-    def post(self, request):
-        data = json.loads(request.body)
-        action = data.get('action')
-
-        if action == 'create_account':
-            account_id = len(self.accounts) + 1
-            self.accounts[account_id] = {
-                'balance': 0.0,
-                'owner': data.get('owner')
-            }
-            return JsonResponse({'status': 'success', 'account_id': account_id}, status=201)
-
-        elif action == 'deposit':
-            account_id = data.get('account_id')
-            amount = data.get('amount', 0)
-            if account_id in self.accounts:
-                self.accounts[account_id]['balance'] += amount
-                return JsonResponse({'status': 'success', 'balance': self.accounts[account_id]['balance']})
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Account not found'}, status=404)
-
-        elif action == 'withdraw':
-            account_id = data.get('account_id')
-            amount = data.get('amount', 0)
-            if account_id in self.accounts:
-                if self.accounts[account_id]['balance'] >= amount:
-                    self.accounts[account_id]['balance'] -= amount
-                    return JsonResponse({'status': 'success', 'balance': self.accounts[account_id]['balance']})
-                else:
-                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds'}, status=400)
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Account not found'}, status=404)
-
+@login_required
+@require_POST
+def withdraw(request):
+    """Handles withdrawal requests."""
+    form = WithdrawForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = Account.objects.get(user=request.user)
+        if amount <= account.balance:
+            account.balance -= amount
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+            messages.success(request, f'Withdrew ${amount:.2f} successfully.')
         else:
-            return JsonResponse({'status': 'error', 'message': 'Invalid action'}, status=400)
+            messages.error(request, 'Insufficient funds for this withdrawal.')
+    else:
+        messages.error(request, 'Invalid withdrawal amount.')
+    return redirect('account_overview')
 
-    def get(self, request):
-        account_id = request.GET.get('account_id')
-        if account_id and account_id.isdigit():
-            account_id = int(account_id)
-            if account_id in self.accounts:
-                return JsonResponse({'status': 'success', 'account': self.accounts[account_id]})
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Account not found'}, status=404)
-
-        return JsonResponse({'status': 'error', 'message': 'No account ID provided'}, status=400)
+@login_required
+def transaction_history(request):
+    """Displays the transaction history."""
+    account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    return render(request, 'account/transaction_history.html', {
+        'transactions': transactions
+    })
 ```
