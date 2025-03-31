@@ -1,58 +1,54 @@
 ```python
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views import View
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.mixins import LoginRequiredMixin
-import json
+from django.views.decorators.http import require_POST, require_GET
+from django.contrib.auth.decorators import login_required
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawForm
 
-@method_decorator(csrf_exempt, name='dispatch')
-class BankAccountView(LoginRequiredMixin, View):
+@login_required
+@require_GET
+def account_overview(request):
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/account_overview.html', {'accounts': accounts})
 
-    def get(self, request, account_id=None):
-        if account_id:
-            # Fetch account details
-            account = self.get_account_details(account_id)
-            return JsonResponse(account)
-        else:
-            # Fetch all accounts for the user
-            accounts = self.get_all_accounts_for_user(request.user)
-            return JsonResponse(accounts, safe=False)
+@login_required
+@require_POST
+def deposit(request, account_id):
+    form = DepositForm(request.POST)
+    if form.is_valid():
+        account = Account.objects.get(id=account_id, user=request.user)
+        amount = form.cleaned_data['amount']
+        account.balance += amount
+        account.save()
+        
+        Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
+        
+        return JsonResponse({'success': True, 'new_balance': account.balance})
+    return JsonResponse({'success': False, 'errors': form.errors})
 
-    def post(self, request):
-        # Create a new bank account
-        data = json.loads(request.body)
-        account = self.create_account(data, request.user)
-        return JsonResponse(account, status=201)
+@login_required
+@require_POST
+def withdraw(request, account_id):
+    form = WithdrawForm(request.POST)
+    if form.is_valid():
+        account = Account.objects.get(id=account_id, user=request.user)
+        amount = form.cleaned_data['amount']
+        
+        if account.balance >= amount:
+            account.balance -= amount
+            account.save()
+            
+            Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
+            
+            return JsonResponse({'success': True, 'new_balance': account.balance})
+        return JsonResponse({'success': False, 'error': 'Insufficient funds.'})
+    return JsonResponse({'success': False, 'errors': form.errors})
 
-    def put(self, request, account_id):
-        # Update existing account details
-        data = json.loads(request.body)
-        updated_account = self.update_account(account_id, data)
-        return JsonResponse(updated_account)
-
-    def delete(self, request, account_id):
-        # Close an existing account
-        self.close_account(account_id)
-        return JsonResponse({'message': 'Account closed successfully.'}, status=204)
-
-    def get_account_details(self, account_id):
-        # Logic to fetch account details from the database
-        pass
-
-    def get_all_accounts_for_user(self, user):
-        # Logic to fetch all accounts for the authenticated user from the database
-        pass
-
-    def create_account(self, data, user):
-        # Logic to create a new account based on the provided data
-        pass
-
-    def update_account(self, account_id, data):
-        # Logic to update the account with the provided account_id and data
-        pass
-
-    def close_account(self, account_id):
-        # Logic to close the account with the provided account_id
-        pass
+@login_required
+@require_GET
+def transaction_history(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
 ```
