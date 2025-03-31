@@ -1,68 +1,39 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import HttpResponse
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm, TransferForm
+from .forms import AccountForm, TransactionForm
 
 @login_required
-def account_dashboard(request):
-    user_account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=user_account).order_by('-date')
-    
-    if request.method == 'POST':
-        # Handle deposit
-        if 'deposit' in request.POST:
-            deposit_form = DepositForm(request.POST)
-            if deposit_form.is_valid():
-                amount = deposit_form.cleaned_data['amount']
-                user_account.balance += amount
-                user_account.save()
-                # Log transaction
-                Transaction.objects.create(account=user_account, amount=amount, transaction_type='deposit')
-                return redirect('account_dashboard')
-                
-        # Handle withdrawal
-        elif 'withdraw' in request.POST:
-            withdraw_form = WithdrawForm(request.POST)
-            if withdraw_form.is_valid():
-                amount = withdraw_form.cleaned_data['amount']
-                if user_account.balance >= amount:
-                    user_account.balance -= amount
-                    user_account.save()
-                    # Log transaction
-                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='withdrawal')
-                    return redirect('account_dashboard')
-        
-        # Handle transfer
-        elif 'transfer' in request.POST:
-            transfer_form = TransferForm(request.POST)
-            if transfer_form.is_valid():
-                recipient_account_number = transfer_form.cleaned_data['recipient_account_number']
-                amount = transfer_form.cleaned_data['amount']
-                recipient_account = Account.objects.get(account_number=recipient_account_number)
-                
-                if user_account.balance >= amount:
-                    user_account.balance -= amount
-                    recipient_account.balance += amount
-                    user_account.save()
-                    recipient_account.save()
-                    # Log transactions
-                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='transfer_out')
-                    Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='transfer_in')
-                    return redirect('account_dashboard')
+@require_http_methods(["GET", "POST"])
+def manage_account(request):
+    if request.method == "POST":
+        account_form = AccountForm(request.POST)
+        if account_form.is_valid():
+            account = account_form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return redirect('view_accounts')
+    else:
+        account_form = AccountForm()
 
-    deposit_form = DepositForm()
-    withdraw_form = WithdrawForm()
-    transfer_form = TransferForm()
-    
-    context = {
-        'user_account': user_account,
-        'transactions': transactions,
-        'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
-        'transfer_form': transfer_form,
-    }
-    
-    return render(request, 'account/dashboard.html', context)
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/manage_account.html', {'account_form': account_form, 'accounts': accounts})
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def process_transaction(request):
+    if request.method == "POST":
+        transaction_form = TransactionForm(request.POST)
+        if transaction_form.is_valid():
+            transaction = transaction_form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            return redirect('transaction_history')
+    else:
+        transaction_form = TransactionForm()
+
+    return render(request, 'bank/process_transaction.html', {'transaction_form': transaction_form})
 ```
