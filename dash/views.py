@@ -1,53 +1,48 @@
 ```python
-from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
-from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def manage_account(request, account_id=None):
+def manage_account(request):
     if request.method == 'POST':
-        if account_id:
-            account = Account.objects.get(id=account_id)
-            form = AccountForm(request.POST, instance=account)
-        else:
+        if 'create_account' in request.POST:
             form = AccountForm(request.POST)
-        
-        if form.is_valid():
-            form.save()
-            return redirect('account_list')  # Redirect to the account list
+            if form.is_valid():
+                account = form.save(commit=False)
+                account.user = request.user
+                account.save()
+                messages.success(request, "Account created successfully!")
+                return redirect('manage_account')
+            else:
+                messages.error(request, "Error creating account. Please correct the form.")
 
+        if 'make_transaction' in request.POST:
+            transaction_form = TransactionForm(request.POST)
+            if transaction_form.is_valid():
+                transaction = transaction_form.save(commit=False)
+                transaction.user = request.user
+                transaction.save()
+                messages.success(request, "Transaction made successfully!")
+                return redirect('manage_account')
+            else:
+                messages.error(request, "Error making transaction. Please correct the form.")
     else:
-        if account_id:
-            account = Account.objects.get(id=account_id)
-            form = AccountForm(instance=account)
-        else:
-            form = AccountForm()
+        form = AccountForm()
+        transaction_form = TransactionForm()
 
-    return render(request, 'manage_account.html', {'form': form})
+    accounts = Account.objects.filter(user=request.user)
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
 
-@login_required
-@require_http_methods(["GET", "POST"])
-def record_transaction(request):
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.user = request.user
-            transaction.save()
-            return JsonResponse({'success': True, 'transaction_id': transaction.id})
-
-    else:
-        form = TransactionForm()
-
-    return render(request, 'record_transaction.html', {'form': form})
-
-@login_required
-def account_balance(request, account_id):
-    account = Account.objects.get(id=account_id)
-    balance = account.get_balance()  # Assuming this method exists in the Account model
-    return JsonResponse({'account_id': account.id, 'balance': balance})
+    context = {
+        'form': form,
+        'transaction_form': transaction_form,
+        'accounts': accounts,
+        'transactions': transactions
+    }
+    
+    return render(request, 'bank/manage_account.html', context)
 ```
