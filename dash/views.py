@@ -1,54 +1,57 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Account, Transaction
-from .forms import CreateAccountForm, TransferForm
+from .forms import AccountForm, TransactionForm
 
 @login_required
-@csrf_exempt
-def bank_management_view(request):
+def account_management(request):
+    user = request.user
+    accounts = Account.objects.filter(user=user)
+
     if request.method == 'POST':
-        action = request.POST.get('action')
-        
-        # Handle account creation
-        if action == 'create_account':
-            form = CreateAccountForm(request.POST)
-            if form.is_valid():
-                account = form.save(commit=False)
-                account.user = request.user
+        if 'create_account' in request.POST:
+            account_form = AccountForm(request.POST)
+            if account_form.is_valid():
+                account = account_form.save(commit=False)
+                account.user = user
                 account.save()
-                return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
-            else:
-                return JsonResponse({'status': 'error', 'message': form.errors})
+                messages.success(request, 'New account created successfully!')
+                return redirect('account_management')
+        elif 'make_transaction' in request.POST:
+            transaction_form = TransactionForm(request.POST)
+            if transaction_form.is_valid():
+                transaction = transaction_form.save(commit=False)
+                transaction.user = user
+                transaction.save()
+                messages.success(request, 'Transaction completed successfully!')
+                return redirect('account_management')
+    
+    account_form = AccountForm()
+    transaction_form = TransactionForm()
 
-        # Handle money transfer
-        elif action == 'transfer':
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                sender_account = Account.objects.get(id=form.cleaned_data['sender_account_id'])
-                receiver_account = Account.objects.get(id=form.cleaned_data['receiver_account_id'])
-                amount = form.cleaned_data['amount']
+    return render(request, 'bank/account_management.html', {
+        'accounts': accounts,
+        'account_form': account_form,
+        'transaction_form': transaction_form,
+    })
 
-                if sender_account.balance >= amount:
-                    sender_account.balance -= amount
-                    receiver_account.balance += amount
-                    sender_account.save()
-                    receiver_account.save()
+@login_required
+def account_details(request, account_id):
+    user = request.user
+    account = Account.objects.get(id=account_id, user=user)
+    
+    if request.method == 'POST':
+        if 'delete_account' in request.POST:
+            account.delete()
+            messages.success(request, 'Account deleted successfully!')
+            return redirect('account_management')
 
-                    Transaction.objects.create(
-                        sender=sender_account,
-                        receiver=receiver_account,
-                        amount=amount,
-                        description=f'Transferred {amount} to {receiver_account.account_number}'
-                    )
-                    return JsonResponse({'status': 'success', 'message': 'Transfer completed successfully!'})
-                else:
-                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds.'})
-            else:
-                return JsonResponse({'status': 'error', 'message': form.errors})
+    transactions = Transaction.objects.filter(account=account)
 
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank_management.html', {'accounts': accounts})
+    return render(request, 'bank/account_details.html', {
+        'account': account,
+        'transactions': transactions,
+    })
 ```
