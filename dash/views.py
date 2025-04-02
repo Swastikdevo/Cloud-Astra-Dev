@@ -1,36 +1,57 @@
 ```python
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
+from django.views import View
 from .models import Account, Transaction
-from .forms import TransactionForm
+from .forms import AccountForm, TransactionForm
 
-@csrf_exempt
-@login_required
-def manage_account(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        return render(request, 'account/manage_account.html', {'accounts': accounts})
+class AccountView(View):
+    def get(self, request):
+        accounts = Account.objects.all()
+        return render(request, 'bank/accounts.html', {'accounts': accounts})
 
-    elif request.method == 'POST':
+    def post(self, request):
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('account_list')
+        return render(request, 'bank/accounts.html', {'form': form})
+
+class TransactionView(View):
+    def get(self, request):
+        transactions = Transaction.objects.all()
+        return render(request, 'bank/transactions.html', {'transactions': transactions})
+
+    @csrf_exempt
+    def post(self, request):
         form = TransactionForm(request.POST)
         if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.user = request.user
-            transaction.save()
-            # Add the transaction to the relevant account
-            account = Account.objects.get(id=form.cleaned_data['account_id'], user=request.user)
-            account.balance += form.cleaned_data['amount']
-            account.save()
-            return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully.'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Invalid form submission.'})
+            form.save()
+            return JsonResponse({'status': 'success'}, status=201)
+        return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
 
-@csrf_exempt
-@login_required
-def view_transactions(request, account_id):
-    account = Account.objects.get(id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account)
-    return render(request, 'account/view_transactions.html', {'transactions': transactions, 'account': account})
+def account_detail(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
+    return render(request, 'bank/account_detail.html', {'account': account})
+
+def deposit(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
+    if request.method == "POST":
+        amount = request.POST.get('amount')
+        account.balance += float(amount)
+        account.save()
+        return redirect('account_detail', account_id=account.id)
+    return render(request, 'bank/deposit.html', {'account': account})
+
+def withdraw(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
+    if request.method == "POST":
+        amount = request.POST.get('amount')
+        if account.balance >= float(amount):
+            account.balance -= float(amount)
+            account.save()
+            return redirect('account_detail', account_id=account.id)
+        return render(request, 'bank/withdraw.html', {'account': account, 'error': 'Insufficient funds'})
+    return render(request, 'bank/withdraw.html', {'account': account})
 ```
