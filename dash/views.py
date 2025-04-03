@@ -7,50 +7,45 @@ from .models import Account, Transaction
 from .forms import DepositForm, WithdrawForm
 
 @login_required
-def account_overview(request):
-    """Display the account overview with balance and recent transactions."""
+def account_dashboard(request):
     account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')[:5]
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    
+    if request.method == 'POST':
+        if 'deposit' in request.POST:
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                return redirect('account_dashboard')
+        elif 'withdraw' in request.POST:
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                if account.balance >= amount:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                    return redirect('account_dashboard')
+
+    deposit_form = DepositForm()
+    withdraw_form = WithdrawForm()
     
     context = {
         'account': account,
         'transactions': transactions,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
     }
-    return render(request, 'bank/account_overview.html', context)
+    
+    return render(request, 'account/dashboard.html', context)
 
-@login_required
 @require_POST
-def deposit(request):
-    """Deposit money into the user's account."""
-    form = DepositForm(request.POST)
-    if form.is_valid():
-        amount = form.cleaned_data['amount']
-        account = Account.objects.get(user=request.user)
-        account.balance += amount
-        account.save()
-
-        Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-        return JsonResponse({'success': True, 'balance': account.balance})
-
-    return JsonResponse({'success': False, 'errors': form.errors})
-
 @login_required
-@require_POST
-def withdraw(request):
-    """Withdraw money from the user's account."""
-    form = WithdrawForm(request.POST)
-    if form.is_valid():
-        amount = form.cleaned_data['amount']
-        account = Account.objects.get(user=request.user)
-
-        if amount > account.balance:
-            return JsonResponse({'success': False, 'errors': 'Insufficient funds'})
-        
-        account.balance -= amount
-        account.save()
-        
-        Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-        return JsonResponse({'success': True, 'balance': account.balance})
-
-    return JsonResponse({'success': False, 'errors': form.errors})
+def api_transaction_history(request):
+    account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=account).values('id', 'amount', 'date', 'transaction_type')
+    return JsonResponse(list(transactions), safe=False)
 ```
