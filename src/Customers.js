@@ -15,8 +15,7 @@ const CustomerList = () => {
         fetchCustomers();
     }, []);
 
-    const handleDelete = async (id) => {
-        await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    const removeCustomer = id => {
         setCustomers(customers.filter(customer => customer.id !== id));
     };
 
@@ -24,12 +23,12 @@ const CustomerList = () => {
 
     return (
         <div>
-            <h1>Customer List</h1>
+            <h2>Customers</h2>
             <ul>
                 {customers.map(customer => (
                     <li key={customer.id}>
                         {customer.name}
-                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                        <button onClick={() => removeCustomer(customer.id)}>Remove</button>
                     </li>
                 ))}
             </ul>
