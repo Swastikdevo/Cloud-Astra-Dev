@@ -1,47 +1,58 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filterCriteria, setFilterCriteria] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-      setLoading(false);
-    };
     fetchCustomers();
   }, []);
 
-  const handleFilterChange = (e) => {
-    setFilterCriteria(e.target.value);
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(filterCriteria.toLowerCase())
-  );
+  const addCustomer = async (e) => {
+    e.preventDefault();
+    const newCustomer = { name, email };
+    await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    setCustomers([...customers, newCustomer]);
+    setName('');
+    setEmail('');
+  };
 
-  if (loading) return <div>Loading...</div>;
+  const deleteCustomer = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Filter by name"
-        value={filterCriteria}
-        onChange={handleFilterChange}
-      />
+      <h2>Customer Management</h2>
+      <form onSubmit={addCustomer}>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" required />
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
+        <button type="submit">Add Customer</button>
+      </form>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email} 
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
