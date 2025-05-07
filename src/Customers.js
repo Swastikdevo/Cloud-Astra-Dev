@@ -1,47 +1,47 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterCriteria, setFilterCriteria] = useState('');
 
-    useEffect(() => {
-        fetch('/api/customers')
-            .then(res => res.json())
-            .then(data => {
-                setCustomers(data);
-                setLoading(false);
-            })
-            .catch(err => console.error(err));
-    }, []);
-
-    const handleSearch = (e) => {
-        setSearchTerm(e.target.value);
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+      setLoading(false);
     };
+    fetchCustomers();
+  }, []);
 
-    const filteredCustomers = customers.filter(customer => 
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const handleFilterChange = (e) => {
+    setFilterCriteria(e.target.value);
+  };
 
-    if (loading) return <div>Loading...</div>;
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(filterCriteria.toLowerCase())
+  );
 
-    return (
-        <div>
-            <input
-                type="text"
-                placeholder="Search Customers"
-                value={searchTerm}
-                onChange={handleSearch}
-            />
-            <ul>
-                {filteredCustomers.map(customer => (
-                    <li key={customer.id}>{customer.name} - {customer.email}</li>
-                ))}
-            </ul>
-        </div>
-    );
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Filter by name"
+        value={filterCriteria}
+        onChange={handleFilterChange}
+      />
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
