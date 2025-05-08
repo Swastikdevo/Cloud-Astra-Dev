@@ -1,31 +1,36 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
+import { fetchCustomers, deleteCustomer } from './api';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
+    const loadCustomers = async () => {
+      const data = await fetchCustomers();
+      setCustomers(data);
+      setLoading(false);
+    };
+    loadCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleDelete = async (id) => {
+    await deleteCustomer(id);
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search customers..."
-        value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
-      />
+      <h1>Customer List</h1>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
