@@ -1,52 +1,51 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import TransferForm, AccountCreationForm
+from .forms import DepositForm, WithdrawForm
+from django.contrib import messages
+from django.db import transaction
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def manage_account(request):
-    if request.method == 'POST':
-        if 'create_account' in request.POST:
-            form = AccountCreationForm(request.POST)
-            if form.is_valid():
-                account = form.save(commit=False)
-                account.owner = request.user
-                account.save()
-                return redirect('account_detail', account.id)
-
-        elif 'transfer_funds' in request.POST:
-            transfer_form = TransferForm(request.POST)
-            if transfer_form.is_valid():
-                sender_account = Account.objects.get(id=transfer_form.cleaned_data['sender_account'])
-                receiver_account = Account.objects.get(id=transfer_form.cleaned_data['receiver_account'])
-                
-                amount = transfer_form.cleaned_data['amount']
-                if sender_account.balance >= amount:
-                    sender_account.balance -= amount
-                    receiver_account.balance += amount
-                    sender_account.save()
-                    receiver_account.save()
-                    
-                    Transaction.objects.create(
-                        sender=sender_account,
-                        receiver=receiver_account,
-                        amount=amount,
-                    )
-                    return JsonResponse({'success': True, 'message': 'Transfer successful.'})
-                else:
-                    return JsonResponse({'success': False, 'message': 'Insufficient funds.'})
-
-    accounts = Account.objects.filter(owner=request.user)
-    transfer_form = TransferForm()
-    account_creation_form = AccountCreationForm()
+def banking_dashboard(request):
+    user_account = Account.objects.filter(user=request.user).first()
     
-    return render(request, 'manage_account.html', {
-        'accounts': accounts,
-        'transfer_form': transfer_form,
-        'account_creation_form': account_creation_form,
-    })
+    if request.method == 'POST':
+        if 'deposit' in request.POST:
+            deposit_form = DepositForm(request.POST)
+            if deposit_form.is_valid():
+                amount = deposit_form.cleaned_data['amount']
+                with transaction.atomic():
+                    user_account.balance += amount
+                    user_account.save()
+                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Deposit')
+                messages.success(request, 'Deposit successful!')
+                return redirect('banking_dashboard')
+        elif 'withdraw' in request.POST:
+            withdraw_form = WithdrawForm(request.POST)
+            if withdraw_form.is_valid():
+                amount = withdraw_form.cleaned_data['amount']
+                if amount > user_account.balance:
+                    messages.error(request, 'Insufficient funds!')
+                else:
+                    with transaction.atomic():
+                        user_account.balance -= amount
+                        user_account.save()
+                        Transaction.objects.create(account=user_account, amount=amount, transaction_type='Withdrawal')
+                    messages.success(request, 'Withdrawal successful!')
+                    return redirect('banking_dashboard')
+    else:
+        deposit_form = DepositForm()
+        withdraw_form = WithdrawForm()
+    
+    transactions = Transaction.objects.filter(account=user_account).order_by('-date')[:10]
+
+    context = {
+        'user_account': user_account,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+        'transactions': transactions,
+    }
+    return render(request, 'banking/dashboard.html', context)
 ```
