@@ -1,65 +1,55 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
+const CustomerList = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await axios.get('/api/customers');
-      setCustomers(response.data);
-      setLoading(false);
+    useEffect(() => {
+        fetch('/api/customers')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                setCustomers(data);
+                setLoading(false);
+            })
+            .catch(error => {
+                setError(error);
+                setLoading(false);
+            });
+    }, []);
+
+    const handleDelete = (id) => {
+        fetch(`/api/customers/${id}`, {
+            method: 'DELETE'
+        })
+        .then(() => {
+            setCustomers(customers.filter(customer => customer.id !== id));
+        });
     };
-    fetchCustomers();
-  }, []);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewCustomer({ ...newCustomer, [name]: value });
-  };
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>Error: {error.message}</div>;
 
-  const addCustomer = async () => {
-    if (newCustomer.name && newCustomer.email) {
-      const response = await axios.post('/api/customers', newCustomer);
-      setCustomers([...customers, response.data]);
-      setNewCustomer({ name: '', email: '' });
-    }
-  };
-
-  return (
-    <div>
-      {loading ? <p>Loading...</p> : (
+    return (
         <div>
-          <h1>Customer List</h1>
-          <ul>
-            {customers.map((customer) => (
-              <li key={customer.id}>{customer.name} - {customer.email}</li>
-            ))}
-          </ul>
-          <h2>Add New Customer</h2>
-          <input
-            type="text"
-            name="name"
-            placeholder="Name"
-            value={newCustomer.name}
-            onChange={handleInputChange}
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={newCustomer.email}
-            onChange={handleInputChange}
-          />
-          <button onClick={addCustomer}>Add</button>
+            <h2>Customer List</h2>
+            <ul>
+                {customers.map(customer => (
+                    <li key={customer.id}>
+                        {customer.name} - {customer.email}
+                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                    </li>
+                ))}
+            </ul>
         </div>
-      )}
-    </div>
-  );
+    );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
