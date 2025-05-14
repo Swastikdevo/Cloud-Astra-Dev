@@ -1,62 +1,68 @@
 ```python
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 from .models import Account, Transaction
-from .forms import TransferForm, DepositForm, WithdrawForm
+from .forms import AccountForm, TransactionForm
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+
+@csrf_exempt
+@login_required
+def manage_account(request, account_id=None):
+    if request.method == 'POST':
+        if account_id:
+            account = get_object_or_404(Account, id=account_id)
+            form = AccountForm(request.POST, instance=account)
+        else:
+            form = AccountForm(request.POST)
+
+        if form.is_valid():
+            account = form.save()
+            messages.success(request, 'Account saved successfully.')
+            return redirect('account_detail', account_id=account.id)
+        else:
+            messages.error(request, 'Error saving account. Please correct the errors below.')
+
+    else:
+        form = AccountForm(instance=get_object_or_404(Account, id=account_id)) if account_id else AccountForm()
+
+    return render(request, 'bank/manage_account.html', {'form': form})
+
+@csrf_exempt
+@login_required
+def transaction_view(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
+
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+            messages.success(request, 'Transaction recorded successfully.')
+            return redirect('account_detail', account_id=account.id)
+        else:
+            messages.error(request, 'Error recording transaction. Please check the details.')
+
+    else:
+        form = TransactionForm()
+
+    return render(request, 'bank/transaction_view.html', {'form': form, 'account': account})
 
 @login_required
-def bank_management_view(request):
-    user = request.user
-    accounts = Account.objects.filter(owner=user)
-    
+def account_detail(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    return render(request, 'bank/account_detail.html', {'account': account, 'transactions': transactions})
+
+@login_required
+def delete_account(request, account_id):
+    account = get_object_or_404(Account, id=account_id)
     if request.method == 'POST':
-        if 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                sender_account = form.cleaned_data['sender_account']
-                recipient_account = form.cleaned_data['recipient_account']
-                amount = form.cleaned_data['amount']
-                
-                # Ensure sufficient funds
-                if sender_account.balance >= amount:
-                    sender_account.balance -= amount
-                    recipient_account.balance += amount
-                    sender_account.save()
-                    recipient_account.save()
-                    Transaction.objects.create(account=sender_account, amount=-amount)
-                    Transaction.objects.create(account=recipient_account, amount=amount)
-                    return redirect('bank_management')
-                    
-        elif 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                account = form.cleaned_data['account']
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount)
-                return redirect('bank_management')
-                
-        elif 'withdraw' in request.POST:
-            form = WithdrawForm(request.POST)
-            if form.is_valid():
-                account = form.cleaned_data['account']
-                amount = form.cleaned_data['amount']
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=-amount)
-                    return redirect('bank_management')
-    
-    transfer_form = TransferForm()
-    deposit_form = DepositForm()
-    withdraw_form = WithdrawForm()
-    
-    return render(request, 'bank_management.html', {
-        'accounts': accounts,
-        'transfer_form': transfer_form,
-        'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form
-    })
+        account.delete()
+        messages.success(request, 'Account deleted successfully.')
+        return redirect('account_list')
+
+    return render(request, 'bank/delete_account.html', {'account': account})
 ```
