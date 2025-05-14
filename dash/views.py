@@ -1,51 +1,60 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
-from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm
-from django.contrib import messages
-from django.db import transaction
+from .models import BankAccount, Transaction
+from .forms import DepositForm, WithdrawalForm
 
 @login_required
-def banking_dashboard(request):
-    user_account = Account.objects.filter(user=request.user).first()
+def account_dashboard(request):
+    account = BankAccount.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
     
+    # Process any forms submitted
     if request.method == 'POST':
         if 'deposit' in request.POST:
-            deposit_form = DepositForm(request.POST)
-            if deposit_form.is_valid():
-                amount = deposit_form.cleaned_data['amount']
-                with transaction.atomic():
-                    user_account.balance += amount
-                    user_account.save()
-                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Deposit')
-                messages.success(request, 'Deposit successful!')
-                return redirect('banking_dashboard')
+            return handle_deposit(request, account)
         elif 'withdraw' in request.POST:
-            withdraw_form = WithdrawForm(request.POST)
-            if withdraw_form.is_valid():
-                amount = withdraw_form.cleaned_data['amount']
-                if amount > user_account.balance:
-                    messages.error(request, 'Insufficient funds!')
-                else:
-                    with transaction.atomic():
-                        user_account.balance -= amount
-                        user_account.save()
-                        Transaction.objects.create(account=user_account, amount=amount, transaction_type='Withdrawal')
-                    messages.success(request, 'Withdrawal successful!')
-                    return redirect('banking_dashboard')
-    else:
-        deposit_form = DepositForm()
-        withdraw_form = WithdrawForm()
-    
-    transactions = Transaction.objects.filter(account=user_account).order_by('-date')[:10]
+            return handle_withdrawal(request, account)
 
+    deposit_form = DepositForm()
+    withdrawal_form = WithdrawalForm()
+    
     context = {
-        'user_account': user_account,
-        'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
+        'account': account,
         'transactions': transactions,
+        'deposit_form': deposit_form,
+        'withdrawal_form': withdrawal_form,
     }
-    return render(request, 'banking/dashboard.html', context)
+    return render(request, 'bank/account_dashboard.html', context)
+
+@require_POST
+@login_required
+def handle_deposit(request, account):
+    form = DepositForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account.balance += amount
+        account.save()
+        Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+        return redirect('account_dashboard')
+
+    return JsonResponse({'error': form.errors}, status=400)
+
+@require_POST
+@login_required
+def handle_withdrawal(request, account):
+    form = WithdrawalForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        if amount <= account.balance:
+            account.balance -= amount
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+            return redirect('account_dashboard')
+        else:
+            return JsonResponse({'error': 'Insufficient funds'}, status=400)
+
+    return JsonResponse({'error': form.errors}, status=400)
 ```
