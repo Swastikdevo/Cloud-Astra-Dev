@@ -2,37 +2,42 @@
 import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+  const [customers, setCustomers] = useState([]);
+  const [filter, setFilter] = useState("");
 
-    useEffect(() => {
-        fetch('/api/customers')
-            .then(response => response.json())
-            .then(data => {
-                setCustomers(data);
-                setIsLoading(false);
-            });
-    }, []);
-
-    const deleteCustomer = (id) => {
-        setCustomers(customers.filter(customer => customer.id !== id));
+  useEffect(() => {
+    // Simulating fetching customer data
+    const fetchData = async () => {
+      const data = await fetch('/api/customers');
+      const json = await data.json();
+      setCustomers(json);
     };
+    fetchData();
+  }, []);
 
-    if (isLoading) return <div>Loading...</div>;
+  const handleFilterChange = (event) => {
+    setFilter(event.target.value);
+  };
 
-    return (
-        <div>
-            <h1>Customer List</h1>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} 
-                        <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Filter by name"
+        value={filter}
+        onChange={handleFilterChange}
+      />
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
 export default CustomerList;
