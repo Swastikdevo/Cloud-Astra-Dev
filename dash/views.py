@@ -1,45 +1,62 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
-from django.utils.decorators import method_decorator
-from django.views import View
+from django.contrib import messages
+from .models import Account
+from .forms import DepositForm, WithdrawForm, TransferForm
 
-@method_decorator(login_required, name='dispatch')
-class BankManagementView(View):
-    template_name = 'bank_management.html'
-
-    def get(self, request):
-        accounts = Account.objects.filter(user=request.user)
-        transactions = Transaction.objects.filter(account__in=accounts).order_by('-date')
-        context = {
-            'accounts': accounts,
-            'transactions': transactions,
-            'account_form': AccountForm(),
-            'transaction_form': TransactionForm(),
-        }
-        return render(request, self.template_name, context)
-
-    @csrf_exempt
-    def post(self, request):
-        if 'create_account' in request.POST:
-            account_form = AccountForm(request.POST)
-            if account_form.is_valid():
-                account = account_form.save(commit=False)
-                account.user = request.user
+@login_required
+def bank_dashboard(request):
+    account = Account.objects.get(user=request.user)
+    
+    if request.method == 'POST':
+        if 'deposit' in request.POST:
+            deposit_form = DepositForm(request.POST)
+            if deposit_form.is_valid():
+                amount = deposit_form.cleaned_data['amount']
+                account.balance += amount
                 account.save()
-                return redirect('bank_management')
+                messages.success(request, f'Deposited ${amount} successfully!')
+                return redirect('bank_dashboard')
+        elif 'withdraw' in request.POST:
+            withdraw_form = WithdrawForm(request.POST)
+            if withdraw_form.is_valid():
+                amount = withdraw_form.cleaned_data['amount']
+                if amount <= account.balance:
+                    account.balance -= amount
+                    account.save()
+                    messages.success(request, f'Withdrew ${amount} successfully!')
+                    return redirect('bank_dashboard')
+                else:
+                    messages.error(request, 'Insufficient funds!')
+        elif 'transfer' in request.POST:
+            transfer_form = TransferForm(request.POST)
+            if transfer_form.is_valid():
+                amount = transfer_form.cleaned_data['amount']
+                recipient_username = transfer_form.cleaned_data['recipient']
+                if amount <= account.balance:
+                    try:
+                        recipient_account = Account.objects.get(user__username=recipient_username)
+                        account.balance -= amount
+                        recipient_account.balance += amount
+                        account.save()
+                        recipient_account.save()
+                        messages.success(request, f'Transferred ${amount} to {recipient_username} successfully!')
+                        return redirect('bank_dashboard')
+                    except Account.DoesNotExist:
+                        messages.error(request, 'Recipient account does not exist!')
+                else:
+                    messages.error(request, 'Insufficient funds!')
 
-        elif 'create_transaction' in request.POST:
-            transaction_form = TransactionForm(request.POST)
-            if transaction_form.is_valid():
-                transaction = transaction_form.save(commit=False)
-                transaction.account = Account.objects.get(id=request.POST['account_id'])
-                transaction.save()
-                return JsonResponse({'status': 'success', 'message': 'Transaction saved!'}, status=200)
+    deposit_form = DepositForm()
+    withdraw_form = WithdrawForm()
+    transfer_form = TransferForm()
 
-        return redirect('bank_management')
+    context = {
+        'account': account,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+        'transfer_form': transfer_form,
+    }
+    return render(request, 'bank/dashboard.html', context)
 ```
