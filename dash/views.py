@@ -1,53 +1,50 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import DepositForm, WithdrawForm
 
 @login_required
-def manage_account(request, account_id=None):
-    if request.method == 'POST':
-        if account_id:
-            account = get_object_or_404(Account, id=account_id, user=request.user)
-            form = AccountForm(request.POST, instance=account)
-        else:
-            form = AccountForm(request.POST)
+def account_dashboard(request):
+    account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date_created')
 
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
+    context = {
+        'account': account,
+        'transactions': transactions,
+        'deposit_form': DepositForm(),
+        'withdraw_form': WithdrawForm(),
+    }
+    return render(request, 'bank/account_dashboard.html', context)
+
+@login_required
+@require_POST
+def deposit(request):
+    form = DepositForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = Account.objects.get(user=request.user)
+        account.balance += amount
+        account.save()
+        Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+        return JsonResponse({'status': 'success', 'new_balance': account.balance})
+    return JsonResponse({'status': 'error', 'errors': form.errors})
+
+@login_required
+@require_POST
+def withdraw(request):
+    form = WithdrawForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = Account.objects.get(user=request.user)
+        if account.balance >= amount:
+            account.balance -= amount
             account.save()
-            return redirect('account_detail', account_id=account.id)
+            Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+            return JsonResponse({'status': 'success', 'new_balance': account.balance})
+        return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
 
-    else:
-        if account_id:
-            account = get_object_or_404(Account, id=account_id, user=request.user)
-            form = AccountForm(instance=account)
-        else:
-            form = AccountForm()
-
-    return render(request, 'bank/manage_account.html', {'form': form})
-
-@login_required
-def transaction_history(request, account_id):
-    account = get_object_or_404(Account, id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'account': account, 'transactions': transactions})
-
-@login_required
-def create_transaction(request, account_id):
-    account = get_object_or_404(Account, id=account_id, user=request.user)
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = account
-            transaction.save()
-            return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
-
-    else:
-        form = TransactionForm()
-
-    return render(request, 'bank/create_transaction.html', {'form': form, 'account': account})
+    return JsonResponse({'status': 'error', 'errors': form.errors})
 ```
