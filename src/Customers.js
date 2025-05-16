@@ -1,50 +1,49 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  useEffect(() => {
+const CustomerManagement = () => {
+    const [customers, setCustomers] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filteredCustomers, setFilteredCustomers] = useState([]);
+
+    useEffect(() => {
+        fetchCustomers();
+    }, []);
+
+    useEffect(() => {
+        setFilteredCustomers(
+            customers.filter(customer => 
+                customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+        );
+    }, [searchTerm, customers]);
+
     const fetchCustomers = async () => {
-      try {
         const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Failed to fetch customers');
         const data = await response.json();
         setCustomers(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
     };
-    fetchCustomers();
-  }, []);
 
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-      setCustomers(customers.filter(customer => customer.id !== id));
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  return (
-    <ul>
-      {customers.map(customer => (
-        <li key={customer.id}>
-          {customer.name} 
-          <button onClick={() => handleDelete(customer.id)}>Delete</button>
-        </li>
-      ))}
-    </ul>
-  );
+    return (
+        <div>
+            <input
+                type="text"
+                placeholder="Search customers"
+                value={searchTerm}
+                onChange={handleSearchChange}
+            />
+            <ul>
+                {filteredCustomers.map(customer => (
+                    <li key={customer.id}>{customer.name}</li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
