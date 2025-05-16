@@ -1,42 +1,48 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+const CustomerList = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            const response = await fetch('/api/customers');
+            const data = await response.json();
+            setCustomers(data);
+            setLoading(false);
+        };
+        fetchCustomers();
+    }, []);
 
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
-    setLoading(false);
-  };
+    const filteredCustomers = customers.filter(customer => 
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-  const handleDelete = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-    setCustomers(customers.filter(customer => customer.id !== id));
-  };
-
-  if (loading) return <div>Loading...</div>;
-
-  return (
-    <div>
-      <h1>Customer List</h1>
-      <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name}
-            <button onClick={() => handleDelete(customer.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+        <div>
+            <h2>Customer Management</h2>
+            <input 
+                type="text"
+                placeholder="Search customers..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+            />
+            {loading ? (
+                <p>Loading...</p>
+            ) : (
+                <ul>
+                    {filteredCustomers.map(customer => (
+                        <li key={customer.id}>
+                            {customer.name} - {customer.email}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
