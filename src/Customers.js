@@ -6,9 +6,12 @@ const CustomerList = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
   }, []);
 
   const filteredCustomers = customers.filter(customer =>
@@ -19,7 +22,7 @@ const CustomerList = () => {
     <div>
       <input
         type="text"
-        placeholder="Search customers"
+        placeholder="Search Customers"
         value={searchTerm}
         onChange={e => setSearchTerm(e.target.value)}
       />
