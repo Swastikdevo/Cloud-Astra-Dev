@@ -1,71 +1,39 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerForm = ({ onSubmit, customer }) => {
-  const [name, setName] = useState(customer ? customer.name : '');
-  const [email, setEmail] = useState(customer ? customer.email : '');
-  
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit({ name, email });
-    setName('');
-    setEmail('');
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input 
-        type="text" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
-        placeholder="Customer Name" 
-        required 
-      />
-      <input 
-        type="email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
-        placeholder="Customer Email" 
-        required 
-      />
-      <button type="submit">Save Customer</button>
-    </form>
-  );
-};
-
-const CustomerList = ({ customers, onRemove }) => {
-  return (
-    <ul>
-      {customers.map((customer, index) => (
-        <li key={index}>
-          {customer.name} - {customer.email} 
-          <button onClick={() => onRemove(index)}>Delete</button>
-        </li>
-      ))}
-    </ul>
-  );
-};
-
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  
-  const handleAddCustomer = (customer) => {
-    setCustomers([...customers, customer]);
-  };
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const handleRemoveCustomer = (index) => {
-    const newCustomers = customers.filter((_, i) => i !== index);
-    setCustomers(newCustomers);
-  };
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
+  }, []);
+
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <CustomerForm onSubmit={handleAddCustomer} />
-      <CustomerList customers={customers} onRemove={handleRemoveCustomer} />
+      <input 
+        type="text" 
+        placeholder="Search Customers" 
+        value={searchTerm} 
+        onChange={(e) => setSearchTerm(e.target.value)} 
+      />
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        ))}
+      </ul>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
