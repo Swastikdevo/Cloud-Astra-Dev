@@ -1,54 +1,43 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.utils.decorators import method_decorator
+from django.views import View
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import TransactionForm
 
-@login_required
-@csrf_exempt
-def manage_account(request):
-    if request.method == "POST":
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            messages.success(request, "Account created successfully!")
-            return redirect('account_list')
-        else:
-            messages.error(request, "Error creating account. Please check your input.")
-    else:
-        form = AccountForm()
+@method_decorator(login_required, name='dispatch')
+class BankView(View):
     
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/manage_account.html', {'form': form, 'accounts': accounts})
+    def get(self, request):
+        accounts = Account.objects.filter(owner=request.user)
+        transactions = Transaction.objects.filter(account__in=accounts).order_by('-date')
+        form = TransactionForm()
+        return render(request, 'bank/home.html', {'accounts': accounts, 'transactions': transactions, 'form': form})
 
-@login_required
-def transaction_history(request, account_id):
-    account = Account.objects.get(id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'account': account, 'transactions': transactions})
-
-@login_required
-@csrf_exempt
-def make_transaction(request, account_id):
-    account = Account.objects.get(id=account_id, user=request.user)
-
-    if request.method == "POST":
+    def post(self, request):
         form = TransactionForm(request.POST)
         if form.is_valid():
             transaction = form.save(commit=False)
-            transaction.account = account
-            transaction.save()
-            messages.success(request, "Transaction completed successfully!")
-            return redirect('transaction_history', account_id=account.id)
-        else:
-            messages.error(request, "Error processing transaction. Please check your input.")
-    else:
-        form = TransactionForm()
+            transaction.account = form.cleaned_data['account']
+            transaction.user = request.user
 
-    return render(request, 'bank/make_transaction.html', {'form': form, 'account': account})
+            # Adding features: logging withdrawal/deposit
+            if transaction.transaction_type == 'withdrawal':
+                if transaction.amount > transaction.account.balance:
+                    messages.error(request, "Insufficient funds!")
+                    return redirect('bank-home')
+                transaction.account.balance -= transaction.amount
+            elif transaction.transaction_type == 'deposit':
+                transaction.account.balance += transaction.amount
+
+            transaction.account.save()
+            transaction.save()
+            messages.success(request, "Transaction completed successfully.")
+            return redirect('bank-home')
+        else:
+            messages.error(request, "Failed to process transaction. Please check your data.")
+            return redirect('bank-home')
 ```
