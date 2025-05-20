@@ -1,39 +1,62 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [newCustomer, setNewCustomer] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [filter, setFilter] = useState('');
 
   useEffect(() => {
     const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        const data = await response.json();
-        setCustomers(data);
-      } catch (error) {
-        console.error('Error fetching customers:', error);
-      } finally {
-        setLoading(false);
-      }
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
     };
     fetchCustomers();
   }, []);
 
+  const handleAddCustomer = () => {
+    if (newCustomer) {
+      const updatedCustomers = [...customers, { name: newCustomer }];
+      setCustomers(updatedCustomers);
+      setNewCustomer('');
+    }
+  };
+
+  const handleSelectCustomer = (customer) => {
+    setSelectedCustomer(customer);
+  };
+
+  const filteredCustomers = customers.filter(customer => customer.name.includes(filter));
+
   return (
     <div>
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <ul>
-          {customers.map(customer => (
-            <li key={customer.id}>{customer.name} - {customer.email}</li>
-          ))}
-        </ul>
-      )}
+      <h1>Customer Management</h1>
+      <input 
+        type="text" 
+        placeholder="Add new customer" 
+        value={newCustomer} 
+        onChange={(e) => setNewCustomer(e.target.value)} 
+      />
+      <button onClick={handleAddCustomer}>Add Customer</button>
+      <input 
+        type="text" 
+        placeholder="Filter customers" 
+        value={filter} 
+        onChange={(e) => setFilter(e.target.value)} 
+      />
+      <ul>
+        {filteredCustomers.map((customer, index) => (
+          <li key={index} onClick={() => handleSelectCustomer(customer)}>
+            {customer.name}
+          </li>
+        ))}
+      </ul>
+      {selectedCustomer && <h2>Selected Customer: {selectedCustomer.name}</h2>}
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
