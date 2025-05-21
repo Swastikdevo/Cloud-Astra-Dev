@@ -1,44 +1,44 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
 
-@csrf_exempt
 @login_required
-def manage_account(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        form = AccountForm()
-        return render(request, 'bank/manage_account.html', {'accounts': accounts, 'form': form})
+@require_http_methods(["GET", "POST"])
+def manage_account(request, account_id):
+    """View to manage a bank account including creating transactions."""
+    account = Account.objects.get(id=account_id)
 
-    elif request.method == 'POST':
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Failed to create account.', 'errors': form.errors})
+    if request.method == "POST":
+        if 'transaction' in request.POST:
+            transaction_form = TransactionForm(request.POST)
+            if transaction_form.is_valid():
+                transaction = transaction_form.save(commit=False)
+                transaction.account = account
+                transaction.user = request.user
+                transaction.save()
+                messages.success(request, "Transaction successfully added!")
+                return redirect('manage_account', account_id=account.id)
+        elif 'update' in request.POST:
+            account_form = AccountForm(request.POST, instance=account)
+            if account_form.is_valid():
+                account_form.save()
+                messages.success(request, "Account details updated successfully.")
+                return redirect('manage_account', account_id=account.id)
+    else:
+        transaction_form = TransactionForm()
+        account_form = AccountForm(instance=account)
 
-@csrf_exempt
-@login_required
-def transact(request):
-    if request.method == 'GET':
-        transactions = Transaction.objects.filter(account__user=request.user)
-        form = TransactionForm()
-        return render(request, 'bank/transact.html', {'transactions': transactions, 'form': form})
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
 
-    elif request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = form.cleaned_data['account']
-            transaction.save()
-            return JsonResponse({'status': 'success', 'message': 'Transaction recorded successfully!'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Failed to record transaction.', 'errors': form.errors})
+    context = {
+        'account': account,
+        'transaction_form': transaction_form,
+        'account_form': account_form,
+        'transactions': transactions,
+    }
+    return render(request, 'bank/manage_account.html', context)
 ```
