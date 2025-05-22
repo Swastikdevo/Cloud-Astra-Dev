@@ -1,68 +1,44 @@
 ```python
 from django.shortcuts import render, redirect
+from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm, TransferForm
+from .forms import CreateAccountForm, TransactionForm
 
 @login_required
-def manage_account(request):
-    account = Account.objects.get(user=request.user)
-    
+def manage_accounts(request):
     if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                messages.success(request, 'Deposit successful!')
-                return redirect('manage_account')
-        
-        elif 'withdraw' in request.POST:
-            form = WithdrawalForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount <= account.balance:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                    messages.success(request, 'Withdrawal successful!')
-                else:
-                    messages.error(request, 'Insufficient balance!')
-                return redirect('manage_account')
-
-        elif 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                recipient_username = form.cleaned_data['recipient']
-                amount = form.cleaned_data['amount']
-                try:
-                    recipient_account = Account.objects.get(user__username=recipient_username)
-                    if amount <= account.balance:
-                        account.balance -= amount
-                        recipient_account.balance += amount
-                        account.save()
-                        recipient_account.save()
-                        Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer', recipient=recipient_account)
-                        messages.success(request, 'Transfer successful!')
-                    else:
-                        messages.error(request, 'Insufficient balance!')
-                except Account.DoesNotExist:
-                    messages.error(request, 'Recipient does not exist!')
-                return redirect('manage_account')
+        form = CreateAccountForm(request.POST)
+        if form.is_valid():
+            new_account = form.save(commit=False)
+            new_account.user = request.user
+            new_account.save()
+            messages.success(request, 'Account created successfully!')
+            return redirect('account_list')
     else:
-        deposit_form = DepositForm()
-        withdrawal_form = WithdrawalForm()
-        transfer_form = TransferForm()
+        form = CreateAccountForm()
 
-    context = {
-        'account': account,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-        'transfer_form': transfer_form,
-    }
-    
-    return render(request, 'manage_account.html', context)
+    user_accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/manage_accounts.html', {'form': form, 'user_accounts': user_accounts})
+
+@login_required
+def make_transaction(request):
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            messages.success(request, 'Transaction completed successfully!')
+            return redirect('transaction_history')
+    else:
+        form = TransactionForm()
+
+    return render(request, 'bank/make_transaction.html', {'form': form})
+
+@login_required
+def transaction_history(request):
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
 ```
