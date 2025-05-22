@@ -1,47 +1,43 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [error, setError] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-        setCustomers(data);
-      } catch (err) {
-        setError(err.message);
-      }
-    };
-    fetchCustomers();
-  }, []);
-
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
+  const addCustomer = () => {
+    setCustomers([...customers, { name, email }]);
+    setName('');
+    setEmail('');
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const removeCustomer = (index) => {
+    const newCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(newCustomers);
+  };
 
   return (
     <div>
       <h1>Customer Management</h1>
-      {error && <p>Error: {error}</p>}
       <input
         type="text"
-        placeholder="Search by name"
-        value={searchTerm}
-        onChange={handleSearch}
+        placeholder="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
       />
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
+        {customers.map((customer, index) => (
+          <li key={index}>
             {customer.name} - {customer.email}
+            <button onClick={() => removeCustomer(index)}>Remove</button>
           </li>
         ))}
       </ul>
