@@ -3,25 +3,22 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
-    // Simulate fetching data from an API
+    // Simulating fetching customer data
     const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
+      const data = await fetch('/api/customers');
+      const customers = await data.json();
+      setCustomers(customers);
     };
     fetchCustomers();
   }, []);
 
-  const addCustomer = () => {
-    const newCustomer = { name, email };
+  const handleAddCustomer = () => {
     setCustomers([...customers, newCustomer]);
-    setName('');
-    setEmail('');
+    setNewCustomer({ name: '', email: '' });
   };
 
   const filteredCustomers = customers.filter(customer =>
@@ -30,28 +27,28 @@ const CustomerManagement = () => {
 
   return (
     <div>
-      <h1>Customer Management</h1>
+      <h1>Customer Management System</h1>
       <input
         type="text"
-        placeholder="Search by name"
+        placeholder="Search Customers"
         value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
+        onChange={(e) => setSearchTerm(e.target.value)}
       />
-      <div>
-        <input
-          type="text"
-          placeholder="Name"
-          value={name}
-          onChange={e => setName(e.target.value)}
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-        />
-        <button onClick={addCustomer}>Add Customer</button>
-      </div>
+      <h2>Add New Customer</h2>
+      <input
+        type="text"
+        placeholder="Name"
+        value={newCustomer.name}
+        onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={newCustomer.email}
+        onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+      />
+      <button onClick={handleAddCustomer}>Add Customer</button>
+      <h2>Customer List</h2>
       <ul>
         {filteredCustomers.map((customer, index) => (
           <li key={index}>{customer.name} - {customer.email}</li>
