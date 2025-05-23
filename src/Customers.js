@@ -5,51 +5,56 @@ const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
+    // Simulate fetching data from an API
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
   }, []);
 
-  const handleAddCustomer = () => {
-    const newCustomer = { name, email, active: true };
+  const addCustomer = () => {
+    const newCustomer = { name, email };
     setCustomers([...customers, newCustomer]);
     setName('');
     setEmail('');
   };
 
-  const filteredCustomers = customers.filter(customer => {
-    if (activeFilter === 'active') return customer.active;
-    if (activeFilter === 'inactive') return !customer.active;
-    return true;
-  });
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
       <h1>Customer Management</h1>
-      <input 
-        type="text" 
-        placeholder="Name" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
+      <input
+        type="text"
+        placeholder="Search by name"
+        value={searchTerm}
+        onChange={e => setSearchTerm(e.target.value)}
       />
-      <input 
-        type="email" 
-        placeholder="Email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
-      />
-      <button onClick={handleAddCustomer}>Add Customer</button>
-      <select onChange={(e) => setActiveFilter(e.target.value)}>
-        <option value="all">All</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
+      <div>
+        <input
+          type="text"
+          placeholder="Name"
+          value={name}
+          onChange={e => setName(e.target.value)}
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+        />
+        <button onClick={addCustomer}>Add Customer</button>
+      </div>
       <ul>
         {filteredCustomers.map((customer, index) => (
-          <li key={index}>{customer.name} - {customer.email} ({customer.active ? 'Active' : 'Inactive'})</li>
+          <li key={index}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
