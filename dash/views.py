@@ -1,56 +1,41 @@
 ```python
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-import json
-
-# Assume we have a BankAccount model and a transaction service defined in services.py
-from .models import BankAccount
-from .services import perform_transaction
+from django.contrib.auth.decorators import login_required
+from .models import Account, Transaction
+from .forms import CreateAccountForm, FundAccountForm
 
 @csrf_exempt
-@require_http_methods(["POST"])
+@login_required
 def manage_account(request):
-    try:
-        data = json.loads(request.body)
-        action = data.get("action")
-        account_id = data.get("account_id")
-        
-        if action == "create":
-            account_name = data.get("account_name")
-            balance = data.get("initial_balance", 0)
-            account = BankAccount.objects.create(name=account_name, balance=balance)
-            return JsonResponse({"message": "Account created", "account_id": account.id}, status=201)
-
-        elif action == "deposit":
-            amount = data.get("amount")
-            account = BankAccount.objects.get(id=account_id)
-            account.balance += amount
-            account.save()
-            return JsonResponse({"message": "Deposit successful", "new_balance": account.balance})
-
-        elif action == "withdraw":
-            amount = data.get("amount")
-            account = BankAccount.objects.get(id=account_id)
-            if account.balance >= amount:
-                account.balance -= amount
+    if request.method == 'POST':
+        if 'create_account' in request.POST:
+            form = CreateAccountForm(request.POST)
+            if form.is_valid():
+                account = form.save(commit=False)
+                account.user = request.user
                 account.save()
-                return JsonResponse({"message": "Withdrawal successful", "new_balance": account.balance})
-            else:
-                return JsonResponse({"message": "Insufficient funds"}, status=400)
+                return JsonResponse({'status': 'success', 'message': 'Account created successfully'})
+        
+        elif 'fund_account' in request.POST:
+            form = FundAccountForm(request.POST)
+            if form.is_valid():
+                account = Account.objects.get(id=form.cleaned_data['account_id'], user=request.user)
+                amount = form.cleaned_data['amount']
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                return JsonResponse({'status': 'success', 'message': 'Account funded successfully'})
 
-        elif action == "transaction":
-            transaction_data = data.get("transaction_data")
-            result = perform_transaction(transaction_data)
-            return JsonResponse(result)
+    else:
+        accounts = Account.objects.filter(user=request.user)
+        create_account_form = CreateAccountForm()
+        fund_account_form = FundAccountForm()
 
-        else:
-            return JsonResponse({"message": "Invalid action"}, status=400)
-
-    except BankAccount.DoesNotExist:
-        return JsonResponse({"message": "Account not found"}, status=404)
-    except json.JSONDecodeError:
-        return JsonResponse({"message": "Invalid JSON"}, status=400)
-    except Exception as e:
-        return JsonResponse({"message": str(e)}, status=500)
+    return render(request, 'manage_account.html', {
+        'accounts': accounts,
+        'create_account_form': create_account_form,
+        'fund_account_form': fund_account_form
+    })
 ```
