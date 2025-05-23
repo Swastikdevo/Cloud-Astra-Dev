@@ -1,53 +1,52 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-const CustomerTable = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulating an API call to fetch customer data
     const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
+      try {
+        const response = await axios.get('/api/customers');
+        setCustomers(response.data);
+      } catch (err) {
+        setError('Failed to fetch customers');
+      } finally {
+        setLoading(false);
+      }
     };
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`/api/customers/${id}`);
+      setCustomers(customers.filter(customer => customer.id !== id));
+    } catch (err) {
+      setError('Failed to delete customer');
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search Customers"
-        value={filter}
-        onChange={e => setFilter(e.target.value)}
-      />
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredCustomers.map(customer => (
-            <tr key={customer.id}>
-              <td>{customer.name}</td>
-              <td>{customer.email}</td>
-              <td>{customer.phone}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <h1>Customer List</h1>
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} 
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
 
-export default CustomerTable;
+export default CustomerList;
 ```
