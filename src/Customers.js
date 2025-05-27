@@ -2,35 +2,51 @@
 import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetch('https://api.example.com/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data))
-      .catch(error => console.error('Error fetching customers:', error));
-  }, []);
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            try {
+                const response = await fetch('/api/customers');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                setCustomers(data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCustomers();
+    }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    const handleDelete = async (id) => {
+        setLoading(true);
+        try {
+            await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+            setCustomers(customers.filter(customer => customer.id !== id));
+        } catch (error) {
+            setError(error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  return (
-    <div>
-      <input
-        type="text"
-        placeholder="Search customers..."
-        value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
-      />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
-        ))}
-      </ul>
-    </div>
-  );
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>Error: {error}</div>;
+
+    return (
+        <ul>
+            {customers.map(customer => (
+                <li key={customer.id}>
+                    {customer.name}
+                    <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                </li>
+            ))}
+        </ul>
+    );
 };
 
 export default CustomerList;
