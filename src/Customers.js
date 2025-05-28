@@ -1,42 +1,79 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+const CustomerForm = ({ onAddCustomer }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
 
-  useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
-  }, []);
-
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onAddCustomer({ name, email, phone });
+    setName('');
+    setEmail('');
+    setPhone('');
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  return (
+    <form onSubmit={handleSubmit}>
+      <input 
+        type="text" 
+        placeholder="Name" 
+        value={name} 
+        onChange={(e) => setName(e.target.value)} 
+        required 
+      />
+      <input 
+        type="email" 
+        placeholder="Email" 
+        value={email} 
+        onChange={(e) => setEmail(e.target.value)} 
+        required 
+      />
+      <input 
+        type="tel" 
+        placeholder="Phone" 
+        value={phone} 
+        onChange={(e) => setPhone(e.target.value)} 
+        required 
+      />
+      <button type="submit">Add Customer</button>
+    </form>
   );
+};
+
+const CustomerList = ({ customers, onDeleteCustomer }) => {
+  return (
+    <ul>
+      {customers.map((customer, index) => (
+        <li key={index}>
+          {customer.name} - {customer.email} - {customer.phone}
+          <button onClick={() => onDeleteCustomer(index)}>Remove</button>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+
+  const addCustomer = (customer) => {
+    setCustomers([...customers, customer]);
+  };
+
+  const deleteCustomer = (index) => {
+    setCustomers(customers.filter((_, i) => i !== index));
+  };
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search Customers" 
-        value={searchTerm} 
-        onChange={handleSearch} 
-      />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
-        ))}
-      </ul>
+      <h2>Customer Management</h2>
+      <CustomerForm onAddCustomer={addCustomer} />
+      <CustomerList customers={customers} onDeleteCustomer={deleteCustomer} />
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
