@@ -12,6 +12,7 @@ const CustomerList = () => {
       setCustomers(data);
       setLoading(false);
     };
+    
     fetchCustomers();
   }, []);
 
@@ -20,11 +21,11 @@ const CustomerList = () => {
     setCustomers(customers.filter(customer => customer.id !== id));
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div>
-      <h1>Customer List</h1>
+      <h2>Customer List</h2>
       <ul>
         {customers.map(customer => (
           <li key={customer.id}>
