@@ -4,35 +4,34 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-import json
+from .forms import AccountForm, TransactionForm
 
 @login_required
 @csrf_exempt
-def manage_account(request):
-    if request.method == 'GET':
+def bank_management_view(request):
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'create_account':
+            form = AccountForm(request.POST)
+            if form.is_valid():
+                account = form.save(commit=False)
+                account.user = request.user
+                account.save()
+                return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
+
+        elif action == 'make_transaction':
+            form = TransactionForm(request.POST)
+            if form.is_valid():
+                transaction = form.save(commit=False)
+                transaction.account = Account.objects.get(id=request.POST.get('account_id'))
+                transaction.save()
+                return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully!'})
+
+    else:
         accounts = Account.objects.filter(user=request.user)
-        return render(request, 'bank/manage_account.html', {'accounts': accounts})
+        transactions = Transaction.objects.filter(account__user=request.user)
+        return render(request, 'bank_management.html', {'accounts': accounts, 'transactions': transactions})
 
-    elif request.method == 'POST':
-        data = json.loads(request.body)
-
-        action = data.get('action')
-        if action == 'create':
-            account_name = data.get('name')
-            account_type = data.get('type')
-            new_account = Account.objects.create(user=request.user, name=account_name, account_type=account_type)
-            return JsonResponse({'status': 'success', 'account_id': new_account.id})
-        
-        elif action == 'delete':
-            account_id = data.get('account_id')
-            Account.objects.filter(id=account_id, user=request.user).delete()
-            return JsonResponse({'status': 'success', 'message': 'Account deleted'})
-        
-        elif action == 'view_transaction':
-            account_id = data.get('account_id')
-            transactions = Transaction.objects.filter(account_id=account_id)
-            transaction_list = [{'date': t.date, 'amount': t.amount, 'description': t.description} for t in transactions]
-            return JsonResponse({'status': 'success', 'transactions': transaction_list})
-
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid action.'})
 ```
