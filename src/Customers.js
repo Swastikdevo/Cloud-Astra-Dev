@@ -3,28 +3,37 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => {
-        setCustomers(data);
-        setLoading(false);
-      })
-      .catch(error => console.error('Error fetching data:', error));
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+      setIsLoading(false);
+    };
+    fetchCustomers();
   }, []);
+
+  const handleFilterChange = (event) => {
+    setFilter(event.target.value);
+  };
+
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(filter.toLowerCase())
+  );
 
   return (
     <div>
-      {loading ? (
+      <input type="text" placeholder="Search by name..." value={filter} onChange={handleFilterChange} />
+      {isLoading ? (
         <p>Loading...</p>
       ) : (
         <ul>
-          {customers.map(customer => (
+          {filteredCustomers.map(customer => (
             <li key={customer.id}>
               {customer.name} - {customer.email}
-              <button onClick={() => alert(`Editing ${customer.name}`)}>Edit</button>
             </li>
           ))}
         </ul>
