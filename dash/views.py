@@ -13,7 +13,7 @@ def manage_account(request):
             account = form.save(commit=False)
             account.user = request.user
             account.save()
-            return redirect('account_detail', pk=account.pk)
+            return redirect('account_overview')
     else:
         form = AccountForm()
 
@@ -21,23 +21,22 @@ def manage_account(request):
     return render(request, 'bank/manage_account.html', {'form': form, 'accounts': accounts})
 
 @login_required
-def make_transaction(request, account_id):
-    account = Account.objects.get(pk=account_id, user=request.user)
+def view_transactions(request):
+    transactions = Transaction.objects.filter(account__user=request.user).order_by('-date')
+    return render(request, 'bank/view_transactions.html', {'transactions': transactions})
+
+@login_required
+def transfer_funds(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
     if request.method == 'POST':
         form = TransactionForm(request.POST)
         if form.is_valid():
             transaction = form.save(commit=False)
-            transaction.account = account
+            transaction.sender_account = account
             transaction.save()
-            return JsonResponse({'status': 'success', 'transaction_id': transaction.pk})
+            return JsonResponse({'status': 'success', 'message': 'Transfer completed!'})
     else:
         form = TransactionForm()
 
-    return render(request, 'bank/make_transaction.html', {'form': form, 'account': account})
-
-@login_required
-def view_transactions(request, account_id):
-    account = Account.objects.get(pk=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account)
-    return render(request, 'bank/view_transactions.html', {'account': account, 'transactions': transactions})
+    return render(request, 'bank/transfer_funds.html', {'form': form, 'account': account})
 ```
