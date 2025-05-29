@@ -1,64 +1,49 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from .models import BankAccount, Transaction
-from .forms import BankAccountForm, TransactionForm
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawForm
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def manage_account(request):
-    if request.method == "GET":
-        accounts = BankAccount.objects.filter(user=request.user)
-        form = BankAccountForm()
-        return render(request, 'bank/manage_account.html', {'accounts': accounts, 'form': form})
+@csrf_exempt
+def account_management(request):
+    if request.method == 'GET':
+        account = Account.objects.get(user=request.user)
+        transactions = Transaction.objects.filter(account=account).order_by('-date')
+        return render(request, 'account_management.html', {'account': account, 'transactions': transactions})
 
-    elif request.method == "POST":
-        form = BankAccountForm(request.POST)
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            return redirect('manage_account')
+    elif request.method == 'POST':
+        action_type = request.POST.get('action')
 
-@login_required
-@require_http_methods(["GET", "POST"])
-def transaction_history(request, account_id):
-    account = BankAccount.objects.get(id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account)
+        if action_type == 'deposit':
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                return JsonResponse({'success': True, 'message': 'Deposit successful.'})
+            else:
+                return JsonResponse({'success': False, 'message': 'Invalid deposit amount.'})
 
-    if request.method == "GET":
-        return render(request, 'bank/transaction_history.html', {'account': account, 'transactions': transactions})
+        elif action_type == 'withdraw':
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
 
-    elif request.method == "POST":
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = account
-            transaction.save()
-            return JsonResponse({'status': 'Success', 'transaction_id': transaction.id})
+                if amount > account.balance:
+                    return JsonResponse({'success': False, 'message': 'Insufficient funds.'})
 
-@login_required
-@require_http_methods(["POST"])
-def transfer_funds(request):
-    source_account_id = request.POST.get('source_account_id')
-    destination_account_id = request.POST.get('destination_account_id')
-    amount = request.POST.get('amount')
+                account.balance -= amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                return JsonResponse({'success': True, 'message': 'Withdrawal successful.'})
+            else:
+                return JsonResponse({'success': False, 'message': 'Invalid withdrawal amount.'})
 
-    source_account = BankAccount.objects.get(id=source_account_id, user=request.user)
-    destination_account = BankAccount.objects.get(id=destination_account_id)
-
-    if source_account.balance >= float(amount):
-        source_account.balance -= float(amount)
-        destination_account.balance += float(amount)
-        source_account.save()
-        destination_account.save()
-
-        Transaction.objects.create(account=source_account, amount=-float(amount), tx_type='Transfer')
-        Transaction.objects.create(account=destination_account, amount=float(amount), tx_type='Transfer')
-
-        return JsonResponse({'status': 'Success', 'message': 'Funds transferred successfully.'})
-    else:
-        return JsonResponse({'status': 'Error', 'message': 'Insufficient funds.'})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 ```
