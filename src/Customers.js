@@ -1,69 +1,55 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
-  const [filter, setFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch('/api/customers');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCustomers();
   }, []);
 
-  const handleAddCustomer = () => {
-    const customerData = { ...newCustomer };
-    fetch('/api/customers', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(customerData),
-    })
-      .then(response => response.json())
-      .then(data => {
-        setCustomers([...customers, data]);
-        setNewCustomer({ name: '', email: '' });
-      });
-  };
-
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  if (loading) return <p>Loading customers...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <input
-        type="text"
-        placeholder="Filter by name"
-        value={filter}
-        onChange={e => setFilter(e.target.value)}
-      />
-      <div>
-        <input
-          type="text"
-          placeholder="Name"
-          value={newCustomer.name}
-          onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })}
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={newCustomer.email}
-          onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })}
-        />
-        <button onClick={handleAddCustomer}>Add Customer</button>
-      </div>
+      <h2>Customer List</h2>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
   );
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this customer?')) {
+      try {
+        await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+        setCustomers(customers.filter(customer => customer.id !== id));
+      } catch (error) {
+        setError('Failed to delete customer');
+      }
+    }
+  };
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
