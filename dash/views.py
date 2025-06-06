@@ -1,67 +1,49 @@
 ```python
 from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
 from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm, AccountForm
+from .forms import DepositForm, WithdrawForm
 
 @login_required
-def bank_dashboard(request):
-    user_accounts = Account.objects.filter(owner=request.user)
-    return render(request, 'bank/dashboard.html', {'accounts': user_accounts})
-
-@login_required
-def deposit_funds(request, account_id):
-    account = Account.objects.get(id=account_id, owner=request.user)
-
+@require_http_methods(["GET", "POST"])
+def manage_account(request):
     if request.method == 'POST':
-        form = DepositForm(request.POST)
-        if form.is_valid():
-            amount = form.cleaned_data['amount']
+        deposit_form = DepositForm(request.POST) if 'deposit' in request.POST else None
+        withdraw_form = WithdrawForm(request.POST) if 'withdraw' in request.POST else None
+        
+        if deposit_form and deposit_form.is_valid():
+            account = Account.objects.get(user=request.user)
+            amount = deposit_form.cleaned_data['amount']
             account.balance += amount
             account.save()
-            Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-            messages.success(request, f'Successfully deposited ${amount} to your account.')
-            return redirect('bank:bank_dashboard')
-    else:
-        form = DepositForm()
 
-    return render(request, 'bank/deposit.html', {'form': form, 'account': account})
+            # Record the transaction
+            Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
+            return JsonResponse({'success': True, 'message': 'Deposit successful.', 'new_balance': account.balance})
 
-@login_required
-def withdraw_funds(request, account_id):
-    account = Account.objects.get(id=account_id, owner=request.user)
-
-    if request.method == 'POST':
-        form = WithdrawForm(request.POST)
-        if form.is_valid():
-            amount = form.cleaned_data['amount']
-            if account.balance >= amount:
+        elif withdraw_form and withdraw_form.is_valid():
+            account = Account.objects.get(user=request.user)
+            amount = withdraw_form.cleaned_data['amount']
+            if amount <= account.balance:
                 account.balance -= amount
                 account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Withdraw')
-                messages.success(request, f'Successfully withdrew ${amount} from your account.')
-                return redirect('bank:bank_dashboard')
+
+                # Record the transaction
+                Transaction.objects.create(account=account, amount=amount, transaction_type='withdraw')
+                return JsonResponse({'success': True, 'message': 'Withdrawal successful.', 'new_balance': account.balance})
             else:
-                messages.error(request, 'Insufficient funds.')
+                return JsonResponse({'success': False, 'message': 'Insufficient funds.'})
+
     else:
-        form = WithdrawForm()
+        deposit_form = DepositForm()
+        withdraw_form = WithdrawForm()
 
-    return render(request, 'bank/withdraw.html', {'form': form, 'account': account})
-
-@login_required
-def create_account(request):
-    if request.method == 'POST':
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            new_account = form.save(commit=False)
-            new_account.owner = request.user
-            new_account.save()
-            messages.success(request, 'Your account has been created successfully.')
-            return redirect('bank:bank_dashboard')
-    else:
-        form = AccountForm()
-
-    return render(request, 'bank/create_account.html', {'form': form})
+    account = Account.objects.get(user=request.user)
+    return render(request, 'manage_account.html', {
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+        'balance': account.balance,
+    })
 ```
