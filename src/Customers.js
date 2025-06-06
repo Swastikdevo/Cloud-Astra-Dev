@@ -3,32 +3,46 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
+      try {
+        const response = await fetch('/api/customers');
+        if (!response.ok) throw new Error('Failed to fetch customers');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const deleteCustomer = async (id) => {
+    try {
+      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      setCustomers(customers.filter(customer => customer.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search customers..." 
-        value={searchTerm} 
-        onChange={(e) => setSearchTerm(e.target.value)} 
-      />
+      <h2>Customer List</h2>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
