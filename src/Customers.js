@@ -1,53 +1,51 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const CustomerForm = ({ onAddCustomer }) => {
+  const [customer, setCustomer] = useState({ name: '', email: '' });
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Failed to fetch customers');
-        const data = await response.json();
-        setCustomers(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCustomers();
-  }, []);
-
-  const deleteCustomer = async (id) => {
-    try {
-      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-      setCustomers(customers.filter(customer => customer.id !== id));
-    } catch (err) {
-      console.error(err);
-    }
+  const handleChange = (e) => {
+    setCustomer({ ...customer, [e.target.name]: e.target.value });
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onAddCustomer(customer);
+    setCustomer({ name: '', email: '' });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input name="name" placeholder="Name" value={customer.name} onChange={handleChange} required />
+      <input name="email" placeholder="Email" value={customer.email} onChange={handleChange} required />
+      <button type="submit">Add Customer</button>
+    </form>
+  );
+};
+
+const CustomerList = ({ customers }) => (
+  <ul>
+    {customers.map((customer, index) => (
+      <li key={index}>{customer.name} - {customer.email}</li>
+    ))}
+  </ul>
+);
+
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+
+  const addCustomer = (customer) => {
+    setCustomers([...customers, customer]);
+  };
 
   return (
     <div>
-      <h2>Customer List</h2>
-      <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
+      <h1>Customer Management</h1>
+      <CustomerForm onAddCustomer={addCustomer} />
+      <CustomerList customers={customers} />
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
