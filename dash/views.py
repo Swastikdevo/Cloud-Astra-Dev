@@ -1,39 +1,46 @@
 ```python
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-import json
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawForm
 
-# Assuming there's a BankAccount model with balance and account_number
-from .models import BankAccount
-
-@csrf_exempt
 @login_required
-@require_http_methods(["POST"])
-def transfer_funds(request):
-    data = json.loads(request.body)
-    
-    from_account_number = data.get('from_account_number')
-    to_account_number = data.get('to_account_number')
-    amount = data.get('amount')
+@require_http_methods(["GET", "POST"])
+def manage_account(request):
+    if request.method == "POST":
+        # Handle deposit
+        deposit_form = DepositForm(request.POST)
+        if deposit_form.is_valid():
+            amount = deposit_form.cleaned_data['amount']
+            account = Account.objects.get(user=request.user)
+            account.balance += amount
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+            return JsonResponse({'status': 'success', 'message': 'Deposit successful!'})
 
-    try:
-        from_account = BankAccount.objects.get(account_number=from_account_number)
-        to_account = BankAccount.objects.get(account_number=to_account_number)
+        # Handle withdrawal
+        withdraw_form = WithdrawForm(request.POST)
+        if withdraw_form.is_valid():
+            amount = withdraw_form.cleaned_data['amount']
+            account = Account.objects.get(user=request.user)
+            if account.balance >= amount:
+                account.balance -= amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                return JsonResponse({'status': 'success', 'message': 'Withdrawal successful!'})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
 
-        if from_account.balance < amount:
-            return JsonResponse({'error': 'Insufficient funds'}, status=400)
+    else:
+        deposit_form = DepositForm()
+        withdraw_form = WithdrawForm()
 
-        from_account.balance -= amount
-        to_account.balance += amount
-        from_account.save()
-        to_account.save()
-
-        return JsonResponse({'success': 'Transfer completed', 'new_balance': from_account.balance}, status=200)
-
-    except BankAccount.DoesNotExist:
-        return JsonResponse({'error': 'Account not found'}, status=404)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+    context = {
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+        'account_balance': Account.objects.get(user=request.user).balance,
+    }
+    return render(request, 'bank/manage_account.html', context)
 ```
