@@ -1,58 +1,42 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [customerName, setCustomerName] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const storedCustomers = JSON.parse(localStorage.getItem('customers')) || [];
-    setCustomers(storedCustomers);
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch('/api/customers');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCustomers();
   }, []);
 
-  const addCustomer = () => {
-    const newCustomer = { name: customerName, email: customerEmail, id: Date.now() };
-    const updatedCustomers = [...customers, newCustomer];
-    setCustomers(updatedCustomers);
-    localStorage.setItem('customers', JSON.stringify(updatedCustomers));
-    setCustomerName('');
-    setCustomerEmail('');
-  };
-
-  const deleteCustomer = (id) => {
-    const updatedCustomers = customers.filter(customer => customer.id !== id);
-    setCustomers(updatedCustomers);
-    localStorage.setItem('customers', JSON.stringify(updatedCustomers));
-  };
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <input
-        type="text"
-        placeholder="Customer Name"
-        value={customerName}
-        onChange={(e) => setCustomerName(e.target.value)}
-      />
-      <input
-        type="email"
-        placeholder="Customer Email"
-        value={customerEmail}
-        onChange={(e) => setCustomerEmail(e.target.value)}
-      />
-      <button onClick={addCustomer}>Add Customer</button>
+      <h2>Customer List</h2>
       <ul>
         {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-          </li>
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
