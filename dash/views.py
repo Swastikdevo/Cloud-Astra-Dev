@@ -1,42 +1,51 @@
 ```python
-from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+import json
 
-@login_required
-@csrf_exempt
+@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(login_required, name='dispatch')
+@require_http_methods(["POST", "GET"])
 def bank_management_view(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        transactions = Transaction.objects.filter(account__in=accounts)
+    if request.method == "POST":
+        data = json.loads(request.body)
+        action = data.get("action")
 
-        context = {
-            'accounts': accounts,
-            'transactions': transactions,
-            'account_form': AccountForm(),
-            'transaction_form': TransactionForm(),
-        }
-        return render(request, 'bank_management.html', context)
+        if action == "create_account":
+            account_type = data.get("account_type")
+            balance = data.get("balance", 0)
+            account = Account.objects.create(owner=request.user, account_type=account_type, balance=balance)
+            return JsonResponse({"message": "Account created successfully", "account_id": account.id}, status=201)
 
-    elif request.method == 'POST':
-        if 'create_account' in request.POST:
-            account_form = AccountForm(request.POST)
-            if account_form.is_valid():
-                new_account = account_form.save(commit=False)
-                new_account.user = request.user
-                new_account.save()
-                return redirect('bank_management_view')
-        
-        elif 'create_transaction' in request.POST:
-            transaction_form = TransactionForm(request.POST)
-            if transaction_form.is_valid():
-                transaction = transaction_form.save(commit=False)
-                transaction.account = Account.objects.get(id=request.POST['account_id'])
-                transaction.save()
-                return redirect('bank_management_view')
-    
-    return JsonResponse({'status': 'failed'}, status=400)
+        elif action == "make_transaction":
+            account_id = data.get("account_id")
+            amount = data.get("amount")
+            transaction_type = data.get("transaction_type")
+
+            account = Account.objects.get(id=account_id, owner=request.user)
+
+            if transaction_type == "deposit":
+                account.balance += amount
+                Transaction.objects.create(account=account, amount=amount, transaction_type="deposit")
+                account.save()
+                return JsonResponse({"message": "Deposit successful", "new_balance": account.balance})
+
+            elif transaction_type == "withdraw":
+                if account.balance >= amount:
+                    account.balance -= amount
+                    Transaction.objects.create(account=account, amount=amount, transaction_type="withdraw")
+                    account.save()
+                    return JsonResponse({"message": "Withdrawal successful", "new_balance": account.balance})
+                else:
+                    return JsonResponse({"error": "Insufficient balance"}, status=400)
+
+    elif request.method == "GET":
+        accounts = Account.objects.filter(owner=request.user).values("id", "account_type", "balance")
+        return JsonResponse({"accounts": list(accounts)}, status=200)
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
 ```
