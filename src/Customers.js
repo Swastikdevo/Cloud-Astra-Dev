@@ -3,28 +3,36 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
-  
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    fetch('https://api.example.com/customers')
-      .then(res => res.json())
-      .then(data => setCustomers(data));
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => {
+        setCustomers(data);
+        setLoading(false);
+      });
   }, []);
-  
-  const handleFilterChange = (e) => {
-    setFilter(e.target.value);
+
+  const deleteCustomer = (id) => {
+    fetch(`/api/customers/${id}`, {
+      method: 'DELETE',
+    }).then(() => {
+      setCustomers(customers.filter(customer => customer.id !== id));
+    });
   };
-  
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
+
+  if (loading) return <p>Loading...</p>;
 
   return (
     <div>
-      <input type="text" placeholder="Filter by name" value={filter} onChange={handleFilterChange} />
+      <h2>Customer List</h2>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name}
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
