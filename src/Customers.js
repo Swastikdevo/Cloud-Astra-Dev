@@ -1,38 +1,29 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManager = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
+    const storedCustomers = JSON.parse(localStorage.getItem('customers')) || [];
+    setCustomers(storedCustomers);
   }, []);
 
-  const addCustomer = async () => {
-    const newCustomer = { name, email };
-    const response = await fetch('/api/customers', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(newCustomer)
-    });
-    const data = await response.json();
-    setCustomers([...customers, data]);
-    setName('');
-    setEmail('');
+  const addCustomer = () => {
+    const newCustomer = { name: customerName, email: customerEmail, id: Date.now() };
+    const updatedCustomers = [...customers, newCustomer];
+    setCustomers(updatedCustomers);
+    localStorage.setItem('customers', JSON.stringify(updatedCustomers));
+    setCustomerName('');
+    setCustomerEmail('');
   };
 
-  const deleteCustomer = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-    setCustomers(customers.filter(customer => customer.id !== id));
+  const deleteCustomer = (id) => {
+    const updatedCustomers = customers.filter(customer => customer.id !== id);
+    setCustomers(updatedCustomers);
+    localStorage.setItem('customers', JSON.stringify(updatedCustomers));
   };
 
   return (
@@ -40,15 +31,15 @@ const CustomerManager = () => {
       <h1>Customer Management</h1>
       <input
         type="text"
-        value={name}
         placeholder="Customer Name"
-        onChange={(e) => setName(e.target.value)}
+        value={customerName}
+        onChange={(e) => setCustomerName(e.target.value)}
       />
       <input
         type="email"
-        value={email}
         placeholder="Customer Email"
-        onChange={(e) => setEmail(e.target.value)}
+        value={customerEmail}
+        onChange={(e) => setCustomerEmail(e.target.value)}
       />
       <button onClick={addCustomer}>Add Customer</button>
       <ul>
@@ -63,5 +54,5 @@ const CustomerManager = () => {
   );
 };
 
-export default CustomerManager;
+export default CustomerManagement;
 ```
