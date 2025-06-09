@@ -1,51 +1,79 @@
 ```python
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from django.utils.decorators import method_decorator
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from .models import Account, Transaction
-import json
+from .forms import TransferForm, DepositForm, WithdrawalForm
+from django.contrib import messages
 
-@method_decorator(csrf_exempt, name='dispatch')
-@method_decorator(login_required, name='dispatch')
-@require_http_methods(["POST", "GET"])
+
+@login_required
 def bank_management_view(request):
-    if request.method == "POST":
-        data = json.loads(request.body)
-        action = data.get("action")
+    # Initialize context dictionary to hold data for rendering templates
+    context = {
+        'accounts': Account.objects.filter(owner=request.user),
+        'transactions': Transaction.objects.filter(account__owner=request.user).order_by('-date'),
+    }
 
-        if action == "create_account":
-            account_type = data.get("account_type")
-            balance = data.get("balance", 0)
-            account = Account.objects.create(owner=request.user, account_type=account_type, balance=balance)
-            return JsonResponse({"message": "Account created successfully", "account_id": account.id}, status=201)
-
-        elif action == "make_transaction":
-            account_id = data.get("account_id")
-            amount = data.get("amount")
-            transaction_type = data.get("transaction_type")
-
-            account = Account.objects.get(id=account_id, owner=request.user)
-
-            if transaction_type == "deposit":
+    # Handle deposit
+    if request.method == 'POST' and 'deposit' in request.POST:
+        form = DepositForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            account = form.cleaned_data['account']
+            if account.owner == request.user:
                 account.balance += amount
-                Transaction.objects.create(account=account, amount=amount, transaction_type="deposit")
                 account.save()
-                return JsonResponse({"message": "Deposit successful", "new_balance": account.balance})
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                messages.success(request, 'Deposit successful!')
+            else:
+                messages.error(request, 'Account ownership mismatch.')
+            return redirect('bank_management')
 
-            elif transaction_type == "withdraw":
-                if account.balance >= amount:
-                    account.balance -= amount
-                    Transaction.objects.create(account=account, amount=amount, transaction_type="withdraw")
-                    account.save()
-                    return JsonResponse({"message": "Withdrawal successful", "new_balance": account.balance})
-                else:
-                    return JsonResponse({"error": "Insufficient balance"}, status=400)
+    # Handle withdrawal
+    elif request.method == 'POST' and 'withdraw' in request.POST:
+        form = WithdrawalForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            account = form.cleaned_data['account']
+            if account.owner == request.user and account.balance >= amount:
+                account.balance -= amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                messages.success(request, 'Withdrawal successful!')
+            else:
+                messages.error(request, 'Insufficient balance or ownership mismatch.')
+            return redirect('bank_management')
 
-    elif request.method == "GET":
-        accounts = Account.objects.filter(owner=request.user).values("id", "account_type", "balance")
-        return JsonResponse({"accounts": list(accounts)}, status=200)
+    # Handle transfer
+    elif request.method == 'POST' and 'transfer' in request.POST:
+        form = TransferForm(request.POST)
+        if form.is_valid():
+            from_account = form.cleaned_data['from_account']
+            to_account = form.cleaned_data['to_account']
+            amount = form.cleaned_data['amount']
+            if from_account.owner == request.user and from_account.balance >= amount:
+                from_account.balance -= amount
+                to_account.balance += amount
+                from_account.save()
+                to_account.save()
+                Transaction.objects.create(account=from_account, amount=amount, transaction_type='Transfer Out')
+                Transaction.objects.create(account=to_account, amount=amount, transaction_type='Transfer In')
+                messages.success(request, 'Transfer successful!')
+            else:
+                messages.error(request, 'Insufficient balance or ownership mismatch.')
+            return redirect('bank_management')
 
-    return JsonResponse({"error": "Invalid request"}, status=400)
+    # Populate forms for deposits, withdrawals, and transfers
+    deposit_form = DepositForm()
+    withdrawal_form = WithdrawalForm()
+    transfer_form = TransferForm()
+
+    context.update({
+        'deposit_form': deposit_form,
+        'withdrawal_form': withdrawal_form,
+        'transfer_form': transfer_form,
+    })
+
+    return render(request, 'bank_management.html', context)
 ```
