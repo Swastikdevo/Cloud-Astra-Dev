@@ -1,66 +1,44 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+from django.utils.decorators import method_decorator
+from django.views import View
 from .models import Account, Transaction
 from .forms import TransferForm
 
-@login_required
-def account_overview(request):
-    account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
+@method_decorator(login_required, name='dispatch')
+class BankView(View):
+    def get(self, request):
+        accounts = Account.objects.filter(user=request.user)
+        return render(request, 'bank/home.html', {'accounts': accounts})
 
-    context = {
-        'account': account,
-        'transactions': transactions,
-    }
-    return render(request, 'bank/account_overview.html', context)
+    def post(self, request):
+        form = TransferForm(request.POST)
+        if form.is_valid():
+            sender_account = form.cleaned_data['sender_account']
+            receiver_account = form.cleaned_data['receiver_account']
+            amount = form.cleaned_data['amount']
 
-@login_required
-@require_POST
-def transfer_money(request):
-    form = TransferForm(request.POST)
-    if form.is_valid():
-        amount = form.cleaned_data['amount']
-        recipient_username = form.cleaned_data['recipient']
-        
-        try:
-            recipient = Account.objects.get(user__username=recipient_username)
-            account = Account.objects.get(user=request.user)
-            
-            if account.balance >= amount:
-                account.balance -= amount
-                recipient.balance += amount
-                account.save()
-                recipient.save()
-                
+            if sender_account.balance >= amount:
+                sender_account.balance -= amount
+                receiver_account.balance += amount
+                sender_account.save()
+                receiver_account.save()
+
+                # Log the transaction
                 Transaction.objects.create(
-                    account=account,
-                    amount=-amount,
-                    transaction_type='Transfer',
-                    description=f'Transferred {amount} to {recipient_username}'
-                )
-                Transaction.objects.create(
-                    account=recipient,
+                    sender=sender_account,
+                    receiver=receiver_account,
                     amount=amount,
-                    transaction_type='Transfer',
-                    description=f'Received {amount} from {request.user.username}'
                 )
-                
-                messages.success(request, f'Successfully transferred {amount} to {recipient_username}')
+                return JsonResponse({'status': 'success', 'message': 'Transfer completed successfully!'})
             else:
-                messages.error(request, 'Insufficient funds for this transaction.')
-        except Account.DoesNotExist:
-            messages.error(request, 'Recipient account does not exist.')
-    else:
-        messages.error(request, 'Invalid transfer details.')
+                return JsonResponse({'status': 'error', 'message': 'Insufficient funds.'})
+        return JsonResponse({'status': 'error', 'message': 'Invalid form submission.'})
 
-    return redirect('account_overview')
-
-@login_required
-def get_account_balance(request):
-    account = Account.objects.get(user=request.user)
-    return JsonResponse({'balance': account.balance})
+    def new_feature(self, request):
+        # Example new feature: View Transactions
+        transactions = Transaction.objects.filter(sender__user=request.user).order_by('-date')
+        return render(request, 'bank/transactions.html', {'transactions': transactions})
 ```
