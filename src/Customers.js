@@ -1,53 +1,74 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+  const [formState, setFormState] = useState({ name: '', email: '' });
+  
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+  
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
+  };
+  
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormState({ ...formState, [name]: value });
+  };
+  
+  const addCustomer = async (e) => {
+    e.preventDefault();
+    await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formState),
+    });
+    setFormState({ name: '', email: '' });
+    fetchCustomers();
+  };
 
-    useEffect(() => {
-        fetch('/api/customers')
-            .then(response => {
-                if (!response.ok) throw new Error('Failed to fetch');
-                return response.json();
-            })
-            .then(data => {
-                setCustomers(data);
-                setLoading(false);
-            })
-            .catch(err => {
-                setError(err.message);
-                setLoading(false);
-            });
-    }, []);
-    
-    const handleDelete = async (id) => {
-        try {
-            await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-            setCustomers(customers.filter(customer => customer.id !== id));
-        } catch (err) {
-            alert('Failed to delete customer');
-        }
-    };
+  const deleteCustomer = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    fetchCustomers();
+  };
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
-
-    return (
-        <div>
-            <h2>Customer List</h2>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.email}
-                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  return (
+    <div>
+      <h1>Customer Management</h1>
+      <form onSubmit={addCustomer}>
+        <input 
+          type="text" 
+          name="name" 
+          value={formState.name} 
+          onChange={handleInputChange} 
+          placeholder="Customer Name" 
+          required 
+        />
+        <input 
+          type="email" 
+          name="email" 
+          value={formState.email} 
+          onChange={handleInputChange} 
+          placeholder="Customer Email" 
+          required 
+        />
+        <button type="submit">Add Customer</button>
+      </form>
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
