@@ -8,36 +8,36 @@ from .forms import AccountForm, TransactionForm
 
 @login_required
 @csrf_exempt
-def manage_account(request):
+def account_management(request):
     if request.method == 'GET':
         accounts = Account.objects.filter(user=request.user)
-        return render(request, 'bank/manage_account.html', {'accounts': accounts})
+        return render(request, 'bank/account_management.html', {'accounts': accounts})
 
     elif request.method == 'POST':
         form = AccountForm(request.POST)
         if form.is_valid():
-            new_account = form.save(commit=False)
-            new_account.user = request.user
-            new_account.save()
-            return JsonResponse({'status': 'success', 'account_id': new_account.id})
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return JsonResponse({'status': 'success', 'message': 'Account created successfully.'})
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid form submission'})
+        return JsonResponse({'status': 'error', 'message': 'Invalid form data.'})
 
 @login_required
 @csrf_exempt
-def perform_transaction(request):
-    if request.method == 'POST':
+def transaction_history(request):
+    if request.method == 'GET':
+        account_id = request.GET.get('account_id')
+        transactions = Transaction.objects.filter(account_id=account_id, account__user=request.user)
+        return render(request, 'bank/transaction_history.html', {'transactions': transactions})
+
+    elif request.method == 'POST':
         form = TransactionForm(request.POST)
         if form.is_valid():
             transaction = form.save(commit=False)
             transaction.user = request.user
             transaction.save()
-            return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
+            return JsonResponse({'status': 'success', 'message': 'Transaction recorded successfully.'})
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid transaction details'})
-
-@login_required
-def transaction_history(request):
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
+        return JsonResponse({'status': 'error', 'message': 'Invalid form data.'})
 ```
