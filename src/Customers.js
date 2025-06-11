@@ -3,45 +3,45 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [newCustomerName, setNewCustomerName] = useState('');
   
   useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
     fetchCustomers();
   }, []);
-
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
+  
+  const addCustomer = () => {
+    if (newCustomerName.trim()) {
+      const newCustomer = { id: Date.now(), name: newCustomerName };
+      setCustomers([...customers, newCustomer]);
+      setNewCustomerName('');
+      // Optionally post to API
+    }
   };
-
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleDelete = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+  
+  const deleteCustomer = (id) => {
     setCustomers(customers.filter(customer => customer.id !== id));
+    // Optionally delete from API
   };
 
   return (
     <div>
-      <h1>Customer Management</h1>
+      <h2>Customer Management</h2>
       <input 
         type="text" 
-        placeholder="Search Customers..." 
-        value={searchTerm} 
-        onChange={handleSearch} 
+        value={newCustomerName} 
+        onChange={(e) => setNewCustomerName(e.target.value)} 
+        placeholder="New Customer Name" 
       />
+      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map(customer => (
+        {customers.map(customer => (
           <li key={customer.id}>
-            {customer.name} 
-            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+            {customer.name} <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
