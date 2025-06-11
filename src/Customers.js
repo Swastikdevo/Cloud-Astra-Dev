@@ -1,46 +1,46 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
+  const [searchTerm, setSearchTerm] = useState('');
+  
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-        setCustomers(data);
-      } catch (error) {
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchCustomers();
   }, []);
 
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-      setCustomers(customers.filter(customer => customer.id !== id));
-    } catch (error) {
-      setError(error.message);
-    }
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleDelete = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
 
   return (
     <div>
-      <h2>Customer List</h2>
+      <h1>Customer Management</h1>
+      <input 
+        type="text" 
+        placeholder="Search Customers..." 
+        value={searchTerm} 
+        onChange={handleSearch} 
+      />
       <ul>
-        {customers.map(customer => (
+        {filteredCustomers.map(customer => (
           <li key={customer.id}>
-            {customer.name} - {customer.email}
+            {customer.name} 
             <button onClick={() => handleDelete(customer.id)}>Delete</button>
           </li>
         ))}
@@ -49,5 +49,5 @@ const CustomerList = () => {
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
