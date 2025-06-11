@@ -1,54 +1,64 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm
+from .forms import DepositForm, WithdrawForm, TransferForm
 
 @login_required
-def account_dashboard(request):
-    user_accounts = Account.objects.filter(owner=request.user)
-    return render(request, 'bank/account_dashboard.html', {'accounts': user_accounts})
-
-@login_required
-@require_POST
-def deposit(request, account_id):
-    form = DepositForm(request.POST)
-    if form.is_valid():
-        amount = form.cleaned_data['amount']
-        account = Account.objects.get(id=account_id, owner=request.user)
-        account.balance += amount
-        account.save()
-
-        Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-        messages.success(request, 'Deposit successful!')
-        return redirect('account_dashboard')
+@csrf_exempt
+def manage_account(request):
+    if request.method == 'POST':
+        if 'deposit' in request.POST:
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
+                messages.success(request, f'Successfully deposited {amount}.')
+                return redirect('manage_account')
+        elif 'withdraw' in request.POST:
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
+                if amount <= account.balance:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
+                    messages.success(request, f'Successfully withdrew {amount}.')
+                else:
+                    messages.error(request, 'Insufficient balance.')
+                return redirect('manage_account')
+        elif 'transfer' in request.POST:
+            form = TransferForm(request.POST)
+            if form.is_valid():
+                recipient_username = form.cleaned_data['recipient']
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
+                recipient_account = Account.objects.get(user__username=recipient_username)
+                if amount <= account.balance:
+                    account.balance -= amount
+                    recipient_account.balance += amount
+                    account.save()
+                    recipient_account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='transfer', recipient=recipient_account)
+                    messages.success(request, f'Successfully transferred {amount} to {recipient_username}.')
+                else:
+                    messages.error(request, 'Insufficient balance.')
+                return redirect('manage_account')
     else:
-        messages.error(request, 'Invalid deposit amount.')
-        return redirect('account_dashboard')
+        deposit_form = DepositForm()
+        withdraw_form = WithdrawForm()
+        transfer_form = TransferForm()
 
-@login_required
-@require_POST
-def withdraw(request, account_id):
-    form = WithdrawForm(request.POST)
-    if form.is_valid():
-        amount = form.cleaned_data['amount']
-        account = Account.objects.get(id=account_id, owner=request.user)
-        if amount > account.balance:
-            messages.error(request, 'Insufficient funds for withdrawal.')
-        else:
-            account.balance -= amount
-            account.save()
-            Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-            messages.success(request, 'Withdrawal successful!')
-
-    return redirect('account_dashboard')
-
-@login_required
-def transaction_history(request, account_id):
-    account = Account.objects.get(id=account_id, owner=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
+    return render(request, 'bank/manage_account.html', {
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+        'transfer_form': transfer_form,
+    })
 ```
