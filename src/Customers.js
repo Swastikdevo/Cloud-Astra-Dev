@@ -3,33 +3,46 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('https://api.example.com/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch('/api/customers');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
-
-  const handleChange = (e) => {
-    setFilter(e.target.value);
+  const handleDelete = async (id) => {
+    try {
+      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      setCustomers(customers.filter(customer => customer.id !== id));
+    } catch (error) {
+      setError(error.message);
+    }
   };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search customers"
-        value={filter}
-        onChange={handleChange}
-      />
+      <h2>Customer List</h2>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
