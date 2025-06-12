@@ -1,60 +1,40 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from .models import Account, Transaction
-from .forms import TransactionForm
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawalForm
 
+@csrf_exempt
 @login_required
-def account_dashboard(request):
+def manage_account(request):
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'deposit':
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                return JsonResponse({'status': 'success', 'balance': account.balance})
+        
+        elif action == 'withdraw':
+            form = WithdrawalForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
+                if amount <= account.balance:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                    return JsonResponse({'status': 'success', 'balance': account.balance})
+                else:
+                    return JsonResponse({'status': 'error', 'message': 'Insufficient balance'})
+
     accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/account_dashboard.html', {'accounts': accounts})
-
-@login_required
-@require_POST
-def transaction_create(request):
-    form = TransactionForm(request.POST)
-    if form.is_valid():
-        transaction = form.save(commit=False)
-        transaction.user = request.user
-        transaction.save()
-
-        # Update account balance after transaction
-        account = Account.objects.get(id=form.cleaned_data['account'].id)
-        account.balance += transaction.amount if transaction.transaction_type == 'credit' else -transaction.amount
-        account.save()
-
-        messages.success(request, 'Transaction recorded successfully!')
-        return redirect('account_dashboard')
-    else:
-        messages.error(request, 'Error in transaction. Please correct the form.')
-        return redirect('account_dashboard')
-
-@login_required
-def transaction_history(request):
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
-
-@login_required
-def account_detail(request, account_id):
-    account = Account.objects.get(id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/account_detail.html', {'account': account, 'transactions': transactions})
-
-@login_required
-@require_POST
-def delete_transaction(request, transaction_id):
-    transaction = Transaction.objects.get(id=transaction_id, user=request.user)
-    account = transaction.account
-    if transaction.transaction_type == 'credit':
-        account.balance -= transaction.amount
-    else:
-        account.balance += transaction.amount
-    account.save()
-    transaction.delete()
-
-    messages.success(request, 'Transaction deleted successfully!')
-    return redirect('transaction_history')
+    return render(request, 'manage_account.html', {'accounts': accounts})
 ```
