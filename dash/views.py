@@ -1,43 +1,51 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
+from django.views import View
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm
+from .forms import AccountForm, TransactionForm
 
-@login_required
-def account_overview(request):
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/account_overview.html', {'accounts': accounts})
+@method_decorator(require_POST, name='dispatch')
+class BankManagementView(View):
+    def get(self, request):
+        accounts = Account.objects.all()
+        account_form = AccountForm()
+        transaction_form = TransactionForm()
+        return render(request, 'bank_management/home.html', {
+            'accounts': accounts,
+            'account_form': account_form,
+            'transaction_form': transaction_form,
+        })
 
-@login_required
-@require_POST
-def deposit(request, account_id):
-    form = DepositForm(request.POST)
-    if form.is_valid():
-        amount = form.cleaned_data['amount']
-        account = Account.objects.get(id=account_id, user=request.user)
-        account.balance += amount
-        account.save()
-        transaction = Transaction(account=account, amount=amount, transaction_type='Deposit')
-        transaction.save()
-        return JsonResponse({'status': 'success', 'new_balance': account.balance})
-    return JsonResponse({'status': 'error', 'errors': form.errors})
+    def post(self, request):
+        if 'create_account' in request.POST:
+            account_form = AccountForm(request.POST)
+            if account_form.is_valid():
+                account_form.save()
+                return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
+            return JsonResponse({'status': 'error', 'message': 'Account creation failed!'})
 
-@login_required
-@require_POST
-def withdraw(request, account_id):
-    form = WithdrawForm(request.POST)
-    if form.is_valid():
-        amount = form.cleaned_data['amount']
-        account = Account.objects.get(id=account_id, user=request.user)
-        if account.balance >= amount:
-            account.balance -= amount
+        elif 'create_transaction' in request.POST:
+            transaction_form = TransactionForm(request.POST)
+            if transaction_form.is_valid():
+                transaction_form.save()
+                return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully!'})
+            return JsonResponse({'status': 'error', 'message': 'Transaction failed!'})
+
+        return JsonResponse({'status': 'error', 'message': 'Invalid request!'})
+
+    def update_account_balance(self, account_id, amount):
+        try:
+            account = Account.objects.get(pk=account_id)
+            account.balance += amount
             account.save()
-            transaction = Transaction(account=account, amount=amount, transaction_type='Withdraw')
-            transaction.save()
-            return JsonResponse({'status': 'success', 'new_balance': account.balance})
-        return JsonResponse({'status': 'error', 'message': 'Insufficient balance'})
-    return JsonResponse({'status': 'error', 'errors': form.errors})
+            return True
+        except Account.DoesNotExist:
+            return False
+
+    def get_transaction_history(self, account_id):
+        transactions = Transaction.objects.filter(account_id=account_id)
+        return transactions.values('date', 'amount', 'transaction_type')
 ```
