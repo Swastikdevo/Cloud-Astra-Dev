@@ -1,39 +1,58 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManager = () => {
   const [customers, setCustomers] = useState([]);
-  const [keyword, setKeyword] = useState('');
-
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
+  
   useEffect(() => {
     const fetchCustomers = async () => {
-      const response = await fetch('https://api.example.com/customers');
+      const response = await fetch('/api/customers');
       const data = await response.json();
       setCustomers(data);
     };
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(keyword.toLowerCase())
-  );
+  const handleChange = (e) => {
+    setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
+  };
+
+  const handleAddCustomer = async () => {
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newCustomer),
+    });
+    const addedCustomer = await response.json();
+    setCustomers([...customers, addedCustomer]);
+    setNewCustomer({ name: '', email: '' });
+  };
+
+  const handleDeleteCustomer = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search customer..." 
-        value={keyword} 
-        onChange={(e) => setKeyword(e.target.value)} 
-      />
+      <h2>Customer Management</h2>
+      <input name="name" value={newCustomer.name} onChange={handleChange} placeholder="Name" />
+      <input name="email" value={newCustomer.email} onChange={handleChange} placeholder="Email" />
+      <button onClick={handleAddCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} ({customer.email})
+            <button onClick={() => handleDeleteCustomer(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManager;
 ```
