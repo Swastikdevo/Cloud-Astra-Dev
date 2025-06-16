@@ -1,44 +1,36 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerManager = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const addCustomer = () => {
-    if(name && email) {
-      setCustomers([...customers, { name, email }]);
-      setName('');
-      setEmail('');
-    }
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    const res = await fetch('/api/customers');
+    const data = await res.json();
+    setCustomers(data);
+    setLoading(false);
   };
 
-  const removeCustomer = (index) => {
-    setCustomers(customers.filter((_, i) => i !== index));
+  const handleDelete = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
   };
+
+  if (loading) return <p>Loading...</p>;
 
   return (
     <div>
-      <h2>Customer Management System</h2>
-      <input
-        type="text"
-        placeholder="Customer Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <input
-        type="email"
-        placeholder="Customer Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <button onClick={addCustomer}>Add Customer</button>
+      <h1>Customer List</h1>
       <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
-            {customer.name} - {customer.email}
-            <button onClick={() => removeCustomer(index)}>Remove</button>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name}
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -46,5 +38,5 @@ const CustomerManager = () => {
   );
 };
 
-export default CustomerManager;
+export default CustomerList;
 ```
