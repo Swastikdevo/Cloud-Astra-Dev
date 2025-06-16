@@ -1,39 +1,49 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
     const [customers, setCustomers] = useState([]);
-    const [searchTerm, setSearchTerm] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchCustomers = async () => {
-            const response = await fetch('/api/customers');
-            const data = await response.json();
-            setCustomers(data);
+            try {
+                const response = await fetch('/api/customers');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                setCustomers(data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchCustomers();
     }, []);
 
-    const handleSearch = (e) => {
-        setSearchTerm(e.target.value);
-    };
+    if (loading) return <p>Loading customers...</p>;
+    if (error) return <p>Error: {error}</p>;
 
-    const filteredCustomers = customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to delete this customer?')) {
+            try {
+                await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+                setCustomers(customers.filter(customer => customer.id !== id));
+            } catch (err) {
+                setError('Failed to delete customer');
+            }
+        }
+    };
 
     return (
         <div>
-            <input
-                type="text"
-                placeholder="Search Customers"
-                value={searchTerm}
-                onChange={handleSearch}
-            />
+            <h1>Customer List</h1>
             <ul>
-                {filteredCustomers.map(customer => (
+                {customers.map(customer => (
                     <li key={customer.id}>
                         {customer.name} - {customer.email}
+                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
                     </li>
                 ))}
             </ul>
@@ -41,5 +51,5 @@ const CustomerManagement = () => {
     );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
