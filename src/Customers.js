@@ -1,45 +1,41 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
-  const addCustomer = () => {
-    if (name && email) {
-      setCustomers([...customers, { name, email }]);
-      setName('');
-      setEmail('');
-    }
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
   };
 
-  const deleteCustomer = (index) => {
-    const newCustomers = customers.filter((_, i) => i !== index);
-    setCustomers(newCustomers);
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
   };
+
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h2>Customer Management</h2>
       <input
         type="text"
-        placeholder="Customer Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        placeholder="Search Customers"
+        value={searchTerm}
+        onChange={handleSearch}
       />
-      <input
-        type="email"
-        placeholder="Customer Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>
             {customer.name} - {customer.email}
-            <button onClick={() => deleteCustomer(index)}>Delete</button>
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -47,5 +43,10 @@ const CustomerManagement = () => {
   );
 };
 
-export default CustomerManagement;
+const deleteCustomer = async (id) => {
+  await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+  fetchCustomers();
+};
+
+export default CustomerList;
 ```
