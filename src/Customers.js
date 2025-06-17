@@ -1,36 +1,55 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '', phone: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const handleChange = (e) => {
-    setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
+  useEffect(() => {
+    fetch('/api/customers')
+      .then((response) => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+      })
+      .then((data) => {
+        setCustomers(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
+
+  const handleDelete = (id) => {
+    fetch(`/api/customers/${id}`, { method: 'DELETE' })
+      .then(() => {
+        setCustomers(customers.filter((customer) => customer.id !== id));
+      })
+      .catch((err) => setError(err.message));
   };
 
-  const handleAddCustomer = () => {
-    setCustomers([...customers, newCustomer]);
-    setNewCustomer({ name: '', email: '', phone: '' });
-  };
-
-  const handleDeleteCustomer = (index) => {
-    const updatedCustomers = customers.filter((_, i) => i !== index);
+  const handleEdit = (id) => {
+    // Simple logic to change the state for customer editing
+    const updatedCustomers = customers.map((customer) =>
+      customer.id === id ? { ...customer, editing: true } : customer
+    );
     setCustomers(updatedCustomers);
   };
 
   return (
     <div>
-      <h1>Customer Management System</h1>
-      <input type="text" name="name" placeholder="Name" value={newCustomer.name} onChange={handleChange} />
-      <input type="email" name="email" placeholder="Email" value={newCustomer.email} onChange={handleChange} />
-      <input type="tel" name="phone" placeholder="Phone" value={newCustomer.phone} onChange={handleChange} />
-      <button onClick={handleAddCustomer}>Add Customer</button>
+      <h1>Customer List</h1>
       <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
-            {customer.name} - {customer.email} - {customer.phone}
-            <button onClick={() => handleDeleteCustomer(index)}>Delete</button>
+        {customers.map((customer) => (
+          <li key={customer.id}>
+            {customer.name}
+            <button onClick={() => handleEdit(customer.id)}>Edit</button>
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -38,5 +57,5 @@ const CustomerManagement = () => {
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
