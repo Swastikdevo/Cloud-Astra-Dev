@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   useEffect(() => {
     const fetchCustomers = async () => {
       const response = await fetch('/api/customers');
@@ -20,15 +20,16 @@ const CustomerList = () => {
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search by name..." 
-        value={searchTerm} 
-        onChange={e => setSearchTerm(e.target.value)} 
+      <h1>Customer Management</h1>
+      <input
+        type="text"
+        placeholder="Search customers"
+        value={searchTerm}
+        onChange={e => setSearchTerm(e.target.value)}
       />
       <ul>
         {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
+          <li key={customer.id}>{customer.name}</li>
         ))}
       </ul>
     </div>
