@@ -1,43 +1,46 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerForm = () => {
-  const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+const CustomerList = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-  const handleAddCustomer = () => {
-    if (name && email) {
-      setCustomers([...customers, { name, email }]);
-      setName('');
-      setEmail('');
-    }
-  };
+    useEffect(() => {
+        fetch('/api/customers')
+            .then(response => response.json())
+            .then(data => {
+                setCustomers(data);
+                setLoading(false);
+            })
+            .catch(err => {
+                setError(err);
+                setLoading(false);
+            });
+    }, []);
 
-  return (
-    <div>
-      <h2>Customer Management</h2>
-      <input 
-        type="text" 
-        placeholder="Name" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
-      />
-      <input 
-        type="email" 
-        placeholder="Email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
-      />
-      <button onClick={handleAddCustomer}>Add Customer</button>
-      <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>{customer.name} - {customer.email}</li>
-        ))}
-      </ul>
-    </div>
-  );
+    const handleDelete = (id) => {
+        fetch(`/api/customers/${id}`, { method: 'DELETE' })
+            .then(() => setCustomers(customers.filter(customer => customer.id !== id)))
+            .catch(err => setError(err));
+    };
+
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>Error loading customers</div>;
+
+    return (
+        <div>
+            <h2>Customer List</h2>
+            <ul>
+                {customers.map(customer => (
+                    <li key={customer.id}>
+                        {customer.name} <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-export default CustomerForm;
+export default CustomerList;
 ```
