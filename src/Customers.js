@@ -1,55 +1,43 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
 
-const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+const CustomerForm = () => {
+  const [customers, setCustomers] = useState([]);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
-    useEffect(() => {
-        const fetchCustomers = async () => {
-            try {
-                const response = await axios.get('/api/customers');
-                setCustomers(response.data);
-            } catch (err) {
-                setError(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchCustomers();
-    }, []);
+  const handleAddCustomer = () => {
+    if (name && email) {
+      setCustomers([...customers, { name, email }]);
+      setName('');
+      setEmail('');
+    }
+  };
 
-    const handleDelete = async (id) => {
-        const confirmDelete = window.confirm('Are you sure you want to delete this customer?');
-        if (confirmDelete) {
-            try {
-                await axios.delete(`/api/customers/${id}`);
-                setCustomers(customers.filter(customer => customer.id !== id));
-            } catch (err) {
-                setError(err);
-            }
-        }
-    };
-
-    if (loading) return <p>Loading...</p>;
-    if (error) return <p>Error loading customers</p>;
-
-    return (
-        <div>
-            <h1>Customer List</h1>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.email}
-                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  return (
+    <div>
+      <h2>Customer Management</h2>
+      <input 
+        type="text" 
+        placeholder="Name" 
+        value={name} 
+        onChange={(e) => setName(e.target.value)} 
+      />
+      <input 
+        type="email" 
+        placeholder="Email" 
+        value={email} 
+        onChange={(e) => setEmail(e.target.value)} 
+      />
+      <button onClick={handleAddCustomer}>Add Customer</button>
+      <ul>
+        {customers.map((customer, index) => (
+          <li key={index}>{customer.name} - {customer.email}</li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerList;
+export default CustomerForm;
 ```
