@@ -1,47 +1,55 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import DepositForm, WithdrawForm
 
-@require_http_methods(["GET", "POST"])
-def manage_account(request, account_id=None):
-    if request.method == 'POST':
-        if account_id:  # Update existing account
-            account = Account.objects.get(id=account_id)
-            form = AccountForm(request.POST, instance=account)
-            if form.is_valid():
-                form.save()
-                return JsonResponse({'status': 'success', 'message': 'Account updated successfully!'})
-        else:  # Create new account
-            form = AccountForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return JsonResponse({'status': 'success', 'message': 'Account created successfully!'})
-
-    # Fetch the account if it exists
-    account = Account.objects.get(id=account_id) if account_id else None
-    form = AccountForm(instance=account)
+@login_required
+def account_overview(request):
+    account = Account.objects.get(user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date_created')[:10]
     
-    return render(request, 'bank/manage_account.html', {'form': form})
-
-@require_http_methods(["GET", "POST"])
-def create_transaction(request):
     if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save()
-            return JsonResponse({'status': 'success', 'message': 'Transaction created successfully!', 'transaction_id': transaction.id})
-    
-    form = TransactionForm()
-    return render(request, 'bank/create_transaction.html', {'form': form})
+        if 'deposit' in request.POST:
+            return handle_deposit(request, account)
+        elif 'withdraw' in request.POST:
+            return handle_withdraw(request, account)
 
-@require_http_methods(["GET"])
-def view_transaction(request, transaction_id):
-    try:
-        transaction = Transaction.objects.get(id=transaction_id)
-        return render(request, 'bank/view_transaction.html', {'transaction': transaction})
-    except Transaction.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Transaction not found!'}, status=404)
+    context = {
+        'account': account,
+        'transactions': transactions,
+        'deposit_form': DepositForm(),
+        'withdraw_form': WithdrawForm(),
+    }
+    
+    return render(request, 'bank/account_overview.html', context)
+
+@require_POST
+def handle_deposit(request, account):
+    form = DepositForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account.balance += amount
+        account.save()
+        Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+        return redirect('account_overview')
+    else:
+        return JsonResponse({'errors': form.errors}, status=400)
+
+@require_POST
+def handle_withdraw(request, account):
+    form = WithdrawForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        if amount <= account.balance:
+            account.balance -= amount
+            account.save()
+            Transaction.objects.create(account=account, amount=-amount, transaction_type='Withdrawal')
+            return redirect('account_overview')
+        else:
+            return JsonResponse({'error': 'Insufficient funds'}, status=400)
+    else:
+        return JsonResponse({'errors': form.errors}, status=400)
 ```
