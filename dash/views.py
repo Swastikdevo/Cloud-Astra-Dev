@@ -4,30 +4,57 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import TransactionForm
+from .forms import DepositForm, WithdrawForm
 
 @login_required
-def account_overview(request):
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/account_overview.html', {'accounts': accounts})
-
-@login_required
-@require_POST
-def create_transaction(request, account_id):
-    account = Account.objects.get(id=account_id, user=request.user)
-    form = TransactionForm(request.POST)
-
-    if form.is_valid():
-        transaction = form.save(commit=False)
-        transaction.account = account
-        transaction.save()
-        return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
-
-    return JsonResponse({'status': 'error', 'errors': form.errors})
-
-@login_required
-def transaction_history(request, account_id):
-    account = Account.objects.get(id=account_id, user=request.user)
+def account_dashboard(request):
+    """View for the user's account dashboard."""
+    account = Account.objects.get(user=request.user)
     transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions, 'account': account})
+    
+    context = {
+        'account': account,
+        'transactions': transactions,
+        'deposit_form': DepositForm(),
+        'withdraw_form': WithdrawForm(),
+    }
+    return render(request, 'bank_management/account_dashboard.html', context)
+
+@require_POST
+@login_required
+def deposit(request):
+    """View to handle deposit transactions."""
+    form = DepositForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = Account.objects.get(user=request.user)
+        account.balance += amount
+        account.save()
+
+        # Log the transaction
+        Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
+        
+        return JsonResponse({'status': 'success', 'new_balance': account.balance})
+
+    return JsonResponse({'status': 'error', 'message': form.errors})
+
+@require_POST
+@login_required
+def withdraw(request):
+    """View to handle withdrawal transactions."""
+    form = WithdrawForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account = Account.objects.get(user=request.user)
+        
+        if amount <= account.balance:
+            account.balance -= amount
+            account.save()
+            # Log the transaction
+            Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
+            return JsonResponse({'status': 'success', 'new_balance': account.balance})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Insufficient funds'})
+
+    return JsonResponse({'status': 'error', 'message': form.errors})
 ```
