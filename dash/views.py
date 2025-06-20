@@ -1,50 +1,33 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
-from django.views.decorators.http import require_POST, require_GET
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm
+from .forms import TransactionForm
 
 @login_required
-@require_GET
 def account_overview(request):
-    """Display account details and recent transactions."""
-    user_account = Account.objects.get(user=request.user)
-    recent_transactions = Transaction.objects.filter(account=user_account).order_by('-date')[:5]
-    return render(request, 'bank/account_overview.html', {
-        'account': user_account,
-        'transactions': recent_transactions,
-    })
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/account_overview.html', {'accounts': accounts})
 
 @login_required
 @require_POST
-def deposit_funds(request):
-    """Handle deposits to the user's account."""
-    form = DepositForm(request.POST)
+def create_transaction(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    form = TransactionForm(request.POST)
+
     if form.is_valid():
-        amount = form.cleaned_data['amount']
-        user_account = Account.objects.get(user=request.user)
-        user_account.balance += amount
-        user_account.save()
-        Transaction.objects.create(account=user_account, amount=amount, transaction_type='deposit')
-        return redirect('account_overview')
-    return render(request, 'bank/deposit.html', {'form': form})
+        transaction = form.save(commit=False)
+        transaction.account = account
+        transaction.save()
+        return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
+
+    return JsonResponse({'status': 'error', 'errors': form.errors})
 
 @login_required
-@require_POST
-def withdraw_funds(request):
-    """Handle withdrawals from the user's account."""
-    form = WithdrawForm(request.POST)
-    if form.is_valid():
-        amount = form.cleaned_data['amount']
-        user_account = Account.objects.get(user=request.user)
-        if user_account.balance >= amount:
-            user_account.balance -= amount
-            user_account.save()
-            Transaction.objects.create(account=user_account, amount=amount, transaction_type='withdrawal')
-            return redirect('account_overview')
-        else:
-            form.add_error(None, 'Insufficient funds.')
-    return render(request, 'bank/withdraw.html', {'form': form})
+def transaction_history(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    return render(request, 'bank/transaction_history.html', {'transactions': transactions, 'account': account})
 ```
