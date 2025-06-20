@@ -1,64 +1,41 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManager = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [editIndex, setEditIndex] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const savedCustomers = JSON.parse(localStorage.getItem('customers')) || [];
-    setCustomers(savedCustomers);
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
   }, []);
 
-  const addCustomer = () => {
-    if (newCustomer.trim()) {
-      setCustomers([...customers, newCustomer]);
-      localStorage.setItem('customers', JSON.stringify([...customers, newCustomer]));
-      setNewCustomer('');
-    }
+  const handleDelete = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
   };
 
-  const editCustomer = (index) => {
-    setNewCustomer(customers[index]);
-    setIsEditing(true);
-    setEditIndex(index);
-  };
-
-  const updateCustomer = () => {
-    const updatedCustomers = [...customers];
-    updatedCustomers[editIndex] = newCustomer;
-    setCustomers(updatedCustomers);
-    localStorage.setItem('customers', JSON.stringify(updatedCustomers));
-    setNewCustomer('');
-    setIsEditing(false);
-    setEditIndex(null);
-  };
-
-  const deleteCustomer = (index) => {
-    const updatedCustomers = customers.filter((_, i) => i !== index);
-    setCustomers(updatedCustomers);
-    localStorage.setItem('customers', JSON.stringify(updatedCustomers));
-  };
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h2>Customer Management</h2>
       <input
         type="text"
-        value={newCustomer}
-        onChange={(e) => setNewCustomer(e.target.value)}
+        placeholder="Search Customers"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
       />
-      <button onClick={isEditing ? updateCustomer : addCustomer}>
-        {isEditing ? 'Update' : 'Add'} Customer
-      </button>
       <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
-            {customer} 
-            <button onClick={() => editCustomer(index)}>Edit</button>
-            <button onClick={() => deleteCustomer(index)}>Delete</button>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>
+            {customer.name}
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -66,5 +43,5 @@ const CustomerManager = () => {
   );
 };
 
-export default CustomerManager;
+export default CustomerManagement;
 ```
