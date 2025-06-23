@@ -1,40 +1,51 @@
 ```javascript
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-      setLoading(false);
-    };
-    fetchCustomers();
-  }, []);
+  const addCustomer = () => {
+    if (name && email) {
+      setCustomers([...customers, { name, email }]);
+      setName('');
+      setEmail('');
+    }
+  };
 
-  const removeCustomer = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-    setCustomers(customers.filter(customer => customer.id !== id));
+  const deleteCustomer = (index) => {
+    const newCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(newCustomers);
   };
 
   return (
     <div>
-      {loading ? <p>Loading...</p> : (
-        <ul>
-          {customers.map(customer => (
-            <li key={customer.id}>
-              {customer.name} 
-              <button onClick={() => removeCustomer(customer.id)}>Delete</button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <h2>Customer Management</h2>
+      <input
+        type="text"
+        placeholder="Customer Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <input
+        type="email"
+        placeholder="Customer Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <button onClick={addCustomer}>Add Customer</button>
+      <ul>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer.name} ({customer.email}) 
+            <button onClick={() => deleteCustomer(index)}>Delete</button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
