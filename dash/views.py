@@ -1,39 +1,39 @@
 ```python
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import TransactionForm
+from django.db import transaction
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def manage_accounts(request):
-    if request.method == "POST":
-        account_form = AccountForm(request.POST)
-        if account_form.is_valid():
-            account_form.save()
-            return redirect('manage_accounts')
-    else:
-        account_form = AccountForm()
+@csrf_exempt
+def transfer_funds(request):
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            source_account = get_object_or_404(Account, id=form.cleaned_data['source_account_id'], owner=request.user)
+            target_account = get_object_or_404(Account, id=form.cleaned_data['target_account_id'])
+            amount = form.cleaned_data['amount']
+
+            if source_account.balance >= amount:
+                with transaction.atomic():
+                    source_account.balance -= amount
+                    target_account.balance += amount
+                    source_account.save()
+                    target_account.save()
+                    Transaction.objects.create(
+                        source_account=source_account,
+                        target_account=target_account,
+                        amount=amount,
+                        transaction_type='transfer'
+                    )
+                return JsonResponse({'success': True, 'message': 'Transfer successful!'})
+            else:
+                return JsonResponse({'success': False, 'message': 'Insufficient funds.'})
+        
+        return JsonResponse({'success': False, 'message': 'Invalid form submission.'})
     
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'manage_accounts.html', {'account_form': account_form, 'accounts': accounts})
-
-@login_required
-@require_http_methods(["POST"])
-def perform_transaction(request):
-    transaction_form = TransactionForm(request.POST)
-    if transaction_form.is_valid():
-        transaction = transaction_form.save(commit=False)
-        transaction.user = request.user
-        transaction.save()
-        return JsonResponse({'success': True, 'transaction_id': transaction.id})
-    return JsonResponse({'success': False, 'errors': transaction_form.errors})
-
-@login_required
-def account_details(request, account_id):
-    account = Account.objects.get(id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account)
-    return render(request, 'account_details.html', {'account': account, 'transactions': transactions})
+    return render(request, 'bank/transfer.html', {'form': TransactionForm()})
 ```
