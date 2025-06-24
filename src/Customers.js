@@ -1,34 +1,47 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
-    async function fetchCustomers() {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    }
+    const fetchCustomers = async () => {
+      try {
+        const response = await axios.get('/api/customers');
+        setCustomers(response.data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`/api/customers/${id}`);
+      setCustomers(customers.filter(customer => customer.id !== id));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search customers..." 
-        value={searchTerm} 
-        onChange={e => setSearchTerm(e.target.value)} 
-      />
+      <h2>Customer List</h2>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
