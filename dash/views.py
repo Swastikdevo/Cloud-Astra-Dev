@@ -1,45 +1,48 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-import json
+from django.db import transaction
+from datetime import datetime
 
-@csrf_exempt
-def manage_account(request, account_id=None):
-    if request.method == 'GET':
-        if account_id:
-            account = Account.objects.get(id=account_id)
-            return JsonResponse({'account_number': account.account_number, 'balance': account.balance})
-        else:
-            accounts = Account.objects.all().values('id', 'account_number', 'balance')
-            return JsonResponse(list(accounts), safe=False)
+@login_required
+def account_dashboard(request):
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/account_dashboard.html', {'accounts': accounts})
 
-    elif request.method == 'POST':
-        data = json.loads(request.body)
-        if 'action' in data:
-            if data['action'] == 'create':
-                new_account = Account.objects.create(account_number=data['account_number'], balance=data['initial_balance'])
-                return JsonResponse({'success': True, 'account_id': new_account.id})
+@login_required
+@require_POST
+def deposit_funds(request, account_id):
+    amount = float(request.POST.get('amount', 0))
+    account = Account.objects.get(id=account_id, user=request.user)
 
-            elif data['action'] == 'deposit' and account_id:
-                amount = data.get('amount', 0)
-                account = Account.objects.get(id=account_id)
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-                return JsonResponse({'success': True, 'new_balance': account.balance})
+    with transaction.atomic():
+        account.balance += amount
+        account.save()
+        Transaction.objects.create(account=account, amount=amount, transaction_type='deposit', date=datetime.now())
 
-            elif data['action'] == 'withdraw' and account_id:
-                amount = data.get('amount', 0)
-                account = Account.objects.get(id=account_id)
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='withdraw')
-                    return JsonResponse({'success': True, 'new_balance': account.balance})
-                else:
-                    return JsonResponse({'success': False, 'message': 'Insufficient funds'})
+    return JsonResponse({'success': True, 'new_balance': account.balance})
 
-    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+@login_required
+@require_POST
+def withdraw_funds(request, account_id):
+    amount = float(request.POST.get('amount', 0))
+    account = Account.objects.get(id=account_id, user=request.user)
+
+    if account.balance >= amount:
+        with transaction.atomic():
+            account.balance -= amount
+            account.save()
+            Transaction.objects.create(account=account, amount=-amount, transaction_type='withdrawal', date=datetime.now())
+        return JsonResponse({'success': True, 'new_balance': account.balance})
+    else:
+        return JsonResponse({'success': False, 'error': 'Insufficient funds'}, status=400)
+
+@login_required
+def transaction_history(request, account_id):
+    account = Account.objects.get(id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    return render(request, 'bank/transaction_history.html', {'transactions': transactions, 'account': account})
 ```
