@@ -1,6 +1,5 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
@@ -10,10 +9,12 @@ const CustomerList = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const response = await axios.get('/api/customers');
-        setCustomers(response.data);
-      } catch (err) {
-        setError(err.message);
+        const response = await fetch('/api/customers');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        setError(error.message);
       } finally {
         setLoading(false);
       }
@@ -23,23 +24,23 @@ const CustomerList = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`/api/customers/${id}`);
+      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
       setCustomers(customers.filter(customer => customer.id !== id));
-    } catch (err) {
-      setError(err.message);
+    } catch (error) {
+      setError(error.message);
     }
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
     <div>
-      <h2>Customer List</h2>
+      <h1>Customer List</h1>
       <ul>
         {customers.map(customer => (
           <li key={customer.id}>
-            {customer.name} - {customer.email}
+            {customer.name}
             <button onClick={() => handleDelete(customer.id)}>Delete</button>
           </li>
         ))}
