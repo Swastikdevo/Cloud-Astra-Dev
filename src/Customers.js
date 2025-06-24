@@ -1,36 +1,55 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+const CustomerForm = ({ onSubmit }) => {
+  const [customer, setCustomer] = useState({ name: '', email: '', phone: '' });
 
-  useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
-  }, []);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setCustomer({ ...customer, [name]: value });
+  };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(customer);
+    setCustomer({ name: '', email: '', phone: '' });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" name="name" value={customer.name} onChange={handleChange} placeholder="Name" required />
+      <input type="email" name="email" value={customer.email} onChange={handleChange} placeholder="Email" required />
+      <input type="tel" name="phone" value={customer.phone} onChange={handleChange} placeholder="Phone" required />
+      <button type="submit">Add Customer</button>
+    </form>
   );
+};
+
+const CustomerList = ({ customers }) => {
+  return (
+    <ul>
+      {customers.map((customer, index) => (
+        <li key={index}>{customer.name} - {customer.email} - {customer.phone}</li>
+      ))}
+    </ul>
+  );
+};
+
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+
+  const addCustomer = (newCustomer) => {
+    setCustomers([...customers, newCustomer]);
+  };
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search customers..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-      />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
-        ))}
-      </ul>
+      <h1>Customer Management System</h1>
+      <CustomerForm onSubmit={addCustomer} />
+      <CustomerList customers={customers} />
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
