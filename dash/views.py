@@ -1,65 +1,67 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.utils.decorators import method_decorator
-from django.views import View
+from django.contrib import messages
 from .models import Account, Transaction
 from .forms import DepositForm, WithdrawalForm, TransferForm
 
-@method_decorator(login_required, name='dispatch')
-class BankManagementView(View):
+@login_required
+def manage_account(request):
+    account = Account.objects.get(user=request.user)
 
-    def get(self, request):
-        accounts = Account.objects.filter(user=request.user)
-        return render(request, 'bank/home.html', {'accounts': accounts})
-
-    def post(self, request):
-        action = request.POST.get('action')
-        if action == 'deposit':
+    if request.method == 'POST':
+        if 'deposit' in request.POST:
             form = DepositForm(request.POST)
             if form.is_valid():
                 amount = form.cleaned_data['amount']
-                account_id = form.cleaned_data['account']
-                account = get_object_or_404(Account, id=account_id, user=request.user)
                 account.balance += amount
                 account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-                return redirect('bank:home')
-
-        elif action == 'withdraw':
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                messages.success(request, f'Deposited {amount} successfully.')
+                return redirect('manage_account')
+        
+        elif 'withdraw' in request.POST:
             form = WithdrawalForm(request.POST)
             if form.is_valid():
                 amount = form.cleaned_data['amount']
-                account_id = form.cleaned_data['account']
-                account = get_object_or_404(Account, id=account_id, user=request.user)
                 if account.balance >= amount:
                     account.balance -= amount
                     account.save()
-                    Transaction.objects.create(account=account, amount=-amount, transaction_type='withdrawal')
-                    return redirect('bank:home')
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                    messages.success(request, f'Withdrew {amount} successfully.')
+                    return redirect('manage_account')
                 else:
-                    return HttpResponse("Insufficient funds.")
-
-        elif action == 'transfer':
+                    messages.error(request, 'Insufficient funds.')
+        
+        elif 'transfer' in request.POST:
             form = TransferForm(request.POST)
             if form.is_valid():
+                recipient_username = form.cleaned_data['recipient_username']
                 amount = form.cleaned_data['amount']
-                source_account_id = form.cleaned_data['source_account']
-                target_account_id = form.cleaned_data['target_account']
-                source_account = get_object_or_404(Account, id=source_account_id, user=request.user)
-                target_account = get_object_or_404(Account, id=target_account_id)
+                try:
+                    recipient_account = Account.objects.get(user__username=recipient_username)
+                    if account.balance >= amount:
+                        account.balance -= amount
+                        recipient_account.balance += amount
+                        account.save()
+                        recipient_account.save()
+                        Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer Out')
+                        Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transfer In')
+                        messages.success(request, f'Transferred {amount} to {recipient_username} successfully.')
+                        return redirect('manage_account')
+                    else:
+                        messages.error(request, 'Insufficient funds for transfer.')
+                except Account.DoesNotExist:
+                    messages.error(request, 'Recipient account does not exist.')
 
-                if source_account.balance >= amount:
-                    source_account.balance -= amount
-                    target_account.balance += amount
-                    source_account.save()
-                    target_account.save()
-                    Transaction.objects.create(account=source_account, amount=-amount, transaction_type='transfer')
-                    Transaction.objects.create(account=target_account, amount=amount, transaction_type='transfer')
-                    return redirect('bank:home')
-                else:
-                    return HttpResponse("Insufficient funds.")
-        
-        return render(request, 'bank/home.html', {'form': form})
+    deposit_form = DepositForm()
+    withdrawal_form = WithdrawalForm()
+    transfer_form = TransferForm()
+
+    return render(request, 'manage_account.html', {
+        'account': account,
+        'deposit_form': deposit_form,
+        'withdrawal_form': withdrawal_form,
+        'transfer_form': transfer_form,
+    })
 ```
