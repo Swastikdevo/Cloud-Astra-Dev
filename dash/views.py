@@ -1,46 +1,42 @@
 ```python
 from django.shortcuts import render, redirect
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
 from .models import Account, Transaction
-from .forms import CreateAccountForm, DepositForm, WithdrawForm
+from .forms import AccountForm, TransactionForm
+from django.utils.decorators import method_decorator
 
+@csrf_exempt
 @login_required
 def manage_account(request):
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        
-        if action == 'create_account':
-            form = CreateAccountForm(request.POST)
+    if request.method == "POST":
+        if 'create_account' in request.POST:
+            form = AccountForm(request.POST)
             if form.is_valid():
-                account = form.save(commit=False)
-                account.user = request.user
-                account.save()
-                return redirect('account_details', account_id=account.id)
+                new_account = form.save(commit=False)
+                new_account.user = request.user
+                new_account.save()
+                return JsonResponse({'status': 'success', 'message': 'Account created successfully.'})
 
-        elif action == 'deposit':
-            form = DepositForm(request.POST)
+        elif 'create_transaction' in request.POST:
+            form = TransactionForm(request.POST)
             if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account = Account.objects.get(id=request.POST.get('account_id'))
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return JsonResponse({'success': True, 'new_balance': account.balance})
+                new_transaction = form.save(commit=False)
+                new_transaction.account = Account.objects.get(id=request.POST['account_id'])
+                new_transaction.save()
+                return JsonResponse({'status': 'success', 'message': 'Transaction created successfully.'})
 
-        elif action == 'withdraw':
-            form = WithdrawForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account = Account.objects.get(id=request.POST.get('account_id'))
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdraw')
-                    return JsonResponse({'success': True, 'new_balance': account.balance})
-                else:
-                    return JsonResponse({'success': False, 'error': 'Insufficient funds.'})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Invalid action'})
 
     accounts = Account.objects.filter(user=request.user)
-    return render(request, 'manage_account.html', {'accounts': accounts})
+    transactions = Transaction.objects.filter(account__user=request.user)
+    
+    return render(request, 'bank/manage_account.html', {
+        'accounts': accounts,
+        'transactions': transactions,
+        'account_form': AccountForm(),
+        'transaction_form': TransactionForm(),
+    })
 ```
