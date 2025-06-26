@@ -1,9 +1,10 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -13,29 +14,50 @@ const CustomerList = () => {
     };
     fetchCustomers();
   }, []);
-
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  
+  const handleAddCustomer = async (e) => {
+    e.preventDefault();
+    const newCustomer = { name, email };
+    await fetch('/api/customers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newCustomer),
+    });
+    setCustomers([...customers, newCustomer]);
+    setName('');
+    setEmail('');
+  };
 
   return (
     <div>
-      <input 
-        type="text" 
-        placeholder="Search Customers" 
-        value={searchTerm} 
-        onChange={e => setSearchTerm(e.target.value)} 
-      />
+      <h1>Customer Management</h1>
+      <form onSubmit={handleAddCustomer}>
+        <input 
+          type="text" 
+          placeholder="Name" 
+          value={name} 
+          onChange={(e) => setName(e.target.value)} 
+          required 
+        />
+        <input 
+          type="email" 
+          placeholder="Email" 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)} 
+          required 
+        />
+        <button type="submit">Add Customer</button>
+      </form>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
+        {customers.map((customer, index) => (
+          <li key={index}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
