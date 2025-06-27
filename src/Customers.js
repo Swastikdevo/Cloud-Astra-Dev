@@ -2,42 +2,39 @@
 import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [filter, setFilter] = useState('');
-    const [loading, setLoading] = useState(true);
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetch('/api/customers')
-            .then(response => response.json())
-            .then(data => {
-                setCustomers(data);
-                setLoading(false);
-            });
-    }, []);
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+      setLoading(false);
+    };
+    fetchCustomers();
+  }, []);
 
-    const filteredCustomers = customers.filter(customer => 
-        customer.name.toLowerCase().includes(filter.toLowerCase())
-    );
+  const deleteCustomer = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
+  };
 
-    const handleFilterChange = (e) => setFilter(e.target.value);
+  if (loading) return <p>Loading...</p>;
 
-    if (loading) return <div>Loading...</div>;
-
-    return (
-        <div>
-            <input 
-                type="text" 
-                placeholder="Search customers..." 
-                value={filter} 
-                onChange={handleFilterChange} 
-            />
-            <ul>
-                {filteredCustomers.map(customer => (
-                    <li key={customer.id}>{customer.name} - {customer.email}</li>
-                ))}
-            </ul>
-        </div>
-    );
+  return (
+    <div>
+      <h1>Customer List</h1>
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} 
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
 export default CustomerList;
