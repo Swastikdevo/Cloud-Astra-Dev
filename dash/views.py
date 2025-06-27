@@ -1,65 +1,39 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import TransferForm
 
 @login_required
-def bank_dashboard(request):
-    """Render the bank dashboard with account summary and latest transactions."""
-    user_accounts = Account.objects.filter(owner=request.user)
-    latest_transactions = Transaction.objects.filter(account__in=user_accounts).order_by('-date')[:5]
-    
-    context = {
-        'accounts': user_accounts,
-        'latest_transactions': latest_transactions,
-    }
-    
-    return render(request, 'bank/dashboard.html', context)
-
-@login_required
-def create_account(request):
-    """Create a new bank account for the user."""
+def transfer_funds(request):
     if request.method == 'POST':
-        form = AccountForm(request.POST)
+        form = TransferForm(request.POST)
         if form.is_valid():
-            account = form.save(commit=False)
-            account.owner = request.user
-            account.save()
-            return redirect('bank:dashboard')
+            sender_account = request.user.account
+            amount = form.cleaned_data['amount']
+            recipient_account_number = form.cleaned_data['recipient_account_number']
+            recipient_account = Account.objects.filter(account_number=recipient_account_number).first()
+
+            if not recipient_account:
+                return JsonResponse({'error': 'Recipient account not found.'}, status=404)
+            if sender_account.balance < amount:
+                return JsonResponse({'error': 'Insufficient funds.'}, status=400)
+
+            # Perform the transfer
+            sender_account.balance -= amount
+            recipient_account.balance += amount
+            sender_account.save()
+            recipient_account.save()
+
+            # Create transaction records
+            Transaction.objects.create(account=sender_account, amount=-amount, transaction_type='transfer', recipient=recipient_account)
+            Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='receive', sender=sender_account)
+
+            return JsonResponse({'success': 'Funds transferred successfully.'})
+
     else:
-        form = AccountForm()
-    
-    return render(request, 'bank/create_account.html', {'form': form})
+        form = TransferForm()
 
-@login_required
-def view_account(request, account_id):
-    """View details of a specific account."""
-    account = get_object_or_404(Account, id=account_id, owner=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    
-    context = {
-        'account': account,
-        'transactions': transactions,
-    }
-    
-    return render(request, 'bank/view_account.html', context)
-
-@login_required
-def make_transaction(request, account_id):
-    """Handle fund transfer and deposit/withdrawal requests."""
-    account = get_object_or_404(Account, id=account_id, owner=request.user)
-    
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = account
-            transaction.save()
-            return JsonResponse({'status': 'success', 'message': 'Transaction completed'})
-    else:
-        form = TransactionForm()
-
-    return render(request, 'bank/make_transaction.html', {'form': form, 'account': account})
+    return render(request, 'bank/transfer_funds.html', {'form': form})
 ```
