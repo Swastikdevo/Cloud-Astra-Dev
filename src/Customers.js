@@ -1,7 +1,7 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -16,35 +16,30 @@ const CustomerManagement = () => {
     fetchCustomers();
   }, []);
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) return <div>Loading...</div>;
-
   return (
     <div>
-      <h1>Customer Management</h1>
-      <input
+      <input 
         type="text"
         placeholder="Search Customers"
         value={searchTerm}
-        onChange={handleSearch}
+        onChange={(e) => setSearchTerm(e.target.value)}
       />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
-        ))}
-      </ul>
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <ul>
+          {filteredCustomers.map(customer => (
+            <li key={customer.id}>{customer.name}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
