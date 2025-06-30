@@ -3,43 +3,45 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('');
 
   useEffect(() => {
     fetchCustomers();
   }, []);
 
   const fetchCustomers = async () => {
-    try {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    } catch (err) {
-      setError(err.message);
-    }
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
+    setLoading(false);
   };
 
-  const deleteCustomer = async (id) => {
-    try {
-      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-      setCustomers(customers.filter(customer => customer.id !== id));
-    } catch (err) {
-      setError(err.message);
-    }
+  const handleFilterChange = (e) => {
+    setFilter(e.target.value);
   };
+
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(filter.toLowerCase())
+  );
 
   return (
     <div>
-      <h2>Customer List</h2>
-      {error && <div>Error: {error}</div>}
-      <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
+      <input
+        type="text"
+        placeholder="Search Customers"
+        value={filter}
+        onChange={handleFilterChange}
+      />
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <ul>
+          {filteredCustomers.map(customer => (
+            <li key={customer.id}>{customer.name}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
