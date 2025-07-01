@@ -3,24 +3,45 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from .models import BankAccount, Transaction
-from .forms import TransactionForm
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawForm
 
 @csrf_exempt
 @login_required
-def manage_account(request):
-    if request.method == 'GET':
-        accounts = BankAccount.objects.filter(user=request.user)
-        return render(request, 'manage_account.html', {'accounts': accounts})
+def account_view(request):
+    account = Account.objects.get(user=request.user)
+    
+    if request.method == 'POST':
+        if 'deposit' in request.POST:
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                return JsonResponse({'success': True, 'balance': account.balance})
+        
+        elif 'withdraw' in request.POST:
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                if amount <= account.balance:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=-amount, transaction_type='Withdraw')
+                    return JsonResponse({'success': True, 'balance': account.balance})
+                else:
+                    return JsonResponse({'success': False, 'error': 'Insufficient funds'})
+    
+    deposit_form = DepositForm()
+    withdraw_form = WithdrawForm()
+    transactions = Transaction.objects.filter(account=account).order_by('-timestamp')
 
-    elif request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.user = request.user
-            transaction.save()
-            return JsonResponse({'status': 'success', 'message': 'Transaction completed'})
-        return JsonResponse({'status': 'error', 'message': 'Invalid form data'})
-
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    context = {
+        'account': account,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+        'transactions': transactions
+    }
+    return render(request, 'account.html', context)
 ```
