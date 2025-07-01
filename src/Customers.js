@@ -1,46 +1,49 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
     const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [sortOrder, setSortOrder] = useState('asc');
-
-    useEffect(() => {
-        fetch('/api/customers')
-            .then(response => response.json())
-            .then(data => {
-                setCustomers(data);
-                setLoading(false);
-            });
-    }, []);
-
-    const sortCustomers = () => {
-        const sortedCustomers = [...customers].sort((a, b) => {
-            return sortOrder === 'asc' 
-                ? a.name.localeCompare(b.name) 
-                : b.name.localeCompare(a.name);
-        });
-        setCustomers(sortedCustomers);
-        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    
+    const addCustomer = () => {
+        const newCustomer = { id: Date.now(), name, email };
+        setCustomers([...customers, newCustomer]);
+        setName('');
+        setEmail('');
     };
 
-    if (loading) return <div>Loading...</div>;
+    const deleteCustomer = (id) => {
+        setCustomers(customers.filter(customer => customer.id !== id));
+    };
 
     return (
         <div>
-            <h1>Customer List</h1>
-            <button onClick={sortCustomers}>
-                Sort by Name: {sortOrder === 'asc' ? 'Descending' : 'Ascending'}
-            </button>
+            <h1>Customer Management</h1>
+            <input 
+                type="text" 
+                placeholder="Name" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)} 
+            />
+            <input 
+                type="email" 
+                placeholder="Email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+            />
+            <button onClick={addCustomer}>Add Customer</button>
             <ul>
-                {customers.map((customer) => (
-                    <li key={customer.id}>{customer.name}</li>
+                {customers.map(customer => (
+                    <li key={customer.id}>
+                        {customer.name} - {customer.email}
+                        <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+                    </li>
                 ))}
             </ul>
         </div>
     );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
