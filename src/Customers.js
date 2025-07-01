@@ -1,45 +1,72 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCustomers = async () => {
-      const response = await axios.get('/api/customers');
-      setCustomers(response.data);
-      setLoading(false);
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
     };
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    setFilteredCustomers(
+      customers.filter(customer =>
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    );
+  }, [searchTerm, customers]);
 
-  const handleDelete = async (id) => {
-    await axios.delete(`/api/customers/${id}`);
-    setCustomers(customers.filter(customer => customer.id !== id));
+  const handleAddCustomer = async (e) => {
+    e.preventDefault();
+    const newCustomer = { name, email };
+    await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    setCustomers([...customers, newCustomer]);
+    setName('');
+    setEmail('');
   };
-
-  if (loading) return <p>Loading...</p>;
 
   return (
     <div>
+      <h1>Customer Management</h1>
       <input
         type="text"
-        placeholder="Search customers..."
+        placeholder="Search Customers"
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={e => setSearchTerm(e.target.value)}
       />
+      <form onSubmit={handleAddCustomer}>
+        <input
+          type="text"
+          placeholder="Name"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          required
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          required
+        />
+        <button type="submit">Add Customer</button>
+      </form>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} <button onClick={() => handleDelete(customer.id)}>Delete</button>
-          </li>
+        {filteredCustomers.map((customer, index) => (
+          <li key={index}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
