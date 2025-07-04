@@ -1,56 +1,33 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCustomers();
+    fetch('/api/customers')
+      .then(res => res.json())
+      .then(data => {
+        setCustomers(data);
+        setLoading(false);
+      });
   }, []);
 
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
-    setLoading(false);
-  };
-
-  const addCustomer = async () => {
-    if (newCustomer) {
-      const response = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCustomer }),
-      });
-      const data = await response.json();
-      setCustomers([...customers, data]);
-      setNewCustomer('');
-    }
-  };
-
-  const deleteCustomer = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+  const removeCustomer = id => {
     setCustomers(customers.filter(customer => customer.id !== id));
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <input
-        value={newCustomer}
-        onChange={(e) => setNewCustomer(e.target.value)}
-        placeholder="Add new customer"
-      />
-      <button onClick={addCustomer}>Add</button>
+      <h1>Customer List</h1>
       <ul>
         {customers.map(customer => (
           <li key={customer.id}>
             {customer.name}
-            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+            <button onClick={() => removeCustomer(customer.id)}>Remove</button>
           </li>
         ))}
       </ul>
@@ -58,5 +35,5 @@ const CustomerManagement = () => {
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
