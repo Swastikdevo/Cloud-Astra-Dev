@@ -1,52 +1,51 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
 
 @login_required
-def manage_account(request, account_id=None):
-    account = get_object_or_404(Account, id=account_id) if account_id else None
-    
+@csrf_exempt
+def manage_account(request):
     if request.method == 'POST':
-        if account:
-            form = AccountForm(request.POST, instance=account)
-            if form.is_valid():
-                form.save()
-                return redirect('account_detail', account_id=account.id)
-        else:
+        if 'create_account' in request.POST:
             form = AccountForm(request.POST)
             if form.is_valid():
-                new_account = form.save(commit=False)
-                new_account.user = request.user
-                new_account.save()
-                return redirect('account_detail', account_id=new_account.id)
-    else:
-        form = AccountForm(instance=account)
+                account = form.save(commit=False)
+                account.user = request.user
+                account.save()
+                return JsonResponse({"status": "success", "message": "Account created successfully!"}, status=201)
+        
+        elif 'deposit' in request.POST:
+            form = TransactionForm(request.POST)
+            if form.is_valid():
+                transaction = form.save(commit=False)
+                transaction.user = request.user
+                transaction.type = 'deposit'
+                transaction.save()
+                account = Account.objects.get(id=request.POST['account_id'])
+                account.balance += transaction.amount
+                account.save()
+                return JsonResponse({"status": "success", "message": "Deposit successful!", "new_balance": account.balance})
 
-    return render(request, 'bank/manage_account.html', {'form': form, 'account': account})
+        elif 'withdraw' in request.POST:
+            form = TransactionForm(request.POST)
+            if form.is_valid():
+                transaction = form.save(commit=False)
+                transaction.user = request.user
+                transaction.type = 'withdraw'
+                account = Account.objects.get(id=request.POST['account_id'])
 
-@login_required
-def transaction_history(request, account_id):
-    account = get_object_or_404(Account, id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
+                if account.balance >= transaction.amount:
+                    transaction.save()
+                    account.balance -= transaction.amount
+                    account.save()
+                    return JsonResponse({"status": "success", "message": "Withdrawal successful!", "new_balance": account.balance})
+                else:
+                    return JsonResponse({"status": "error", "message": "Insufficient funds!"}, status=400)
 
-    return render(request, 'bank/transaction_history.html', {'account': account, 'transactions': transactions})
-
-@login_required
-def create_transaction(request, account_id):
-    account = get_object_or_404(Account, id=account_id, user=request.user)
-
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = account
-            transaction.save()
-            return redirect('transaction_history', account_id=account.id)
-    else:
-        form = TransactionForm()
-
-    return render(request, 'bank/create_transaction.html', {'form': form, 'account': account})
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'manage_account.html', {'accounts': accounts})
 ```
