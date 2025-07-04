@@ -1,46 +1,49 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Failed to fetch');
-        const data = await response.json();
-        setCustomers(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCustomers();
-  }, []);
+  const addCustomer = () => {
+    const newCustomer = { id: Date.now(), name, email };
+    setCustomers([...customers, newCustomer]);
+    setName('');
+    setEmail('');
+  };
 
-  const handleDelete = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+  const removeCustomer = (id) => {
     setCustomers(customers.filter(customer => customer.id !== id));
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
-
   return (
-    <ul>
-      {customers.map(customer => (
-        <li key={customer.id}>
-          {customer.name} - {customer.email}
-          <button onClick={() => handleDelete(customer.id)}>Delete</button>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <h1>Customer Management</h1>
+      <input 
+        type="text" 
+        placeholder="Name" 
+        value={name} 
+        onChange={(e) => setName(e.target.value)} 
+      />
+      <input 
+        type="email" 
+        placeholder="Email" 
+        value={email} 
+        onChange={(e) => setEmail(e.target.value)} 
+      />
+      <button onClick={addCustomer}>Add Customer</button>
+      <ul>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email} 
+            <button onClick={() => removeCustomer(customer.id)}>Remove</button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
