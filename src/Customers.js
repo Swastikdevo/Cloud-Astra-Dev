@@ -1,39 +1,61 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
   useEffect(() => {
-    fetch('/api/customers')
-      .then(res => res.json())
-      .then(data => {
-        setCustomers(data);
-        setLoading(false);
-      });
+    fetchCustomers();
   }, []);
 
-  const removeCustomer = id => {
-    setCustomers(customers.filter(customer => customer.id !== id));
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
   };
 
-  if (loading) return <div>Loading...</div>;
+  const addCustomer = async () => {
+    const newCustomer = { name, email };
+    await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    setName('');
+    setEmail('');
+    fetchCustomers();
+  };
 
   return (
     <div>
-      <h1>Customer List</h1>
+      <h1>Customer Management</h1>
+      <form onSubmit={(e) => { e.preventDefault(); addCustomer(); }}>
+        <input
+          type="text"
+          placeholder="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <button type="submit">Add Customer</button>
+      </form>
       <ul>
         {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name}
-            <button onClick={() => removeCustomer(customer.id)}>Remove</button>
-          </li>
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
