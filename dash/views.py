@@ -8,44 +8,35 @@ from .forms import AccountForm, TransactionForm
 
 @login_required
 @csrf_exempt
-def manage_account(request):
+def bank_management_view(request):
     if request.method == 'POST':
-        if 'create_account' in request.POST:
+        action = request.POST.get('action')
+        
+        if action == 'create_account':
             form = AccountForm(request.POST)
             if form.is_valid():
                 account = form.save(commit=False)
                 account.user = request.user
                 account.save()
-                return JsonResponse({"status": "success", "message": "Account created successfully!"}, status=201)
-        
-        elif 'deposit' in request.POST:
+                return JsonResponse({'status': 'success', 'message': 'Account created successfully.'})
+            return JsonResponse({'status': 'error', 'message': 'Failed to create account.', 'errors': form.errors})
+
+        elif action == 'make_transaction':
             form = TransactionForm(request.POST)
             if form.is_valid():
                 transaction = form.save(commit=False)
                 transaction.user = request.user
-                transaction.type = 'deposit'
                 transaction.save()
-                account = Account.objects.get(id=request.POST['account_id'])
-                account.balance += transaction.amount
-                account.save()
-                return JsonResponse({"status": "success", "message": "Deposit successful!", "new_balance": account.balance})
-
-        elif 'withdraw' in request.POST:
-            form = TransactionForm(request.POST)
-            if form.is_valid():
-                transaction = form.save(commit=False)
-                transaction.user = request.user
-                transaction.type = 'withdraw'
-                account = Account.objects.get(id=request.POST['account_id'])
-
-                if account.balance >= transaction.amount:
-                    transaction.save()
-                    account.balance -= transaction.amount
-                    account.save()
-                    return JsonResponse({"status": "success", "message": "Withdrawal successful!", "new_balance": account.balance})
-                else:
-                    return JsonResponse({"status": "error", "message": "Insufficient funds!"}, status=400)
+                return JsonResponse({'status': 'success', 'message': 'Transaction completed successfully.'})
+            return JsonResponse({'status': 'error', 'message': 'Failed to complete transaction.', 'errors': form.errors})
 
     accounts = Account.objects.filter(user=request.user)
-    return render(request, 'manage_account.html', {'accounts': accounts})
+    transactions = Transaction.objects.filter(user=request.user)
+    context = {
+        'accounts': accounts,
+        'transactions': transactions,
+        'account_form': AccountForm(),
+        'transaction_form': TransactionForm(),
+    }
+    return render(request, 'bank_management.html', context)
 ```
