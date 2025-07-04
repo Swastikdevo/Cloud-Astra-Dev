@@ -1,69 +1,43 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import TransferForm
+from .forms import DepositForm, WithdrawForm
 
 @login_required
 def account_overview(request):
-    account = Account.objects.get(user=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    
-    if request.method == 'POST':
-        form = TransferForm(request.POST)
-        if form.is_valid():
-            recipient_account = form.cleaned_data['recipient_account']
-            amount = form.cleaned_data['amount']
+    user = request.user
+    accounts = Account.objects.filter(owner=user)
+    return render(request, 'bank/account_overview.html', {'accounts': accounts})
 
-            if account.balance >= amount:
-                # Process the transfer
-                account.balance -= amount
-                recipient_account.balance += amount
-                account.save()
-                recipient_account.save()
-
-                Transaction.objects.create(account=account, amount=-amount, transaction_type='Transfer', recipient=recipient_account)
-                Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transfer', sender=account)
-
-                return redirect('account_overview')
-
-    else:
-        form = TransferForm()
-
-    context = {
-        'account': account,
-        'transactions': transactions,
-        'form': form,
-    }
-    return render(request, 'bank/account_overview.html', context)
-
-@require_POST
 @login_required
-def deposit(request):
-    amount = request.POST.get('amount')
-    account = Account.objects.get(user=request.user)
-    account.balance += float(amount)
-    account.save()
-
-    Transaction.objects.create(account=account, amount=float(amount), transaction_type='Deposit')
-
-    return JsonResponse({'success': True, 'new_balance': account.balance})
-
 @require_POST
-@login_required
-def withdraw(request):
-    amount = request.POST.get('amount')
-    account = Account.objects.get(user=request.user)
-
-    if account.balance >= float(amount):
-        account.balance -= float(amount)
+def deposit_money(request, account_id):
+    account = Account.objects.get(id=account_id)
+    form = DepositForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        account.balance += amount
         account.save()
+        Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+        return redirect('account_overview')
+    return render(request, 'bank/deposit.html', {'form': form, 'account': account})
 
-        Transaction.objects.create(account=account, amount=-float(amount), transaction_type='Withdrawal')
-
-        return JsonResponse({'success': True, 'new_balance': account.balance})
-    else:
-        return JsonResponse({'success': False, 'error': 'Insufficient funds'})
+@login_required
+@require_POST
+def withdraw_money(request, account_id):
+    account = Account.objects.get(id=account_id)
+    form = WithdrawForm(request.POST)
+    if form.is_valid():
+        amount = form.cleaned_data['amount']
+        if amount <= account.balance:
+            account.balance -= amount
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+            return redirect('account_overview')
+        else:
+            return HttpResponse("Insufficient balance", status=400)
+    return render(request, 'bank/withdraw.html', {'form': form, 'account': account})
 ```
