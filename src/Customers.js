@@ -1,41 +1,39 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
+const CustomerTable = ({ customers }) => {
+    const [sortedCustomers, setSortedCustomers] = useState([]);
 
     useEffect(() => {
-        const fetchCustomers = async () => {
-            const response = await fetch('/api/customers');
-            const data = await response.json();
-            setCustomers(data);
-            setLoading(false);
-        };
-        fetchCustomers();
-    }, []);
+        setSortedCustomers(customers);
+    }, [customers]);
 
-    const deleteCustomer = async (id) => {
-        await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-        setCustomers(customers.filter(customer => customer.id !== id));
+    const handleSort = (field) => {
+        const sorted = [...sortedCustomers].sort((a, b) => a[field].localeCompare(b[field]));
+        setSortedCustomers(sorted);
     };
 
-    if (loading) return <div>Loading...</div>;
-
     return (
-        <div>
-            <h1>Customer Management</h1>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.email}
-                        <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-                    </li>
+        <table>
+            <thead>
+                <tr>
+                    <th onClick={() => handleSort('name')}>Name</th>
+                    <th onClick={() => handleSort('email')}>Email</th>
+                    <th onClick={() => handleSort('phone')}>Phone</th>
+                </tr>
+            </thead>
+            <tbody>
+                {sortedCustomers.map((customer) => (
+                    <tr key={customer.id}>
+                        <td>{customer.name}</td>
+                        <td>{customer.email}</td>
+                        <td>{customer.phone}</td>
+                    </tr>
                 ))}
-            </ul>
-        </div>
+            </tbody>
+        </table>
     );
 };
 
-export default CustomerList;
+export default CustomerTable;
 ```
