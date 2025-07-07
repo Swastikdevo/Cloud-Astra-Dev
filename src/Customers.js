@@ -1,39 +1,69 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerTable = ({ customers }) => {
-    const [sortedCustomers, setSortedCustomers] = useState([]);
+const CustomerDetails = ({ customerId }) => {
+  const [customer, setCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        setSortedCustomers(customers);
-    }, [customers]);
-
-    const handleSort = (field) => {
-        const sorted = [...sortedCustomers].sort((a, b) => a[field].localeCompare(b[field]));
-        setSortedCustomers(sorted);
+  useEffect(() => {
+    const fetchCustomer = async () => {
+      setLoading(true);
+      const response = await fetch(`/api/customers/${customerId}`);
+      const data = await response.json();
+      setCustomer(data);
+      setLoading(false);
     };
+    fetchCustomer();
+  }, [customerId]);
 
-    return (
-        <table>
-            <thead>
-                <tr>
-                    <th onClick={() => handleSort('name')}>Name</th>
-                    <th onClick={() => handleSort('email')}>Email</th>
-                    <th onClick={() => handleSort('phone')}>Phone</th>
-                </tr>
-            </thead>
-            <tbody>
-                {sortedCustomers.map((customer) => (
-                    <tr key={customer.id}>
-                        <td>{customer.name}</td>
-                        <td>{customer.email}</td>
-                        <td>{customer.phone}</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    );
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      <h2>{customer.name}</h2>
+      <p>Email: {customer.email}</p>
+      <p>Phone: {customer.phone}</p>
+      <p>Address: {customer.address}</p>
+    </div>
+  );
 };
 
-export default CustomerTable;
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
+  }, []);
+
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div>
+      <h1>Customer Management</h1>
+      <input 
+        type="text" 
+        placeholder="Search Customers" 
+        value={searchTerm} 
+        onChange={e => setSearchTerm(e.target.value)} 
+      />
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>
+            <CustomerDetails customerId={customer.id} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default CustomerManagement;
 ```
