@@ -4,34 +4,31 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
 from .forms import TransactionForm
+import datetime
 
 @login_required
 def manage_account(request):
+    user_accounts = Account.objects.filter(owner=request.user)
+    transactions = Transaction.objects.filter(account__in=user_accounts).order_by('-date')
+
     if request.method == 'POST':
         form = TransactionForm(request.POST)
         if form.is_valid():
             transaction = form.save(commit=False)
+            transaction.account = form.cleaned_data['account']
             transaction.user = request.user
+            transaction.date = datetime.datetime.now()
             transaction.save()
-            # Update account balance
-            account = Account.objects.get(user=request.user)
-            if transaction.transaction_type == 'deposit':
-                account.balance += transaction.amount
-            elif transaction.transaction_type == 'withdraw':
-                if account.balance >= transaction.amount:
-                    account.balance -= transaction.amount
-                else:
-                    return JsonResponse({'error': 'Insufficient funds'}, status=400)
-            account.save()
-            return redirect('account_summary')
+            return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
+
     else:
         form = TransactionForm()
 
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
     context = {
-        'form': form,
+        'user_accounts': user_accounts,
         'transactions': transactions,
-        'account_balance': Account.objects.get(user=request.user).balance,
+        'form': form,
     }
+    
     return render(request, 'bank/manage_account.html', context)
 ```
