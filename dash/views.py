@@ -3,60 +3,35 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm, TransferForm
+from .forms import TransactionForm
 
 @login_required
-def bank_management_view(request):
+def manage_account(request):
     if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                account = Account.objects.get(user=request.user)
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return JsonResponse({'message': 'Deposit successful!', 'new_balance': account.balance})
-
-        elif 'withdraw' in request.POST:
-            form = WithdrawalForm(request.POST)
-            if form.is_valid():
-                account = Account.objects.get(user=request.user)
-                amount = form.cleaned_data['amount']
-                if account.balance >= amount:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                    return JsonResponse({'message': 'Withdrawal successful!', 'new_balance': account.balance})
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            # Update account balance
+            account = Account.objects.get(user=request.user)
+            if transaction.transaction_type == 'deposit':
+                account.balance += transaction.amount
+            elif transaction.transaction_type == 'withdraw':
+                if account.balance >= transaction.amount:
+                    account.balance -= transaction.amount
                 else:
-                    return JsonResponse({'error': 'Insufficient funds.'}, status=400)
+                    return JsonResponse({'error': 'Insufficient funds'}, status=400)
+            account.save()
+            return redirect('account_summary')
+    else:
+        form = TransactionForm()
 
-        elif 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                account = Account.objects.get(user=request.user)
-                recipient_username = form.cleaned_data['recipient']
-                amount = form.cleaned_data['amount']
-                recipient_account = Account.objects.get(user__username=recipient_username)
-
-                if account.balance >= amount:
-                    account.balance -= amount
-                    recipient_account.balance += amount
-                    account.save()
-                    recipient_account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer', recipient=recipient_account)
-                    Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Received', sender=account)
-                    return JsonResponse({'message': 'Transfer successful!', 'new_balance': account.balance})
-                else:
-                    return JsonResponse({'error': 'Insufficient funds for transfer.'}, status=400)
-
-    deposit_form = DepositForm()
-    withdrawal_form = WithdrawalForm()
-    transfer_form = TransferForm()
-    return render(request, 'bank_management.html', {
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-        'transfer_form': transfer_form,
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    context = {
+        'form': form,
+        'transactions': transactions,
         'account_balance': Account.objects.get(user=request.user).balance,
-    })
+    }
+    return render(request, 'bank/manage_account.html', context)
 ```
