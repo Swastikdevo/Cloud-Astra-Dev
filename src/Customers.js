@@ -3,27 +3,31 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
     const [customers, setCustomers] = useState([]);
-    const [searchTerm, setSearchTerm] = useState("");
+    const [filteredCustomers, setFilteredCustomers] = useState([]);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        // Mock API call
-        const fetchCustomers = async () => {
-            const response = await fetch('/api/customers');
-            const data = await response.json();
-            setCustomers(data);
-        };
-        fetchCustomers();
+        fetch('/api/customers')
+            .then(response => response.json())
+            .then(data => {
+                setCustomers(data);
+                setFilteredCustomers(data);
+            });
     }, []);
 
-    const filteredCustomers = customers.filter(customer => 
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    useEffect(() => {
+        setFilteredCustomers(
+            customers.filter(customer => 
+                customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+        );
+    }, [searchTerm, customers]);
 
     return (
         <div>
             <input 
                 type="text" 
-                placeholder="Search Customers" 
+                placeholder="Search customers" 
                 value={searchTerm} 
                 onChange={(e) => setSearchTerm(e.target.value)} 
             />
