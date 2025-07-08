@@ -1,17 +1,22 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = ({ customers }) => {
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredCustomers, setFilteredCustomers] = useState(customers);
 
   useEffect(() => {
-    setFilteredCustomers(
-      customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
-  }, [searchTerm, customers]);
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
+    fetchCustomers();
+  }, []);
+
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
