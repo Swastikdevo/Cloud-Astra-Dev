@@ -1,48 +1,69 @@
 ```python
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from django.shortcuts import get_object_or_404
-from .models import Account
+from django.views.decorators.http import require_POST, require_GET
+from django.utils.decorators import method_decorator
+from django.views import View
 import json
+from .models import Account, Transaction
+from django.contrib.auth.decorators import login_required
 
-@csrf_exempt
-@require_http_methods(["GET", "POST"])
-def account_management_view(request, account_id=None):
-    if request.method == 'GET':
-        if account_id:
-            account = get_object_or_404(Account, id=account_id)
-            return JsonResponse({'account_id': account.id, 'balance': account.balance, 'account_type': account.account_type})
-        else:
-            accounts = Account.objects.all().values('id', 'balance', 'account_type')
-            return JsonResponse(list(accounts), safe=False)
+class BankView(View):
 
-    elif request.method == 'POST':
+    @method_decorator(csrf_exempt)
+    @method_decorator(login_required)
+    @require_POST
+    def create_account(self, request):
         data = json.loads(request.body)
-        action = data.get('action')
-        
-        if action == 'create':
-            new_account = Account.objects.create(
-                balance=data.get('balance', 0),
-                account_type=data.get('account_type', 'savings')
-            )
-            return JsonResponse({'message': 'Account created successfully', 'account_id': new_account.id}, status=201)
+        account = Account.objects.create(
+            user=request.user,
+            account_number=data['account_number'],
+            balance=data['initial_balance']
+        )
+        return JsonResponse({'message': 'Account created successfully', 'account_id': account.id})
 
-        elif action == 'deposit':
-            account = get_object_or_404(Account, id=account_id)
-            amount = data.get('amount', 0)
+    @method_decorator(login_required)
+    @require_GET
+    def get_account(self, request, account_id):
+        try:
+            account = Account.objects.get(id=account_id, user=request.user)
+            return JsonResponse({
+                'account_number': account.account_number,
+                'balance': account.balance
+            })
+        except Account.DoesNotExist:
+            return JsonResponse({'error': 'Account not found'}, status=404)
+
+    @method_decorator(csrf_exempt)
+    @method_decorator(login_required)
+    @require_POST
+    def deposit(self, request):
+        data = json.loads(request.body)
+        try:
+            account = Account.objects.get(id=data['account_id'], user=request.user)
+            amount = data['amount']
             account.balance += amount
             account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
             return JsonResponse({'message': 'Deposit successful', 'new_balance': account.balance})
+        except Account.DoesNotExist:
+            return JsonResponse({'error': 'Account not found'}, status=404)
 
-        elif action == 'withdraw':
-            account = get_object_or_404(Account, id=account_id)
-            amount = data.get('amount', 0)
-            if amount > account.balance:
+    @method_decorator(csrf_exempt)
+    @method_decorator(login_required)
+    @require_POST
+    def withdraw(self, request):
+        data = json.loads(request.body)
+        try:
+            account = Account.objects.get(id=data['account_id'], user=request.user)
+            amount = data['amount']
+            if account.balance >= amount:
+                account.balance -= amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
+                return JsonResponse({'message': 'Withdrawal successful', 'new_balance': account.balance})
+            else:
                 return JsonResponse({'error': 'Insufficient funds'}, status=400)
-            account.balance -= amount
-            account.save()
-            return JsonResponse({'message': 'Withdrawal successful', 'new_balance': account.balance})
-
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+        except Account.DoesNotExist:
+            return JsonResponse({'error': 'Account not found'}, status=404)
 ```
