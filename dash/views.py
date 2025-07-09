@@ -1,57 +1,53 @@
 ```python
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse
-from django.views.decorators.http import require_http_methods
-from .models import Account
-from .forms import AccountForm, TransactionForm
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from .models import Account, Transaction
+from .forms import DepositForm, WithdrawalForm
+import json
 
-@require_http_methods(["GET", "POST"])
-def manage_account(request, account_id=None):
-    """View to create or update a bank account with transaction options."""
-    if account_id:
-        account = get_object_or_404(Account, id=account_id)
-    else:
-        account = None
-
+@login_required
+@csrf_exempt
+def account_management(request):
+    if request.method == 'GET':
+        # Fetch account details
+        account = Account.objects.get(user=request.user)
+        transactions = Transaction.objects.filter(account=account).order_by('-date')
+        return render(request, 'account_management.html', {'account': account, 'transactions': transactions})
+    
     if request.method == 'POST':
-        if account:
-            form = AccountForm(request.POST, instance=account)
-        else:
-            form = AccountForm(request.POST)
-        
-        if form.is_valid():
-            account = form.save()
-            messages.success(request, 'Account saved successfully!')
-            return redirect('manage_account', account_id=account.id)
-
-    else:
-        form = AccountForm(instance=account)
-
-    return render(request, 'bank/manage_account.html', {'form': form, 'account': account})
-
-@require_http_methods(["GET", "POST"])
-def transaction(request, account_id):
-    """View to handle transactions such as deposits or withdrawals."""
-    account = get_object_or_404(Account, id=account_id)
-
-    if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            transaction_type = form.cleaned_data['transaction_type']
-            amount = form.cleaned_data['amount']
-            if transaction_type == 'deposit':
+        # Handle deposit
+        if 'deposit' in request.POST:
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
                 account.balance += amount
-                messages.success(request, f'Deposit of ${amount} successful!')
-            elif transaction_type == 'withdraw' and account.balance >= amount:
-                account.balance -= amount
-                messages.success(request, f'Withdrawal of ${amount} successful!')
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                messages.success(request, 'Deposit successful!')
+                return redirect('account_management')
             else:
-                messages.error(request, 'Insufficient funds for withdrawal.')
-            account.save()
-            return redirect('transaction', account_id=account.id)
-    else:
-        form = TransactionForm()
+                messages.error(request, 'Invalid deposit amount.')
 
-    return render(request, 'bank/transaction.html', {'form': form, 'account': account})
+        # Handle withdrawal
+        elif 'withdraw' in request.POST:
+            form = WithdrawalForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account = Account.objects.get(user=request.user)
+                if account.balance >= amount:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                    messages.success(request, 'Withdrawal successful!')
+                    return redirect('account_management')
+                else:
+                    messages.error(request, 'Insufficient funds.')
+            else:
+                messages.error(request, 'Invalid withdrawal amount.')
+    
+    return JsonResponse({'error': 'Invalid request method.'}, status=400)
 ```
