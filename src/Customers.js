@@ -1,53 +1,58 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const CustomerManagement = () => {
+    const [customers, setCustomers] = useState([]);
+    const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
-  useEffect(() => {
     const fetchCustomers = async () => {
-      try {
         const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         setCustomers(data);
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
     };
-    fetchCustomers();
-  }, []);
 
-  const handleDelete = async (id) => {
-    try {
-      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-      setCustomers(customers.filter(customer => customer.id !== id));
-    } catch (err) {
-      setError(err);
-    }
-  };
+    const addCustomer = async () => {
+        const response = await fetch('/api/customers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newCustomer)
+        });
+        if (response.ok) {
+            fetchCustomers();
+            setNewCustomer({ name: '', email: '' });
+        }
+    };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
+    useEffect(() => {
+        fetchCustomers();
+    }, []);
 
-  return (
-    <div>
-      <h1>Customer List</h1>
-      <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-            <button onClick={() => handleDelete(customer.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+        <div>
+            <h1>Customer Management</h1>
+            <div>
+                <input
+                    type="text"
+                    placeholder="Name"
+                    value={newCustomer.name}
+                    onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+                />
+                <input
+                    type="email"
+                    placeholder="Email"
+                    value={newCustomer.email}
+                    onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+                />
+                <button onClick={addCustomer}>Add Customer</button>
+            </div>
+            <ul>
+                {customers.map(customer => (
+                    <li key={customer.id}>{customer.name} - {customer.email}</li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
