@@ -1,69 +1,40 @@
 ```python
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST, require_GET
-from django.utils.decorators import method_decorator
-from django.views import View
-import json
-from .models import Account, Transaction
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from .models import Account, Transaction
+from .forms import AccountForm, TransactionForm
 
-class BankView(View):
-
-    @method_decorator(csrf_exempt)
-    @method_decorator(login_required)
-    @require_POST
-    def create_account(self, request):
-        data = json.loads(request.body)
-        account = Account.objects.create(
-            user=request.user,
-            account_number=data['account_number'],
-            balance=data['initial_balance']
-        )
-        return JsonResponse({'message': 'Account created successfully', 'account_id': account.id})
-
-    @method_decorator(login_required)
-    @require_GET
-    def get_account(self, request, account_id):
-        try:
-            account = Account.objects.get(id=account_id, user=request.user)
-            return JsonResponse({
-                'account_number': account.account_number,
-                'balance': account.balance
-            })
-        except Account.DoesNotExist:
-            return JsonResponse({'error': 'Account not found'}, status=404)
-
-    @method_decorator(csrf_exempt)
-    @method_decorator(login_required)
-    @require_POST
-    def deposit(self, request):
-        data = json.loads(request.body)
-        try:
-            account = Account.objects.get(id=data['account_id'], user=request.user)
-            amount = data['amount']
-            account.balance += amount
+@login_required
+@require_http_methods(["GET", "POST"])
+def manage_account(request):
+    if request.method == 'POST':
+        account_form = AccountForm(request.POST)
+        if account_form.is_valid():
+            account = account_form.save(commit=False)
+            account.user = request.user
             account.save()
-            Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-            return JsonResponse({'message': 'Deposit successful', 'new_balance': account.balance})
-        except Account.DoesNotExist:
-            return JsonResponse({'error': 'Account not found'}, status=404)
+            return redirect('account_detail', account_id=account.id)
+    else:
+        account_form = AccountForm()
 
-    @method_decorator(csrf_exempt)
-    @method_decorator(login_required)
-    @require_POST
-    def withdraw(self, request):
-        data = json.loads(request.body)
-        try:
-            account = Account.objects.get(id=data['account_id'], user=request.user)
-            amount = data['amount']
-            if account.balance >= amount:
-                account.balance -= amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='withdrawal')
-                return JsonResponse({'message': 'Withdrawal successful', 'new_balance': account.balance})
-            else:
-                return JsonResponse({'error': 'Insufficient funds'}, status=400)
-        except Account.DoesNotExist:
-            return JsonResponse({'error': 'Account not found'}, status=404)
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/manage_account.html', {'account_form': account_form, 'accounts': accounts})
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def process_transaction(request):
+    if request.method == 'POST':
+        transaction_form = TransactionForm(request.POST)
+        if transaction_form.is_valid():
+            transaction = transaction_form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            return JsonResponse({'success': True, 'transaction_id': transaction.id})
+    else:
+        transaction_form = TransactionForm()
+
+    transactions = Transaction.objects.filter(user=request.user)
+    return render(request, 'bank/process_transaction.html', {'transaction_form': transaction_form, 'transactions': transactions})
 ```
