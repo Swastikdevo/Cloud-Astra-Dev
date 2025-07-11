@@ -1,54 +1,38 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
-
-  useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
-  }, []);
+  const [newCustomer, setNewCustomer] = useState('');
 
   const addCustomer = () => {
-    fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCustomer),
-    })
-      .then(response => response.json())
-      .then(data => {
-        setCustomers([...customers, data]);
-        setNewCustomer({ name: '', email: '' });
-      });
+    if (newCustomer.trim()) {
+      setCustomers([...customers, newCustomer]);
+      setNewCustomer('');
+    }
   };
 
-  const handleChange = (e) => {
-    setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
+  const removeCustomer = (index) => {
+    const updatedCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(updatedCustomers);
   };
 
   return (
     <div>
-      <h2>Customer Management</h2>
+      <h1>Customer Management</h1>
       <input
         type="text"
-        name="name"
-        value={newCustomer.name}
-        onChange={handleChange}
-        placeholder="Customer Name"
-      />
-      <input
-        type="email"
-        name="email"
-        value={newCustomer.email}
-        onChange={handleChange}
-        placeholder="Customer Email"
+        value={newCustomer}
+        onChange={(e) => setNewCustomer(e.target.value)}
+        placeholder="Add new customer"
       />
       <button onClick={addCustomer}>Add Customer</button>
       <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer}
+            <button onClick={() => removeCustomer(index)}>Remove</button>
+          </li>
         ))}
       </ul>
     </div>
