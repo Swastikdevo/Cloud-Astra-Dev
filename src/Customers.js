@@ -1,46 +1,50 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState('asc');
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
-        setCustomers(data);
-      } catch (error) {
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCustomers();
   }, []);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
+  };
+
+  const handleSort = () => {
+    const sortedCustomers = [...customers].sort((a, b) => {
+      return sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+    });
+    setCustomers(sortedCustomers);
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
+  const filteredCustomers = customers.filter(customer => customer.name.toLowerCase().includes(filter.toLowerCase()));
 
   return (
     <div>
-      <h1>Customer List</h1>
+      <input 
+        type="text" 
+        placeholder="Search Customers" 
+        value={filter} 
+        onChange={(e) => setFilter(e.target.value)} 
+      />
+      <button onClick={handleSort}>
+        Sort by Name ({sortOrder === 'asc' ? 'Ascending' : 'Descending'})
+      </button>
       <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name}</li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
