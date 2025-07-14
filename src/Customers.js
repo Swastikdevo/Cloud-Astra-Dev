@@ -3,50 +3,58 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
-  const [newCustomer, setNewCustomer] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
     const fetchCustomers = async () => {
       const response = await fetch('/api/customers');
       const data = await response.json();
       setCustomers(data);
+      setLoading(false);
     };
+    
     fetchCustomers();
   }, []);
 
-  const addCustomer = () => {
-    if (newCustomer.trim()) {
-      setCustomers([...customers, { name: newCustomer }]);
-      setNewCustomer('');
-    }
+  const handleChange = (e) => {
+    setNewCustomer({ ...newCustomer, [e.target.name]: e.target.value });
   };
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  const handleAddCustomer = async () => {
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCustomer),
+    });
+    const addedCustomer = await response.json();
+    setCustomers([...customers, addedCustomer]);
+    setNewCustomer({ name: '', email: '' });
+  };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div>
       <h1>Customer Management</h1>
       <input 
-        type="text" 
-        placeholder="Filter customers..." 
-        value={filter} 
-        onChange={e => setFilter(e.target.value)} 
+        name="name" 
+        value={newCustomer.name} 
+        onChange={handleChange} 
+        placeholder="Customer Name" 
       />
+      <input 
+        name="email" 
+        value={newCustomer.email} 
+        onChange={handleChange} 
+        placeholder="Customer Email" 
+      />
+      <button onClick={handleAddCustomer}>Add Customer</button>
       <ul>
-        {filteredCustomers.map((customer, index) => (
-          <li key={index}>{customer.name}</li>
+        {customers.map((customer) => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
-      <input 
-        type="text" 
-        placeholder="New customer name" 
-        value={newCustomer} 
-        onChange={e => setNewCustomer(e.target.value)} 
-      />
-      <button onClick={addCustomer}>Add Customer</button>
     </div>
   );
 };
