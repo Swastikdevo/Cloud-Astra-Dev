@@ -1,45 +1,60 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+const CustomerForm = ({ onSubmit }) => {
+  const [customer, setCustomer] = useState({ name: '', email: '', phone: '' });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setCustomer({ ...customer, [name]: value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(customer);
+    setCustomer({ name: '', email: '', phone: '' });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" name="name" value={customer.name} onChange={handleChange} placeholder="Name" required />
+      <input type="email" name="email" value={customer.email} onChange={handleChange} placeholder="Email" required />
+      <input type="tel" name="phone" value={customer.phone} onChange={handleChange} placeholder="Phone" required />
+      <button type="submit">Add Customer</button>
+    </form>
+  );
+};
+
+const CustomerList = ({ customers, onDelete }) => {
+  return (
+    <ul>
+      {customers.map((customer, index) => (
+        <li key={index}>
+          {customer.name} - {customer.email} - {customer.phone}
+          <button onClick={() => onDelete(index)}>Delete</button>
+        </li>
+      ))}
+    </ul>
+  );
+};
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  
-  const addCustomer = () => {
-    setCustomers([...customers, { id: Date.now(), name, email }]);
-    setName('');
-    setEmail('');
+
+  const handleAddCustomer = (customer) => {
+    setCustomers([...customers, customer]);
   };
 
-  const removeCustomer = (id) => {
-    setCustomers(customers.filter(customer => customer.id !== id));
+  const handleDeleteCustomer = (index) => {
+    const newCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(newCustomers);
   };
 
   return (
     <div>
-      <h1>Customer Management System</h1>
-      <input 
-        type="text" 
-        placeholder="Customer Name" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
-      />
-      <input 
-        type="email" 
-        placeholder="Customer Email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
-      />
-      <button onClick={addCustomer}>Add Customer</button>
-      <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email} 
-            <button onClick={() => removeCustomer(customer.id)}>Remove</button>
-          </li>
-        ))}
-      </ul>
+      <h1>Customer Management</h1>
+      <CustomerForm onSubmit={handleAddCustomer} />
+      <CustomerList customers={customers} onDelete={handleDeleteCustomer} />
     </div>
   );
 };
