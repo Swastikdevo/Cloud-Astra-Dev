@@ -1,42 +1,35 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .models import BankAccount, Transaction
+from .forms import BankAccountForm, TransactionForm
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def manage_account(request):
-    if request.method == 'POST':
-        if 'create_account' in request.POST:
-            form = AccountForm(request.POST)
-            if form.is_valid():
-                account = form.save(commit=False)
-                account.user = request.user
-                account.save()
-                return JsonResponse({'status': 'success', 'message': 'Account created.'})
-
-        elif 'make_transaction' in request.POST:
-            form = TransactionForm(request.POST)
-            if form.is_valid():
-                transaction = form.save(commit=False)
-                transaction.user = request.user
-                transaction.save()
-                return JsonResponse({'status': 'success', 'message': 'Transaction successful.'})
-
+    if request.method == "POST":
+        form = BankAccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.owner = request.user
+            account.save()
+            return redirect('account_detail', account_id=account.id)
     else:
-        form_account = AccountForm()
-        form_transaction = TransactionForm()
+        form = BankAccountForm()
 
-    accounts = Account.objects.filter(user=request.user)
-    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    accounts = BankAccount.objects.filter(owner=request.user)
+    return render(request, 'manage_account.html', {'form': form, 'accounts': accounts})
 
-    context = {
-        'form_account': form_account,
-        'form_transaction': form_transaction,
-        'accounts': accounts,
-        'transactions': transactions,
-    }
-    return render(request, 'bank/manage_account.html', context)
+@login_required
+@require_http_methods(["POST"])
+def create_transaction(request):
+    form = TransactionForm(request.POST)
+    if form.is_valid():
+        transaction = form.save(commit=False)
+        transaction.account = BankAccount.objects.get(id=request.POST['account_id'], owner=request.user)
+        transaction.save()
+        return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
+    return JsonResponse({'status': 'error', 'errors': form.errors})
 ```
