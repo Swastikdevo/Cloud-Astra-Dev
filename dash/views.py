@@ -1,61 +1,56 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
 from .models import Account, Transaction
-import json
+from .forms import TransactionForm
 
 @login_required
-@csrf_exempt
-def manage_account(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        return render(request, 'bank/manage_account.html', {'accounts': accounts})
+def account_overview(request):
+    user_accounts = Account.objects.filter(owner=request.user)
+    return render(request, 'bank/account_overview.html', {'accounts': user_accounts})
+
+@login_required
+def perform_transaction(request, account_id):
+    account = Account.objects.get(id=account_id, owner=request.user)
 
     if request.method == 'POST':
-        data = json.loads(request.body)
-        action = data.get('action')
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            transaction_type = form.cleaned_data['transaction_type']
 
-        if action == 'create':
-            account_type = data.get('account_type')
-            balance = data.get('balance', 0)
-            new_account = Account.objects.create(user=request.user, account_type=account_type, balance=balance)
-            messages.success(request, 'Account created successfully!')
-            return JsonResponse({'status': 'success', 'account_id': new_account.id})
-
-        elif action == 'deposit':
-            account_id = data.get('account_id')
-            amount = data.get('amount')
-            try:
-                account = Account.objects.get(id=account_id, user=request.user)
+            if transaction_type == 'deposit':
                 account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
                 messages.success(request, 'Deposit successful!')
-                return JsonResponse({'status': 'success', 'new_balance': account.balance})
-            except Account.DoesNotExist:
-                messages.error(request, 'Account not found.')
-                return JsonResponse({'status': 'error', 'message': 'Account not found.'})
-
-        elif action == 'withdraw':
-            account_id = data.get('account_id')
-            amount = data.get('amount')
-            try:
-                account = Account.objects.get(id=account_id, user=request.user)
+            elif transaction_type == 'withdrawal':
                 if account.balance >= amount:
                     account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='withdraw')
                     messages.success(request, 'Withdrawal successful!')
-                    return JsonResponse({'status': 'success', 'new_balance': account.balance})
                 else:
-                    messages.error(request, 'Insufficient balance.')
-                    return JsonResponse({'status': 'error', 'message': 'Insufficient balance.'})
-            except Account.DoesNotExist:
-                messages.error(request, 'Account not found.')
-                return JsonResponse({'status': 'error', 'message': 'Account not found.'})
+                    messages.error(request, 'Insufficient funds!')
+                    return redirect('account_overview')
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
+            account.save()
+
+            # Log the transaction
+            transaction = Transaction(account=account, amount=amount, transaction_type=transaction_type)
+            transaction.save()
+
+            return redirect('account_overview')
+    else:
+        form = TransactionForm()
+
+    return render(request, 'bank/transaction_form.html', {'form': form, 'account': account})
+
+@login_required
+def transaction_history(request, account_id):
+    transactions = Transaction.objects.filter(account__id=account_id)
+    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
+
+@login_required
+def account_balance_api(request, account_id):
+    account = Account.objects.get(id=account_id, owner=request.user)
+    return JsonResponse({'balance': account.balance})
 ```
