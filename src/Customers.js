@@ -3,43 +3,75 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
+  const [editingIndex, setEditingIndex] = useState(null);
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Failed to fetch');
-        const data = await response.json();
-        setCustomers(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCustomers();
+    const savedCustomers = JSON.parse(localStorage.getItem('customers')) || [];
+    setCustomers(savedCustomers);
   }, []);
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this customer?')) {
-      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-      setCustomers(customers.filter(customer => customer.id !== id));
-    }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewCustomer({ ...newCustomer, [name]: value });
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (editingIndex !== null) {
+      const updatedCustomers = customers.map((customer, index) =>
+        index === editingIndex ? newCustomer : customer
+      );
+      setCustomers(updatedCustomers);
+      setEditingIndex(null);
+    } else {
+      setCustomers([...customers, newCustomer]);
+    }
+    setNewCustomer({ name: '', email: '' });
+  };
+
+  const handleEdit = (index) => {
+    setNewCustomer(customers[index]);
+    setEditingIndex(index);
+  };
+
+  const handleDelete = (index) => {
+    const filteredCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(filteredCustomers);
+  };
+
+  useEffect(() => {
+    localStorage.setItem('customers', JSON.stringify(customers));
+  }, [customers]);
 
   return (
     <div>
       <h1>Customer Management</h1>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          name="name"
+          value={newCustomer.name}
+          onChange={handleInputChange}
+          placeholder="Customer Name"
+          required
+        />
+        <input
+          type="email"
+          name="email"
+          value={newCustomer.email}
+          onChange={handleInputChange}
+          placeholder="Customer Email"
+          required
+        />
+        <button type="submit">{editingIndex !== null ? 'Update' : 'Add'}</button>
+      </form>
       <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
+        {customers.map((customer, index) => (
+          <li key={index}>
             {customer.name} - {customer.email}
-            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+            <button onClick={() => handleEdit(index)}>Edit</button>
+            <button onClick={() => handleDelete(index)}>Delete</button>
           </li>
         ))}
       </ul>
