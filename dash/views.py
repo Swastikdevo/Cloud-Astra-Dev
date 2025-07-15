@@ -1,46 +1,51 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from django.http import HttpResponse
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
+from .models import Account, Transaction
+from .forms import TransferForm, AccountCreationForm
 
 @login_required
-@csrf_exempt
-def account_management(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        context = {
-            'accounts': accounts,
-            'account_form': AccountForm(),
-            'transaction_form': TransactionForm()
-        }
-        return render(request, 'account_management.html', context)
+@require_http_methods(["GET", "POST"])
+def bank_view(request):
+    if request.method == "POST":
+        if 'transfer' in request.POST:
+            transfer_form = TransferForm(request.POST)
+            if transfer_form.is_valid():
+                sender_account = Account.objects.get(user=request.user)
+                receiver_account = Account.objects.get(account_number=transfer_form.cleaned_data['receiver_account'])
+                amount = transfer_form.cleaned_data['amount']
 
-    elif request.method == 'POST':
-        if 'add_account' in request.POST:
-            form = AccountForm(request.POST)
-            if form.is_valid():
-                new_account = form.save(commit=False)
+                if sender_account.balance >= amount:
+                    sender_account.balance -= amount
+                    receiver_account.balance += amount
+                    sender_account.save()
+                    receiver_account.save()
+                    Transaction.objects.create(
+                        sender=sender_account,
+                        receiver=receiver_account,
+                        amount=amount
+                    )
+                    return redirect('bank_view')
+                else:
+                    return HttpResponse("Insufficient funds.")
+
+        elif 'create_account' in request.POST:
+            account_form = AccountCreationForm(request.POST)
+            if account_form.is_valid():
+                new_account = account_form.save(commit=False)
                 new_account.user = request.user
                 new_account.save()
-                messages.success(request, 'Account created successfully.')
-                return redirect('account_management')
-            else:
-                messages.error(request, 'There was an error creating your account.')
+                return redirect('bank_view')
 
-        elif 'create_transaction' in request.POST:
-            form = TransactionForm(request.POST)
-            if form.is_valid():
-                transaction = form.save(commit=False)
-                transaction.user = request.user
-                transaction.save()
-                messages.success(request, 'Transaction completed successfully.')
-                return redirect('account_management')
-            else:
-                messages.error(request, 'Transaction creation failed. Please check your details.')
-    
-    return JsonResponse({'status': 'Invalid request'}, status=400)
+    transfer_form = TransferForm()
+    account_form = AccountCreationForm()
+    accounts = Account.objects.filter(user=request.user)
+
+    return render(request, 'bank_view.html', {
+        'transfer_form': transfer_form,
+        'account_form': account_form,
+        'accounts': accounts,
+    })
 ```
