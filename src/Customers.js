@@ -10,7 +10,7 @@ const CustomerList = () => {
     const fetchCustomers = async () => {
       try {
         const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Failed to fetch');
+        if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         setCustomers(data);
       } catch (err) {
@@ -19,17 +19,20 @@ const CustomerList = () => {
         setLoading(false);
       }
     };
-
     fetchCustomers();
   }, []);
 
   const handleDelete = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-    setCustomers(customers.filter(customer => customer.id !== id));
+    try {
+      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      setCustomers(customers.filter(customer => customer.id !== id));
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
     <div>
