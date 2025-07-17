@@ -1,74 +1,47 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm, TransferForm
+from .forms import AccountForm, TransactionForm
+from django.contrib import messages
 
-@csrf_exempt
 @login_required
-def bank_management_view(request):
-    account = Account.objects.get(user=request.user)
-
+@require_http_methods(["GET", "POST"])
+def manage_account(request):
     if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                messages.success(request, f'Deposited ${amount} successfully!')
-                return redirect('bank_management')
-
-        elif 'withdraw' in request.POST:
-            form = WithdrawForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount > account.balance:
-                    messages.error(request, 'Insufficient funds!')
-                else:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdraw')
-                    messages.success(request, f'Withdrew ${amount} successfully!')
-                return redirect('bank_management')
-
-        elif 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                recipient_username = form.cleaned_data['recipient']
-                amount = form.cleaned_data['amount']
-                recipient_account = Account.objects.filter(user__username=recipient_username).first()
-                
-                if not recipient_account:
-                    messages.error(request, 'Recipient not found!')
-                elif amount > account.balance:
-                    messages.error(request, 'Insufficient funds!')
-                else:
-                    account.balance -= amount
-                    recipient_account.balance += amount
-                    account.save()
-                    recipient_account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer to {}'.format(recipient_username))
-                    Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transfer from {}'.format(request.user.username))
-                    messages.success(request, f'Transferred ${amount} to {recipient_username} successfully!')
-                return redirect('bank_management')
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.owner = request.user
+            account.save()
+            messages.success(request, 'New account created successfully!')
+            return redirect('account_detail', account_id=account.id)
+        else:
+            messages.error(request, 'There was an error creating the account.')
     else:
-        deposit_form = DepositForm()
-        withdraw_form = WithdrawForm()
-        transfer_form = TransferForm()
+        form = AccountForm()
+    
+    user_accounts = Account.objects.filter(owner=request.user)
+    return render(request, 'bank/manage_account.html', {'form': form, 'accounts': user_accounts})
 
-    transactions = Transaction.objects.filter(account=account).order_by('-date_created')
+@login_required
+@require_http_methods(["GET", "POST"])
+def make_transaction(request, account_id):
+    account = Account.objects.get(id=account_id, owner=request.user)
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+            messages.success(request, 'Transaction completed successfully!')
+            return redirect('account_detail', account_id=account.id)
+        else:
+            messages.error(request, 'There was an error with the transaction.')
+    else:
+        form = TransactionForm()
 
-    context = {
-        'account': account,
-        'deposit_form': deposit_form,
-        'withdraw_form': withdraw_form,
-        'transfer_form': transfer_form,
-        'transactions': transactions,
-    }
-    return render(request, 'bank_management.html', context)
+    return render(request, 'bank/make_transaction.html', {'form': form, 'account': account})
 ```
