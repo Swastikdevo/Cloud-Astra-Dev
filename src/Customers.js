@@ -1,73 +1,57 @@
 ```javascript
-import React, { useState } from 'react';
-
-const CustomerForm = ({ onAddCustomer }) => {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [address, setAddress] = useState('');
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onAddCustomer({ name, email, address });
-        setName('');
-        setEmail('');
-        setAddress('');
-    };
-
-    return (
-        <form onSubmit={handleSubmit}>
-            <input 
-                type="text" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
-                placeholder="Customer Name" 
-                required 
-            />
-            <input 
-                type="email" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                placeholder="Email Address" 
-                required 
-            />
-            <input 
-                type="text" 
-                value={address} 
-                onChange={(e) => setAddress(e.target.value)} 
-                placeholder="Address" 
-                required 
-            />
-            <button type="submit">Add Customer</button>
-        </form>
-    );
-};
-
-const CustomerList = ({ customers }) => {
-    return (
-        <ul>
-            {customers.map((customer, index) => (
-                <li key={index}>
-                    {customer.name} - {customer.email}
-                </li>
-            ))}
-        </ul>
-    );
-};
+import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
-    const [customers, setCustomers] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [inputName, setInputName] = useState('');
+  const [inputEmail, setInputEmail] = useState('');
 
-    const addCustomer = (customer) => {
-        setCustomers([...customers, customer]);
-    };
+  useEffect(() => {
+    const storedCustomers = JSON.parse(localStorage.getItem('customers')) || [];
+    setCustomers(storedCustomers);
+  }, []);
 
-    return (
-        <div>
-            <h1>Customer Management</h1>
-            <CustomerForm onAddCustomer={addCustomer} />
-            <CustomerList customers={customers} />
-        </div>
-    );
+  const addCustomer = () => {
+    const newCustomer = { name: inputName, email: inputEmail };
+    const updatedCustomers = [...customers, newCustomer];
+    setCustomers(updatedCustomers);
+    localStorage.setItem('customers', JSON.stringify(updatedCustomers));
+    setInputName('');
+    setInputEmail('');
+  };
+
+  const deleteCustomer = (index) => {
+    const updatedCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(updatedCustomers);
+    localStorage.setItem('customers', JSON.stringify(updatedCustomers));
+  };
+
+  return (
+    <div>
+      <h1>Customer Management</h1>
+      <input
+        type="text"
+        placeholder="Name"
+        value={inputName}
+        onChange={(e) => setInputName(e.target.value)}
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={inputEmail}
+        onChange={(e) => setInputEmail(e.target.value)}
+      />
+      <button onClick={addCustomer}>Add Customer</button>
+      <ul>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer.name} - {customer.email}
+            <button onClick={() => deleteCustomer(index)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
 export default CustomerManagement;
