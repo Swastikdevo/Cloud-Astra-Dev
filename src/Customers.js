@@ -2,82 +2,40 @@
 import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
-  const [customers, setCustomers] = useState([]);
-  const [search, setSearch] = useState('');
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch('/api/customers')
-      .then((res) => res.json())
-      .then((data) => setCustomers(data))
-      .catch((error) => console.error('Error fetching customers:', error));
-  }, []);
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            const response = await fetch('/api/customers');
+            const data = await response.json();
+            setCustomers(data);
+            setLoading(false);
+        };
+        fetchCustomers();
+    }, []);
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(search.toLowerCase())
-  );
+    const handleDelete = async (id) => {
+        await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+        setCustomers(customers.filter(customer => customer.id !== id));
+    };
 
-  return (
-    <div>
-      <input
-        type="text"
-        placeholder="Search customers..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
-        ))}
-      </ul>
-    </div>
-  );
+    if (loading) return <div>Loading...</div>;
+
+    return (
+        <div>
+            <h1>Customer Management</h1>
+            <ul>
+                {customers.map(customer => (
+                    <li key={customer.id}>
+                        {customer.name} - {customer.email}
+                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-const AddCustomer = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-
-  const handleAddCustomer = (e) => {
-    e.preventDefault();
-    fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email }),
-    }).then(() => {
-      setName('');
-      setEmail('');
-      alert('Customer added successfully');
-    });
-  };
-
-  return (
-    <form onSubmit={handleAddCustomer}>
-      <input 
-        type="text" 
-        placeholder="Customer Name" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
-      />
-      <input 
-        type="email" 
-        placeholder="Customer Email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
-      />
-      <button type="submit">Add Customer</button>
-    </form>
-  );
-};
-
-const CustomerManagement = () => {
-  return (
-    <div>
-      <h1>Customer Management System</h1>
-      <AddCustomer />
-      <CustomerList />
-    </div>
-  );
-};
-
-export default CustomerManagement;
+export default CustomerList;
 ```
