@@ -1,46 +1,41 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+    };
     fetchCustomers();
   }, []);
 
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
-  };
-
-  const handleSearch = (e) => {
-    setSearch(e.target.value);
-  };
-
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(search.toLowerCase()) &&
-    (filter === 'All' || customer.status === filter)
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div>
-      <input type="text" placeholder="Search Customers" value={search} onChange={handleSearch} />
-      <select onChange={(e) => setFilter(e.target.value)} value={filter}>
-        <option value="All">All</option>
-        <option value="Active">Active</option>
-        <option value="Inactive">Inactive</option>
-      </select>
+      <input
+        type="text"
+        placeholder="Search customers..."
+        value={searchTerm}
+        onChange={e => setSearchTerm(e.target.value)}
+      />
       <ul>
         {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.status}</li>
+          <li key={customer.id}>
+            {customer.name}
+          </li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
