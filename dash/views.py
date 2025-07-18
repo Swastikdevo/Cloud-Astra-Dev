@@ -1,47 +1,44 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
-from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from .models import BankAccount, Transaction
+from .forms import BankAccountForm, TransactionForm
 
-@login_required
 @csrf_exempt
-def manage_account(request, account_id=None):
-    if request.method == "GET":
-        if account_id:
-            account = get_object_or_404(Account, id=account_id)
-            return render(request, 'account_detail.html', {'account': account})
-        else:
-            accounts = Account.objects.filter(user=request.user)
-            return render(request, 'account_list.html', {'accounts': accounts})
-
-    elif request.method == "POST":
-        form = AccountForm(request.POST)
+@require_http_methods(["GET", "POST"])
+def manage_bank_accounts(request):
+    if request.method == "POST":
+        form = BankAccountForm(request.POST)
         if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            return redirect('manage_account')
-    
-    elif request.method == "DELETE" and account_id:
-        account = get_object_or_404(Account, id=account_id, user=request.user)
-        account.delete()
-        return JsonResponse({'success': True}, status=204)
+            form.save()
+            return JsonResponse({'status': 'success', 'message': 'Account created successfully!'}, status=201)
+        else:
+            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
 
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+    accounts = BankAccount.objects.all()
+    return render(request, 'bank/manage_accounts.html', {'accounts': accounts})
 
-@login_required
 @csrf_exempt
-def record_transaction(request, account_id):
+@require_http_methods(["GET", "POST"])
+def manage_transactions(request):
     if request.method == "POST":
         form = TransactionForm(request.POST)
         if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = get_object_or_404(Account, id=account_id, user=request.user)
-            transaction.save()
-            return JsonResponse({'success': True, 'transaction_id': transaction.id}, status=201)
+            form.save()
+            return JsonResponse({'status': 'success', 'message': 'Transaction recorded successfully!'}, status=201)
+        else:
+            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
 
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+    transactions = Transaction.objects.all()
+    return render(request, 'bank/manage_transactions.html', {'transactions': transactions})
+
+def account_details(request, account_id):
+    try:
+        account = BankAccount.objects.get(id=account_id)
+        transactions = account.transaction_set.all()
+        return render(request, 'bank/account_details.html', {'account': account, 'transactions': transactions})
+    except BankAccount.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Account not found!'}, status=404)
 ```
