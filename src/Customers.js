@@ -1,41 +1,46 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
+const CustomerManagement = () => {
+  const [customers, setCustomers] = useState([]);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('All');
 
-    useEffect(() => {
-        const fetchCustomers = async () => {
-            const response = await fetch('/api/customers');
-            const data = await response.json();
-            setCustomers(data);
-            setLoading(false);
-        };
-        fetchCustomers();
-    }, []);
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
-    const handleDelete = async (id) => {
-        await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-        setCustomers(customers.filter(customer => customer.id !== id));
-    };
+  const fetchCustomers = async () => {
+    const response = await fetch('/api/customers');
+    const data = await response.json();
+    setCustomers(data);
+  };
 
-    if (loading) return <div>Loading...</div>;
+  const handleSearch = (e) => {
+    setSearch(e.target.value);
+  };
 
-    return (
-        <div>
-            <h1>Customer Management</h1>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name} - {customer.email}
-                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(search.toLowerCase()) &&
+    (filter === 'All' || customer.status === filter)
+  );
+
+  return (
+    <div>
+      <input type="text" placeholder="Search Customers" value={search} onChange={handleSearch} />
+      <select onChange={(e) => setFilter(e.target.value)} value={filter}>
+        <option value="All">All</option>
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+      </select>
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.status}</li>
+        ))}
+      </ul>
+    </div>
+  );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
