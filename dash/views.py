@@ -1,53 +1,69 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import DepositForm, WithdrawalForm, TransferForm
 
 @login_required
-@csrf_exempt
-def account_overview(request, account_id):
-    account = get_object_or_404(Account, id=account_id)
+def manage_account(request):
+    # Handle depositing money
+    if request.method == 'POST' and 'deposit' in request.POST:
+        form = DepositForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            account = Account.objects.get(user=request.user)
+            account.balance += amount
+            account.save()
+            Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+            messages.success(request, 'Deposit successful!')
+            return redirect('manage_account')
 
-    if request.method == 'POST':
-        # Create a new transaction
-        transaction_form = TransactionForm(request.POST)
-        if transaction_form.is_valid():
-            transaction = transaction_form.save(commit=False)
-            transaction.account = account
-            transaction.save()
-            return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
+    # Handle withdrawing money
+    elif request.method == 'POST' and 'withdraw' in request.POST:
+        form = WithdrawalForm(request.POST)
+        if form.is_valid():
+            amount = form.cleaned_data['amount']
+            account = Account.objects.get(user=request.user)
+            if account.balance >= amount:
+                account.balance -= amount
+                account.save()
+                Transaction.objects.create(account=account, amount=-amount, transaction_type='Withdrawal')
+                messages.success(request, 'Withdrawal successful!')
+            else:
+                messages.error(request, 'Insufficient balance!')
+            return redirect('manage_account')
 
-    else:
-        transaction_form = TransactionForm()
+    # Handle transferring money
+    elif request.method == 'POST' and 'transfer' in request.POST:
+        form = TransferForm(request.POST)
+        if form.is_valid():
+            recipient_username = form.cleaned_data['recipient']
+            amount = form.cleaned_data['amount']
+            sender_account = Account.objects.get(user=request.user)
+            recipient_account = Account.objects.get(user__username=recipient_username)
+            if sender_account.balance >= amount:
+                sender_account.balance -= amount
+                recipient_account.balance += amount
+                sender_account.save()
+                recipient_account.save()
+                Transaction.objects.create(account=sender_account, amount=-amount, transaction_type='Transfer')
+                Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transfer')
+                messages.success(request, 'Transfer successful!')
+            else:
+                messages.error(request, 'Insufficient balance!')
+            return redirect('manage_account')
 
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    deposit_form = DepositForm()
+    withdrawal_form = WithdrawalForm()
+    transfer_form = TransferForm()
+    
     context = {
-        'account': account,
-        'transactions': transactions,
-        'transaction_form': transaction_form,
+        'deposit_form': deposit_form,
+        'withdrawal_form': withdrawal_form,
+        'transfer_form': transfer_form,
+        'balance': Account.objects.get(user=request.user).balance,
     }
-
-    return render(request, 'account_overview.html', context)
-
-@login_required
-@csrf_exempt
-def create_account(request):
-    if request.method == 'POST':
-        account_form = AccountForm(request.POST)
-        if account_form.is_valid():
-            account_form.save()
-            return redirect('account_list')
-
-    else:
-        account_form = AccountForm()
-
-    return render(request, 'create_account.html', {'account_form': account_form})
-
-@login_required
-def account_list(request):
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'account_list.html', {'accounts': accounts})
+    return render(request, 'bank/manage_account.html', context)
 ```
