@@ -1,41 +1,40 @@
 ```python
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
-import json
+from .forms import TransactionForm
 
-@csrf_exempt
 @login_required
-def bank_view(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        transactions = Transaction.objects.filter(account__user=request.user).order_by('-date')
-        return render(request, 'bank/dashboard.html', {
-            'accounts': accounts,
-            'transactions': transactions,
-            'account_form': AccountForm(),
-            'transaction_form': TransactionForm()
-        })
+@require_http_methods(["GET", "POST"])
+def transaction_view(request, account_id):
+    account = get_object_or_404(Account, id=account_id, user=request.user)
+
+    if request.method == "POST":
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+            return redirect('account_detail', account_id=account.id)
+    else:
+        form = TransactionForm()
+
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
     
-    elif request.method == 'POST':
-        if 'create_account' in request.POST:
-            form = AccountForm(request.POST)
-            if form.is_valid():
-                account = form.save(commit=False)
-                account.user = request.user
-                account.save()
-                return redirect('bank_view')
+    context = {
+        'account': account,
+        'form': form,
+        'transactions': transactions,
+    }
+    return render(request, 'bank/transaction_detail.html', context)
 
-        elif 'create_transaction' in request.POST:
-            form = TransactionForm(request.POST)
-            if form.is_valid():
-                transaction = form.save(commit=False)
-                transaction.account = Account.objects.get(id=request.POST['account_id'])
-                transaction.save()
-                return redirect('bank_view')
+@login_required
+@require_http_methods(["GET"])
+def account_balance(request, account_id):
+    account = get_object_or_404(Account, id=account_id, user=request.user)
+    balance = account.balance
 
-    return JsonResponse({'status': 'Invalid request'}, status=400)
+    return JsonResponse({'account_id': account_id, 'balance': balance})
 ```
