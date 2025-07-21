@@ -1,40 +1,42 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
     const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         fetch('/api/customers')
             .then(response => response.json())
             .then(data => {
                 setCustomers(data);
-                setLoading(false);
+                setIsLoading(false);
             });
     }, []);
 
     const handleDelete = (id) => {
         fetch(`/api/customers/${id}`, { method: 'DELETE' })
-            .then(() => setCustomers(customers.filter(customer => customer.id !== id)));
+            .then(() => {
+                setCustomers(customers.filter(customer => customer.id !== id));
+            });
     };
-
-    if (loading) return <div>Loading...</div>;
 
     return (
         <div>
-            <h2>Customer List</h2>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>
-                        {customer.name}
-                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
-                    </li>
-                ))}
-            </ul>
+            <h1>Customer Management</h1>
+            {isLoading ? <p>Loading...</p> : (
+                <ul>
+                    {customers.map(customer => (
+                        <li key={customer.id}>
+                            {customer.name} - {customer.email}
+                            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
