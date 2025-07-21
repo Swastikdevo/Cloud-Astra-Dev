@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
+  const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -16,27 +16,25 @@ const CustomerList = () => {
     fetchCustomers();
   }, []);
 
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
-  };
-
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(filter.toLowerCase())
   );
 
   if (loading) return <div>Loading...</div>;
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={handleSearch}
+      <input 
+        type="text" 
+        placeholder="Filter by name" 
+        value={filter} 
+        onChange={(e) => setFilter(e.target.value)} 
       />
       <ul>
         {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name}</li>
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+          </li>
         ))}
       </ul>
     </div>
