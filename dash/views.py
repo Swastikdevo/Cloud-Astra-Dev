@@ -1,46 +1,50 @@
 ```python
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import CreateAccountForm, TransactionForm
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def manage_account(request):
+def account_dashboard(request):
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/account_dashboard.html', {'accounts': accounts})
+
+@login_required
+def create_account(request):
     if request.method == 'POST':
-        account_form = AccountForm(request.POST)
-        if account_form.is_valid():
-            account = account_form.save(commit=False)
+        form = CreateAccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
             account.user = request.user
             account.save()
-            return JsonResponse({'message': 'Account created successfully!'}, status=201)
+            return redirect('account_dashboard')
     else:
-        account_form = AccountForm()
-
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/manage_account.html', {
-        'account_form': account_form,
-        'accounts': accounts
-    })
+        form = CreateAccountForm()
+    return render(request, 'bank/create_account.html', {'form': form})
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def transaction_history(request):
-    transactions = Transaction.objects.filter(account__user=request.user)
-    return render(request, 'bank/transaction_history.html', {
-        'transactions': transactions
-    })
+def view_account(request, account_id):
+    account = get_object_or_404(Account, id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account)
+    return render(request, 'bank/view_account.html', {'account': account, 'transactions': transactions})
 
 @login_required
-@require_http_methods(["POST"])
-def create_transaction(request):
-    transaction_form = TransactionForm(request.POST)
-    if transaction_form.is_valid():
-        transaction = transaction_form.save(commit=False)
-        transaction.account = Account.objects.get(id=request.POST.get('account_id'), user=request.user)
+@require_POST
+def make_transaction(request, account_id):
+    account = get_object_or_404(Account, id=account_id, user=request.user)
+    form = TransactionForm(request.POST)
+    if form.is_valid():
+        transaction = form.save(commit=False)
+        transaction.account = account
         transaction.save()
-        return JsonResponse({'message': 'Transaction created successfully!'}, status=201)
-    return JsonResponse({'errors': transaction_form.errors}, status=400)
+        return JsonResponse({'success': True, 'transaction_id': transaction.id})
+    return JsonResponse({'success': False, 'errors': form.errors})
+
+@login_required
+def transaction_history(request, account_id):
+    account = get_object_or_404(Account, id=account_id, user=request.user)
+    transactions = Transaction.objects.filter(account=account).order_by('-date')
+    return render(request, 'bank/transaction_history.html', {'account': account, 'transactions': transactions})
 ```
