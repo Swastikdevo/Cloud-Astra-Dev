@@ -1,58 +1,46 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib import messages
-from django.utils.decorators import method_decorator
+from .forms import AccountForm, TransactionForm
 
 @login_required
-@csrf_exempt
-def bank_account_view(request):
-    if request.method == 'GET':
-        accounts = Account.objects.filter(user=request.user)
-        return render(request, 'bank/accounts.html', {'accounts': accounts})
-
-    elif request.method == 'POST':
-        action = request.POST.get('action')
-
-        if action == 'create_account':
-            account_name = request.POST.get('account_name')
-            initial_balance = float(request.POST.get('initial_balance'))
-            Account.objects.create(user=request.user, name=account_name, balance=initial_balance)
-            messages.success(request, 'Account created successfully.')
-            return redirect('bank_account_view')
-
-        elif action == 'deposit':
-            account_id = request.POST.get('account_id')
-            amount = float(request.POST.get('amount'))
-            account = get_object_or_404(Account, id=account_id, user=request.user)
-            account.balance += amount
+@require_http_methods(["GET", "POST"])
+def manage_account(request):
+    if request.method == 'POST':
+        account_form = AccountForm(request.POST)
+        if account_form.is_valid():
+            account = account_form.save(commit=False)
+            account.user = request.user
             account.save()
-            Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-            messages.success(request, 'Deposit successful.')
-            return redirect('bank_account_view')
+            return JsonResponse({'message': 'Account created successfully!'}, status=201)
+    else:
+        account_form = AccountForm()
 
-        elif action == 'withdraw':
-            account_id = request.POST.get('account_id')
-            amount = float(request.POST.get('amount'))
-            account = get_object_or_404(Account, id=account_id, user=request.user)
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/manage_account.html', {
+        'account_form': account_form,
+        'accounts': accounts
+    })
 
-            if amount <= account.balance:
-                account.balance -= amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='withdraw')
-                messages.success(request, 'Withdrawal successful.')
-            else:
-                messages.error(request, 'Insufficient balance.')
-            return redirect('bank_account_view')
+@login_required
+@require_http_methods(["GET", "POST"])
+def transaction_history(request):
+    transactions = Transaction.objects.filter(account__user=request.user)
+    return render(request, 'bank/transaction_history.html', {
+        'transactions': transactions
+    })
 
-        elif action == 'view_transactions':
-            account_id = request.POST.get('account_id')
-            transactions = Transaction.objects.filter(account__id=account_id)
-            transaction_data = [{'date': txn.date, 'amount': txn.amount, 'type': txn.transaction_type} for txn in transactions]
-            return JsonResponse({'transactions': transaction_data})
-
-    return JsonResponse({'message': 'Invalid request method.'}, status=400)
+@login_required
+@require_http_methods(["POST"])
+def create_transaction(request):
+    transaction_form = TransactionForm(request.POST)
+    if transaction_form.is_valid():
+        transaction = transaction_form.save(commit=False)
+        transaction.account = Account.objects.get(id=request.POST.get('account_id'), user=request.user)
+        transaction.save()
+        return JsonResponse({'message': 'Transaction created successfully!'}, status=201)
+    return JsonResponse({'errors': transaction_form.errors}, status=400)
 ```
