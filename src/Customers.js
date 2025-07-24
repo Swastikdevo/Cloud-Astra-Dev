@@ -3,38 +3,54 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => {
+        setCustomers(data);
+        setLoading(false);
+      });
   }, []);
 
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value);
+  const deleteCustomer = id => {
+    fetch(`/api/customers/${id}`, { method: 'DELETE' })
+      .then(() => {
+        setCustomers(customers.filter(customer => customer.id !== id));
+      });
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const addCustomer = customer => {
+    fetch('/api/customers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(customer),
+    })
+      .then(response => response.json())
+      .then(newCustomer => {
+        setCustomers([...customers, newCustomer]);
+      });
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div>
-      <input
-        type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={handleSearch}
-      />
+      <h1>Customer List</h1>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} 
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
+      <button onClick={() => addCustomer({ name: 'New Customer' })}>Add Customer</button>
     </div>
   );
 };
