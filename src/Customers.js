@@ -1,59 +1,41 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => {
-        setCustomers(data);
-        setLoading(false);
-      });
+      .then(res => res.json())
+      .then(data => setCustomers(data))
+      .catch(err => console.error(err));
   }, []);
 
-  const deleteCustomer = id => {
-    fetch(`/api/customers/${id}`, { method: 'DELETE' })
-      .then(() => {
-        setCustomers(customers.filter(customer => customer.id !== id));
-      });
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
   };
 
-  const addCustomer = customer => {
-    fetch('/api/customers', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(customer),
-    })
-      .then(response => response.json())
-      .then(newCustomer => {
-        setCustomers([...customers, newCustomer]);
-      });
-  };
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div>
-      <h1>Customer List</h1>
+      <input
+        type="text"
+        placeholder="Search Customers"
+        value={searchTerm}
+        onChange={handleSearch}
+      />
       <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} 
-            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-          </li>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
-      <button onClick={() => addCustomer({ name: 'New Customer' })}>Add Customer</button>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
