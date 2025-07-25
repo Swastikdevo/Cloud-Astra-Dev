@@ -4,49 +4,50 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
-from django.utils.decorators import method_decorator
-from django.views import View
+from django.contrib import messages
 
-@method_decorator(login_required, name='dispatch')
-class BankManagementView(View):
-    template_name = 'bank/manage.html'
+@login_required
+def manage_accounts(request):
+    if request.method == 'POST':
+        account_form = AccountForm(request.POST)
+        if account_form.is_valid():
+            account_form.save()
+            messages.success(request, 'Account created successfully!')
+            return redirect('manage_accounts')
+    else:
+        account_form = AccountForm()
 
-    def get(self, request):
-        accounts = Account.objects.filter(user=request.user)
-        transaction_form = TransactionForm()
-        return render(request, self.template_name, {
-            'accounts': accounts,
-            'transaction_form': transaction_form,
-        })
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/manage_accounts.html', {'accounts': accounts, 'account_form': account_form})
 
-    def post(self, request):
+@login_required
+def make_transaction(request):
+    if request.method == 'POST':
         transaction_form = TransactionForm(request.POST)
         if transaction_form.is_valid():
             transaction = transaction_form.save(commit=False)
             transaction.user = request.user
             transaction.save()
-            return JsonResponse({'success': True, 'message': 'Transaction recorded successfully!'})
-        return JsonResponse({'success': False, 'errors': transaction_form.errors})
+            messages.success(request, 'Transaction completed successfully!')
+            return JsonResponse({'status': 'success', 'message': 'Transaction completed'}, status=200)
 
-@login_required
-def create_account(request):
-    if request.method == 'POST':
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            return redirect('bank:manage')
     else:
-        form = AccountForm()
-    return render(request, 'bank/create_account.html', {'form': form})
+        transaction_form = TransactionForm()
+
+    return render(request, 'bank/make_transaction.html', {'transaction_form': transaction_form})
 
 @login_required
-def account_details(request, account_id):
+def view_transactions(request):
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    return render(request, 'bank/view_transactions.html', {'transactions': transactions})
+
+@login_required
+def delete_account(request, account_id):
     account = Account.objects.get(id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account)
-    return render(request, 'bank/account_details.html', {
-        'account': account,
-        'transactions': transactions,
-    })
+    if request.method == 'POST':
+        account.delete()
+        messages.success(request, 'Account deleted successfully!')
+        return redirect('manage_accounts')
+
+    return render(request, 'bank/delete_account.html', {'account': account})
 ```
