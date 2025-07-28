@@ -1,52 +1,41 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import TransactionForm
 
-@login_required
+@method_decorator(login_required, name='dispatch')
+def account_summary(request):
+    accounts = Account.objects.filter(user=request.user)
+    return render(request, 'bank/account_summary.html', {'accounts': accounts})
+
 @csrf_exempt
-def bank_dashboard(request):
-    user_accounts = Account.objects.filter(owner=request.user)
-    
+@login_required
+def create_transaction(request):
     if request.method == 'POST':
-        if 'add_account' in request.POST:
-            form = AccountForm(request.POST)
-            if form.is_valid():
-                new_account = form.save(commit=False)
-                new_account.owner = request.user
-                new_account.save()
-                return redirect('bank_dashboard')
-        
-        elif 'add_transaction' in request.POST:
-            form = TransactionForm(request.POST)
-            if form.is_valid():
-                new_transaction = form.save(commit=False)
-                new_transaction.account = Account.objects.get(id=request.POST['account_id'])
-                new_transaction.save()
-                return redirect('bank_dashboard')
-
-    context = {
-        'accounts': user_accounts,
-        'transaction_form': TransactionForm(),
-        'account_form': AccountForm(),
-    }
-    return render(request, 'bank/dashboard.html', context)
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            return JsonResponse({'status': 'success', 'message': 'Transaction created successfully!'})
+        return JsonResponse({'status': 'error', 'message': 'Invalid transaction data.'}, status=400)
+    return render(request, 'bank/create_transaction.html', {'form': TransactionForm()})
 
 @login_required
-def account_detail(request, account_id):
-    account = Account.objects.get(id=account_id)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/account_detail.html', {'account': account, 'transactions': transactions})
+def transaction_history(request):
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
 
 @login_required
-def api_balance(request, account_id):
-    account = Account.objects.get(id=account_id)
-    if account.owner != request.user:
-        return JsonResponse({'error': 'Unauthorized access'}, status=403)
-
-    return JsonResponse({'balance': account.balance})
+def delete_transaction(request, transaction_id):
+    try:
+        transaction = Transaction.objects.get(id=transaction_id, user=request.user)
+        transaction.delete()
+        return redirect('transaction_history')
+    except Transaction.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Transaction not found.'}, status=404)
 ```
