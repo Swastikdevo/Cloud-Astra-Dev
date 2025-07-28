@@ -3,65 +3,70 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
-  const [searchTerm, setSearchTerm] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [editingIndex, setEditingIndex] = useState(null);
 
   useEffect(() => {
-    // Fetch initial customers
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
+    const storedCustomers = JSON.parse(localStorage.getItem('customers')) || [];
+    setCustomers(storedCustomers);
   }, []);
 
-  const addCustomer = async () => {
-    const response = await fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCustomer),
-    });
-    const newCust = await response.json();
-    setCustomers([...customers, newCust]);
-    setNewCustomer({ name: '', email: '' });
+  const addOrUpdateCustomer = () => {
+    if (editingIndex !== null) {
+      const updatedCustomers = customers.map((customer, index) =>
+        index === editingIndex ? { name, email } : customer
+      );
+      setCustomers(updatedCustomers);
+      localStorage.setItem('customers', JSON.stringify(updatedCustomers));
+      setEditingIndex(null);
+    } else {
+      const newCustomer = { name, email };
+      const updatedCustomers = [...customers, newCustomer];
+      setCustomers(updatedCustomers);
+      localStorage.setItem('customers', JSON.stringify(updatedCustomers));
+    }
+    setName('');
+    setEmail('');
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const editCustomer = index => {
+    setName(customers[index].name);
+    setEmail(customers[index].email);
+    setEditingIndex(index);
+  };
+
+  const deleteCustomer = index => {
+    const updatedCustomers = customers.filter((_, i) => i !== index);
+    setCustomers(updatedCustomers);
+    localStorage.setItem('customers', JSON.stringify(updatedCustomers));
+  };
 
   return (
     <div>
       <h2>Customer Management</h2>
       <input
         type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
+        value={name}
+        onChange={e => setName(e.target.value)}
+        placeholder="Customer Name"
       />
-      <div>
-        {filteredCustomers.map(customer => (
-          <div key={customer.id}>
-            <p>{customer.name} - {customer.email}</p>
-          </div>
+      <input
+        type="email"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        placeholder="Customer Email"
+      />
+      <button onClick={addOrUpdateCustomer}>{editingIndex !== null ? 'Update' : 'Add'}</button>
+      <ul>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer.name} - {customer.email}
+            <button onClick={() => editCustomer(index)}>Edit</button>
+            <button onClick={() => deleteCustomer(index)}>Delete</button>
+          </li>
         ))}
-      </div>
-      <div>
-        <input
-          type="text"
-          value={newCustomer.name}
-          onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })}
-          placeholder="Name"
-        />
-        <input
-          type="email"
-          value={newCustomer.email}
-          onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })}
-          placeholder="Email"
-        />
-        <button onClick={addCustomer}>Add Customer</button>
-      </div>
+      </ul>
     </div>
   );
 };
