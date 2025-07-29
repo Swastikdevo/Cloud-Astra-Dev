@@ -4,42 +4,43 @@ import React, { useState, useEffect } from 'react';
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    fetch('/api/customers')
-      .then(response => {
-        if (!response.ok) throw new Error('Network response was not ok');
-        return response.json();
-      })
-      .then(data => setCustomers(data))
-      .catch(err => setError(err))
-      .finally(() => setLoading(false));
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+      setLoading(false);
+    };
+    fetchCustomers();
   }, []);
 
-  const handleDelete = id => {
-    fetch(`/api/customers/${id}`, { method: 'DELETE' })
-      .then(response => {
-        if (!response.ok) throw new Error('Delete failed');
-        setCustomers(customers.filter(customer => customer.id !== id));
-      })
-      .catch(err => setError(err));
+  const handleFilterChange = (e) => {
+    setFilter(e.target.value);
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
+  const filteredCustomers = customers.filter(customer => 
+    customer.name.toLowerCase().includes(filter.toLowerCase())
+  );
 
   return (
     <div>
-      <h1>Customer List</h1>
-      <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name}
-            <button onClick={() => handleDelete(customer.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
+      <input
+        type="text"
+        placeholder="Filter by name"
+        value={filter}
+        onChange={handleFilterChange}
+      />
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <ul>
+          {filteredCustomers.map(customer => (
+            <li key={customer.id}>{customer.name} - {customer.email}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
