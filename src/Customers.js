@@ -1,54 +1,48 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch initial customer data (replace with actual API call)
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
+    fetch('/api/customers')
+      .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+      })
+      .then(data => setCustomers(data))
+      .catch(err => setError(err))
+      .finally(() => setLoading(false));
   }, []);
 
-  const addCustomer = () => {
-    const newCustomer = { name, email };
-    setCustomers([...customers, newCustomer]);
-    setName('');
-    setEmail('');
+  const handleDelete = id => {
+    fetch(`/api/customers/${id}`, { method: 'DELETE' })
+      .then(response => {
+        if (!response.ok) throw new Error('Delete failed');
+        setCustomers(customers.filter(customer => customer.id !== id));
+      })
+      .catch(err => setError(err));
   };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      <div>
-        <input 
-          type="text" 
-          placeholder="Name" 
-          value={name} 
-          onChange={(e) => setName(e.target.value)} 
-        />
-        <input 
-          type="email" 
-          placeholder="Email" 
-          value={email} 
-          onChange={(e) => setEmail(e.target.value)} 
-        />
-        <button onClick={addCustomer}>Add Customer</button>
-      </div>
+      <h1>Customer List</h1>
       <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>{customer.name} - {customer.email}</li>
+        {customers.map(customer => (
+          <li key={customer.id}>
+            {customer.name}
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
