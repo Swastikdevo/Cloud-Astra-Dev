@@ -1,17 +1,48 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+const CustomerForm = ({ onSubmit }) => {
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(formData);
+    setFormData({ name: '', email: '', phone: '' });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" name="name" placeholder="Name" value={formData.name} onChange={handleChange} required />
+      <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} required />
+      <input type="tel" name="phone" placeholder="Phone" value={formData.phone} onChange={handleChange} required />
+      <button type="submit">Add Customer</button>
+    </form>
+  );
+};
+
+const CustomerList = ({ customers, onDelete }) => {
+  return (
+    <ul>
+      {customers.map((customer, index) => (
+        <li key={index}>
+          {customer.name} - {customer.email} - {customer.phone}
+          <button onClick={() => onDelete(index)}>Delete</button>
+        </li>
+      ))}
+    </ul>
+  );
+};
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
 
-  const addCustomer = () => {
-    if (name && email) {
-      setCustomers([...customers, { name, email }]);
-      setName('');
-      setEmail('');
-    }
+  const addCustomer = (customer) => {
+    setCustomers([...customers, customer]);
   };
 
   const deleteCustomer = (index) => {
@@ -21,28 +52,9 @@ const CustomerManagement = () => {
 
   return (
     <div>
-      <h2>Customer Management</h2>
-      <input 
-        type="text" 
-        placeholder="Name" 
-        value={name} 
-        onChange={(e) => setName(e.target.value)} 
-      />
-      <input 
-        type="email" 
-        placeholder="Email" 
-        value={email} 
-        onChange={(e) => setEmail(e.target.value)} 
-      />
-      <button onClick={addCustomer}>Add Customer</button>
-      <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
-            {customer.name} - {customer.email}
-            <button onClick={() => deleteCustomer(index)}>Delete</button>
-          </li>
-        ))}
-      </ul>
+      <h1>Customer Management</h1>
+      <CustomerForm onSubmit={addCustomer} />
+      <CustomerList customers={customers} onDelete={deleteCustomer} />
     </div>
   );
 };
