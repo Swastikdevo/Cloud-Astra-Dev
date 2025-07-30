@@ -1,65 +1,51 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
-  const [searchTerm, setSearchTerm] = useState('');
+const CustomerList = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
+    useEffect(() => {
+        const fetchCustomers = async () => {
+            try {
+                const response = await fetch('/api/customers');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                setCustomers(data);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCustomers();
+    }, []);
+
+    const handleDelete = async (id) => {
+        const response = await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            setCustomers(customers.filter(customer => customer.id !== id));
+        }
     };
-    fetchCustomers();
-  }, []);
 
-  const addCustomer = async () => {
-    const response = await fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCustomer),
-    });
-    const addedCustomer = await response.json();
-    setCustomers([...customers, addedCustomer]);
-    setNewCustomer({ name: '', email: '' });
-  };
+    if (loading) return <p>Loading...</p>;
+    if (error) return <p>Error: {error}</p>;
 
-  const filteredCustomers = customers.filter(customer => 
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  return (
-    <div>
-      <h1>Customer Management</h1>
-      <input
-        type="text"
-        placeholder="Search Customer"
-        value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
-      />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
-        ))}
-      </ul>
-      <input
-        type="text"
-        placeholder="Name"
-        value={newCustomer.name}
-        onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })}
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        value={newCustomer.email}
-        onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })}
-      />
-      <button onClick={addCustomer}>Add Customer</button>
-    </div>
-  );
+    return (
+        <div>
+            <h1>Customer List</h1>
+            <ul>
+                {customers.map(customer => (
+                    <li key={customer.id}>
+                        {customer.name} 
+                        <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
