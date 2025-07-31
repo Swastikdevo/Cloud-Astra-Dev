@@ -1,42 +1,69 @@
 ```python
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
+from .forms import TransferForm, DepositForm, WithdrawForm
 
-@require_http_methods(["GET", "POST"])
-def manage_account(request, account_id=None):
-    if request.method == "POST":
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            account = form.save()
-            return JsonResponse({'status': 'success', 'account_id': account.id}, status=201)
-        else:
-            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
+@login_required
+def bank_account_view(request):
+    account = Account.objects.get(user=request.user)
 
+    if request.method == 'POST':
+        if 'transfer' in request.POST:
+            form = TransferForm(request.POST)
+            if form.is_valid():
+                recipient_account = form.cleaned_data['recipient_account']
+                amount = form.cleaned_data['amount']
+                if amount > account.balance:
+                    messages.error(request, "Insufficient funds for this transfer.")
+                else:
+                    # Process transfer logic
+                    recipient = Account.objects.get(account_number=recipient_account)
+                    account.balance -= amount
+                    recipient.balance += amount
+                    account.save()
+                    recipient.save()
+                    Transaction.objects.create(account=account, amount=-amount, transaction_type='Transfer', recipient=recipient)
+                    messages.success(request, "Transfer completed successfully.")
+                    return redirect('bank_account')
+
+        elif 'deposit' in request.POST:
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                messages.success(request, "Deposit completed successfully.")
+                return redirect('bank_account')
+
+        elif 'withdraw' in request.POST:
+            form = WithdrawForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                if amount > account.balance:
+                    messages.error(request, "Insufficient funds for this withdrawal.")
+                else:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=-amount, transaction_type='Withdrawal')
+                    messages.success(request, "Withdrawal completed successfully.")
+                    return redirect('bank_account')
     else:
-        account = Account.objects.get(id=account_id) if account_id else None
-        form = AccountForm(instance=account)
+        transfer_form = TransferForm()
+        deposit_form = DepositForm()
+        withdraw_form = WithdrawForm()
 
-    return render(request, 'bank/manage_account.html', {'form': form})
-
-
-@require_http_methods(["POST"])
-def perform_transaction(request, account_id):
-    form = TransactionForm(request.POST)
-    if form.is_valid():
-        transaction = form.save(commit=False)
-        transaction.account = Account.objects.get(id=account_id)
-        transaction.save()
-        return JsonResponse({'status': 'success', 'transaction_id': transaction.id}, status=201)
-    else:
-        return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
-
-
-@require_http_methods(["GET"])
-def transaction_history(request, account_id):
-    account = Account.objects.get(id=account_id)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions, 'account': account})
+    transactions = Transaction.objects.filter(account=account).order_by('-date')[:10]
+    
+    context = {
+        'account': account,
+        'transfer_form': transfer_form,
+        'deposit_form': deposit_form,
+        'withdraw_form': withdraw_form,
+        'transactions': transactions,
+    }
+    
+    return render(request, 'bank/account.html', context)
 ```
