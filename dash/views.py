@@ -1,37 +1,46 @@
 ```python
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Account, Transaction
-from .forms import TransactionForm
+from .forms import TransferForm
 
 @login_required
-@require_http_methods(["GET", "POST"])
-def manage_account(request, account_id):
-    account = Account.objects.get(id=account_id)
-
-    if request.method == "POST":
-        form = TransactionForm(request.POST)
+def transfer_funds(request):
+    if request.method == 'POST':
+        form = TransferForm(request.POST)
         if form.is_valid():
-            transaction = form.save(commit=False)
-            transaction.account = account
-            transaction.user = request.user
-            transaction.save()
-            return redirect('account_detail', account_id=account.id)
-
+            amount = form.cleaned_data['amount']
+            recipient_account_number = form.cleaned_data['recipient_account_number']
+            
+            try:
+                sender_account = Account.objects.get(user=request.user)
+                recipient_account = Account.objects.get(account_number=recipient_account_number)
+                
+                if sender_account.balance >= amount:
+                    sender_account.balance -= amount
+                    recipient_account.balance += amount
+                    sender_account.save()
+                    recipient_account.save()
+                    
+                    Transaction.objects.create(
+                        sender=sender_account,
+                        recipient=recipient_account,
+                        amount=amount,
+                        transaction_type='Transfer'
+                    )
+                    
+                    messages.success(request, f'Transferred ${amount} to account {recipient_account_number} successfully.')
+                else:
+                    messages.error(request, 'Insufficient funds in your account.')
+                    
+            except Account.DoesNotExist:
+                messages.error(request, 'Recipient account does not exist.')
+            
+            return redirect('transfer_funds')
     else:
-        form = TransactionForm()
-
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    balance = account.get_balance()
-
-    context = {
-        'account': account,
-        'form': form,
-        'transactions': transactions,
-        'balance': balance,
-    }
+        form = TransferForm()
     
-    return render(request, 'account/manage_account.html', context)
+    return render(request, 'bank/transfer_funds.html', {'form': form})
 ```
