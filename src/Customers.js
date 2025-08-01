@@ -1,40 +1,66 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const CustomerList = () => {
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [editingIndex, setEditingIndex] = useState(-1);
 
-  useEffect(() => {
-    fetch('/api/customers')
-      .then(response => response.json())
-      .then(data => setCustomers(data));
-  }, []);
-
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
+  const addOrUpdateCustomer = () => {
+    if (editingIndex >= 0) {
+      const updatedCustomers = customers.map((customer, index) =>
+        index === editingIndex ? { name, email } : customer
+      );
+      setCustomers(updatedCustomers);
+      setEditingIndex(-1);
+    } else {
+      setCustomers([...customers, { name, email }]);
+    }
+    setName('');
+    setEmail('');
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const editCustomer = (index) => {
+    setName(customers[index].name);
+    setEmail(customers[index].email);
+    setEditingIndex(index);
+  };
+
+  const deleteCustomer = (index) => {
+    setCustomers(customers.filter((_, i) => i !== index));
+  };
 
   return (
     <div>
+      <h2>Customer Management</h2>
       <input
         type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={handleSearch}
+        value={name}
+        placeholder="Name"
+        onChange={(e) => setName(e.target.value)}
       />
+      <input
+        type="email"
+        value={email}
+        placeholder="Email"
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <button onClick={addOrUpdateCustomer}>
+        {editingIndex >= 0 ? 'Update Customer' : 'Add Customer'}
+      </button>
       <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
+        {customers.map((customer, index) => (
+          <li key={index}>
+            {customer.name} - {customer.email}
+            <button onClick={() => editCustomer(index)}>Edit</button>
+            <button onClick={() => deleteCustomer(index)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
