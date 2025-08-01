@@ -1,45 +1,66 @@
 ```python
-from django.shortcuts import render, redirect
-from django.http import HttpResponse
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm
+from .forms import DepositForm, WithdrawalForm, TransferForm
+from django.contrib import messages
 
 @login_required
-def manage_account(request):
-    user_account = Account.objects.filter(user=request.user).first()
-    
+def manage_account(request, account_id):
+    account = get_object_or_404(Account, id=account_id, owner=request.user)
+
     if request.method == 'POST':
         if 'deposit' in request.POST:
-            deposit_form = DepositForm(request.POST)
-            if deposit_form.is_valid():
-                amount = deposit_form.cleaned_data['amount']
-                user_account.balance += amount
-                user_account.save()
-                Transaction.objects.create(account=user_account, amount=amount, transaction_type='Deposit')
-                return redirect('manage_account')
+            form = DepositForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
+                messages.success(request, 'Deposit successful!')
+                return redirect('manage_account', account_id=account.id)
 
         elif 'withdraw' in request.POST:
-            withdrawal_form = WithdrawalForm(request.POST)
-            if withdrawal_form.is_valid():
-                amount = withdrawal_form.cleaned_data['amount']
-                if user_account.balance >= amount:
-                    user_account.balance -= amount
-                    user_account.save()
-                    Transaction.objects.create(account=user_account, amount=amount, transaction_type='Withdrawal')
-                    return redirect('manage_account')
+            form = WithdrawalForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                if amount <= account.balance:
+                    account.balance -= amount
+                    account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
+                    messages.success(request, 'Withdrawal successful!')
                 else:
-                    return HttpResponse("Insufficient funds.")
+                    messages.error(request, 'Insufficient balance!')
+                return redirect('manage_account', account_id=account.id)
 
+        elif 'transfer' in request.POST:
+            form = TransferForm(request.POST)
+            if form.is_valid():
+                amount = form.cleaned_data['amount']
+                recipient_account_id = form.cleaned_data['recipient_account']
+                recipient_account = get_object_or_404(Account, id=recipient_account_id)
+
+                if amount <= account.balance:
+                    account.balance -= amount
+                    recipient_account.balance += amount
+                    account.save()
+                    recipient_account.save()
+                    Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer Out')
+                    Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transfer In')
+                    messages.success(request, 'Transfer successful!')
+                else:
+                    messages.error(request, 'Insufficient balance for transfer!')
+                return redirect('manage_account', account_id=account.id)
     else:
         deposit_form = DepositForm()
         withdrawal_form = WithdrawalForm()
+        transfer_form = TransferForm()
 
-    transactions = Transaction.objects.filter(account=user_account).order_by('-date')
-    return render(request, 'bank/manage_account.html', {
-        'user_account': user_account,
+    return render(request, 'manage_account.html', {
+        'account': account,
         'deposit_form': deposit_form,
         'withdrawal_form': withdrawal_form,
-        'transactions': transactions,
+        'transfer_form': transfer_form,
     })
 ```
