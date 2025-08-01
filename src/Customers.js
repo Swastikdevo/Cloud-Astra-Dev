@@ -1,63 +1,39 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [editingIndex, setEditingIndex] = useState(-1);
+  const [loading, setLoading] = useState(true);
 
-  const addOrUpdateCustomer = () => {
-    if (editingIndex >= 0) {
-      const updatedCustomers = customers.map((customer, index) =>
-        index === editingIndex ? { name, email } : customer
-      );
-      setCustomers(updatedCustomers);
-      setEditingIndex(-1);
-    } else {
-      setCustomers([...customers, { name, email }]);
-    }
-    setName('');
-    setEmail('');
-  };
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      setCustomers(data);
+      setLoading(false);
+    };
+    fetchCustomers();
+  }, []);
 
-  const editCustomer = (index) => {
-    setName(customers[index].name);
-    setEmail(customers[index].email);
-    setEditingIndex(index);
-  };
-
-  const deleteCustomer = (index) => {
-    setCustomers(customers.filter((_, i) => i !== index));
+  const deleteCustomer = async (id) => {
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    setCustomers(customers.filter(customer => customer.id !== id));
   };
 
   return (
     <div>
-      <h2>Customer Management</h2>
-      <input
-        type="text"
-        value={name}
-        placeholder="Name"
-        onChange={(e) => setName(e.target.value)}
-      />
-      <input
-        type="email"
-        value={email}
-        placeholder="Email"
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <button onClick={addOrUpdateCustomer}>
-        {editingIndex >= 0 ? 'Update Customer' : 'Add Customer'}
-      </button>
-      <ul>
-        {customers.map((customer, index) => (
-          <li key={index}>
-            {customer.name} - {customer.email}
-            <button onClick={() => editCustomer(index)}>Edit</button>
-            <button onClick={() => deleteCustomer(index)}>Delete</button>
-          </li>
-        ))}
-      </ul>
+      <h1>Customer Management</h1>
+      {loading ? (
+        <p>Loading customers...</p>
+      ) : (
+        <ul>
+          {customers.map(customer => (
+            <li key={customer.id}>
+              {customer.name} <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
