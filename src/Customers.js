@@ -1,42 +1,40 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
+const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-      setLoading(false);
-    };
-    fetchCustomers();
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => setCustomers(data));
   }, []);
 
-  const deleteCustomer = async (id) => {
-    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
-    setCustomers(customers.filter(customer => customer.id !== id));
+  const handleFilterChange = (e) => {
+    setFilter(e.target.value);
   };
+
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(filter.toLowerCase())
+  );
 
   return (
     <div>
-      <h1>Customer Management</h1>
-      {loading ? (
-        <p>Loading customers...</p>
-      ) : (
-        <ul>
-          {customers.map(customer => (
-            <li key={customer.id}>
-              {customer.name} <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <input
+        type="text"
+        placeholder="Search customers"
+        value={filter}
+        onChange={handleFilterChange}
+      />
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>{customer.name}</li>
+        ))}
+      </ul>
     </div>
   );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
