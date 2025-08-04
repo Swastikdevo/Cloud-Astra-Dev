@@ -1,43 +1,55 @@
 ```python
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm
+from .forms import AccountForm, TransactionForm
 
-@csrf_exempt
-@require_http_methods(["GET", "POST"])
-def account_management(request):
-    if request.method == "GET":
-        accounts = Account.objects.all()
-        return render(request, 'account_management.html', {'accounts': accounts})
-
-    if request.method == "POST":
-        action = request.POST.get('action')
-        account_id = request.POST.get('account_id')
-        account = Account.objects.get(id=account_id)
-
-        if action == "deposit":
-            form = DepositForm(request.POST)
+@login_required
+def manage_account(request, account_id=None):
+    if request.method == 'POST':
+        if account_id:
+            # Update existing account
+            account = get_object_or_404(Account, id=account_id, owner=request.user)
+            form = AccountForm(request.POST, instance=account)
             if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return JsonResponse({'status': 'success', 'new_balance': account.balance})
-
-        elif action == "withdraw":
-            form = WithdrawalForm(request.POST)
+                form.save()
+                messages.success(request, 'Account updated successfully!')
+                return redirect('account_detail', account_id=account.id)
+        else:
+            # Create a new account
+            form = AccountForm(request.POST)
             if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount <= account.balance:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                    return JsonResponse({'status': 'success', 'new_balance': account.balance})
-                else:
-                    return JsonResponse({'status': 'error', 'message': 'Insufficient funds.'})
+                new_account = form.save(commit=False)
+                new_account.owner = request.user
+                new_account.save()
+                messages.success(request, 'Account created successfully!')
+                return redirect('account_detail', account_id=new_account.id)
+    else:
+        form = AccountForm(instance=get_object_or_404(Account, id=account_id, owner=request.user) if account_id else None)
 
-    return redirect('account_management')
+    return render(request, 'bank/manage_account.html', {'form': form})
+
+@login_required
+def record_transaction(request, account_id):
+    account = get_object_or_404(Account, id=account_id, owner=request.user)
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.account = account
+            transaction.save()
+            messages.success(request, 'Transaction recorded successfully!')
+            return redirect('transaction_history', account_id=account.id)
+    else:
+        form = TransactionForm()
+
+    return render(request, 'bank/record_transaction.html', {'form': form, 'account': account})
+
+@login_required
+def get_account_balance(request, account_id):
+    account = get_object_or_404(Account, id=account_id, owner=request.user)
+    balance = account.get_balance()
+    return JsonResponse({'account_id': account.id, 'balance': balance})
 ```
