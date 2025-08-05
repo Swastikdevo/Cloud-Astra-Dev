@@ -1,43 +1,55 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerList = () => {
+const CustomerForm = ({ onAddCustomer }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [age, setAge] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const customer = { name, email, age };
+    onAddCustomer(customer);
+    setName('');
+    setEmail('');
+    setAge('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" required />
+      <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required type="email" />
+      <input value={age} onChange={(e) => setAge(e.target.value)} placeholder="Age" required type="number" />
+      <button type="submit">Add Customer</button>
+    </form>
+  );
+};
+
+const CustomerList = ({ customers }) => {
+  return (
+    <ul>
+      {customers.map((customer, index) => (
+        <li key={index}>{customer.name} - {customer.email} - {customer.age}</li>
+      ))}
+    </ul>
+  );
+};
+
+const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const response = await fetch('/api/customers');
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-        setCustomers(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCustomers();
-  }, []);
-
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  const addCustomer = (customer) => {
+    setCustomers(prevCustomers => [...prevCustomers, customer]);
+  };
 
   return (
     <div>
-      <h2>Customer List</h2>
-      <ul>
-        {customers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
-        ))}
-      </ul>
+      <h1>Customer Management System</h1>
+      <CustomerForm onAddCustomer={addCustomer} />
+      <CustomerList customers={customers} />
     </div>
   );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
