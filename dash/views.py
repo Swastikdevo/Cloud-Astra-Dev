@@ -2,61 +2,54 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawalForm, TransferForm
+from .forms import AccountForm, TransactionForm
 
 @login_required
-def manage_account(request):
-    user = request.user
-    account = Account.objects.get(user=user)
+def account_management(request):
+    user_accounts = Account.objects.filter(owner=request.user)
 
     if request.method == 'POST':
-        if 'deposit' in request.POST:
-            form = DepositForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='Deposit')
-                return redirect('manage_account')
+        form = AccountForm(request.POST)
+        if form.is_valid():
+            new_account = form.save(commit=False)
+            new_account.owner = request.user
+            new_account.save()
+            messages.success(request, 'New account created successfully!')
+            return redirect('account_management')
+    else:
+        form = AccountForm()
 
-        elif 'withdraw' in request.POST:
-            form = WithdrawalForm(request.POST)
-            if form.is_valid():
-                amount = form.cleaned_data['amount']
-                if amount <= account.balance:
-                    account.balance -= amount
-                    account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Withdrawal')
-                    return redirect('manage_account')
-                else:
-                    return HttpResponse("Insufficient funds")
+    context = {
+        'user_accounts': user_accounts,
+        'form': form,
+    }
+    return render(request, 'bank/account_management.html', context)
 
-        elif 'transfer' in request.POST:
-            form = TransferForm(request.POST)
-            if form.is_valid():
-                transfer_account = form.cleaned_data['transfer_account']
-                amount = form.cleaned_data['amount']
-                if amount <= account.balance:
-                    recipient_account = Account.objects.get(account_number=transfer_account)
-                    account.balance -= amount
-                    recipient_account.balance += amount
-                    account.save()
-                    recipient_account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='Transfer Out')
-                    Transaction.objects.create(account=recipient_account, amount=amount, transaction_type='Transfer In')
-                    return redirect('manage_account')
-                else:
-                    return HttpResponse("Insufficient funds")
+@login_required
+def make_transaction(request):
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            transaction = form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            messages.success(request, 'Transaction completed successfully!')
+            return redirect('make_transaction')
+    else:
+        form = TransactionForm()
 
-    deposit_form = DepositForm()
-    withdrawal_form = WithdrawalForm()
-    transfer_form = TransferForm()
+    context = {
+        'form': form,
+    }
+    return render(request, 'bank/make_transaction.html', context)
 
-    return render(request, 'manage_account.html', {
-        'account': account,
-        'deposit_form': deposit_form,
-        'withdrawal_form': withdrawal_form,
-        'transfer_form': transfer_form,
-    })
+@login_required
+def transaction_history(request):
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    context = {
+        'transactions': transactions,
+    }
+    return render(request, 'bank/transaction_history.html', context)
 ```
