@@ -3,32 +3,34 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerList = () => {
     const [customers, setCustomers] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchCustomers = async () => {
             const response = await fetch('/api/customers');
             const data = await response.json();
             setCustomers(data);
+            setLoading(false);
         };
         fetchCustomers();
     }, []);
 
-    const filteredCustomers = customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const deleteCustomer = async (id) => {
+        await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+        setCustomers(customers.filter(customer => customer.id !== id));
+    };
+
+    if (loading) return <div>Loading...</div>;
 
     return (
         <div>
-            <input 
-                type="text" 
-                placeholder="Search Customers" 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-            />
+            <h2>Customer List</h2>
             <ul>
-                {filteredCustomers.map(customer => (
-                    <li key={customer.id}>{customer.name} - {customer.email}</li>
+                {customers.map(customer => (
+                    <li key={customer.id}>
+                        {customer.name} 
+                        <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+                    </li>
                 ))}
             </ul>
         </div>
