@@ -3,48 +3,57 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState({ name: '', email: '', phone: '' });
-
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
-  };
+  const [filter, setFilter] = useState('');
+  const [newCustomer, setNewCustomer] = useState({ name: '', email: '' });
 
   useEffect(() => {
-    fetchCustomers();
+    fetch('https://api.example.com/customers')
+      .then((response) => response.json())
+      .then((data) => setCustomers(data))
+      .catch((error) => console.error('Error fetching customers:', error));
   }, []);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewCustomer({ ...newCustomer, [name]: value });
+  const addCustomer = () => {
+    if (newCustomer.name && newCustomer.email) {
+      setCustomers([...customers, newCustomer]);
+      setNewCustomer({ name: '', email: '' });
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    await fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCustomer),
-    });
-    setNewCustomer({ name: '', email: '', phone: '' });
-    fetchCustomers();
-  };
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(filter.toLowerCase())
+  );
 
   return (
     <div>
       <h1>Customer Management</h1>
-      <form onSubmit={handleSubmit}>
-        <input type="text" name="name" value={newCustomer.name} onChange={handleInputChange} placeholder="Name" required />
-        <input type="email" name="email" value={newCustomer.email} onChange={handleInputChange} placeholder="Email" required />
-        <input type="text" name="phone" value={newCustomer.phone} onChange={handleInputChange} placeholder="Phone" required />
-        <button type="submit">Add Customer</button>
-      </form>
+      <input
+        type="text"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        placeholder="Filter by name"
+      />
       <ul>
-        {customers.map((customer) => (
-          <li key={customer.id}>{customer.name} - {customer.email} - {customer.phone}</li>
+        {filteredCustomers.map((customer, index) => (
+          <li key={index}>{customer.name} - {customer.email}</li>
         ))}
       </ul>
+      <div>
+        <h2>Add New Customer</h2>
+        <input
+          type="text"
+          value={newCustomer.name}
+          onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+          placeholder="Name"
+        />
+        <input
+          type="email"
+          value={newCustomer.email}
+          onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+          placeholder="Email"
+        />
+        <button onClick={addCustomer}>Add Customer</button>
+      </div>
     </div>
   );
 };
