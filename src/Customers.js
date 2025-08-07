@@ -4,77 +4,50 @@ import React, { useState, useEffect } from 'react';
 const CustomerList = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-      setLoading(false);
+      try {
+        const response = await fetch('/api/customers');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
+        setCustomers(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchCustomers();
   }, []);
 
-  if (loading) return <div>Loading...</div>;
+  const handleDelete = async (id) => {
+    try {
+      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      setCustomers(customers.filter(customer => customer.id !== id));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <div>
       <h1>Customer List</h1>
       <ul>
         {customers.map(customer => (
-          <li key={customer.id}>{customer.name} - {customer.email}</li>
+          <li key={customer.id}>
+            {customer.name}
+            <button onClick={() => handleDelete(customer.id)}>Delete</button>
+          </li>
         ))}
       </ul>
     </div>
   );
 };
 
-const AddCustomer = ({ onAdd }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-
-  const handleSubmit = e => {
-    e.preventDefault();
-    onAdd({ name, email });
-    setName('');
-    setEmail('');
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input 
-        type="text" 
-        placeholder="Name" 
-        value={name} 
-        onChange={e => setName(e.target.value)} 
-        required 
-      />
-      <input 
-        type="email" 
-        placeholder="Email" 
-        value={email} 
-        onChange={e => setEmail(e.target.value)} 
-        required 
-      />
-      <button type="submit">Add Customer</button>
-    </form>
-  );
-};
-
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-
-  const addCustomer = customer => {
-    setCustomers(prev => [...prev, customer]);
-  };
-
-  return (
-    <div>
-      <AddCustomer onAdd={addCustomer} />
-      <CustomerList customers={customers} />
-    </div>
-  );
-};
-
-export default CustomerManagement;
+export default CustomerList;
 ```
