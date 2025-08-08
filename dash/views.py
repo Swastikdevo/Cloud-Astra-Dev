@@ -1,77 +1,81 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.http import JsonResponse
 from .models import Account, Transaction
-from .forms import DepositForm, WithdrawForm, TransferForm
-from django.db import transaction
+from .forms import TransferForm, WithdrawForm, DepositForm
 
 @login_required
-def account_dashboard(request):
-    user_accounts = Account.objects.filter(owner=request.user)
-    return render(request, 'bank/account_dashboard.html', {'accounts': user_accounts})
-
-@login_required
-def deposit(request, account_id):
-    account = get_object_or_404(Account, id=account_id, owner=request.user)
+def bank_account_view(request):
+    account = Account.objects.get(user=request.user)
+    
     if request.method == 'POST':
-        form = DepositForm(request.POST)
-        if form.is_valid():
-            amount = form.cleaned_data['amount']
-            with transaction.atomic():
-                account.balance += amount
-                account.save()
-                Transaction.objects.create(account=account, amount=amount, transaction_type='deposit')
-            return redirect('account_dashboard')
-    else:
-        form = DepositForm()
-    return render(request, 'bank/deposit.html', {'form': form, 'account': account})
+        # Handle fund transfer
+        if 'transfer' in request.POST:
+            transfer_form = TransferForm(request.POST)
+            if transfer_form.is_valid():
+                receiver_account = transfer_form.cleaned_data['receiver_account']
+                amount = transfer_form.cleaned_data['amount']
+                if account.balance >= amount:
+                    Transaction.objects.create(
+                        sender=account,
+                        receiver=receiver_account,
+                        amount=amount,
+                        transaction_type='Transfer'
+                    )
+                    account.balance -= amount
+                    receiver_account.balance += amount
+                    account.save()
+                    receiver_account.save()
+                    messages.success(request, 'Transfer successful!')
+                else:
+                    messages.error(request, 'Insufficient balance!')
+                return redirect('bank_account')
 
-@login_required
-def withdraw(request, account_id):
-    account = get_object_or_404(Account, id=account_id, owner=request.user)
-    if request.method == 'POST':
-        form = WithdrawForm(request.POST)
-        if form.is_valid():
-            amount = form.cleaned_data['amount']
-            if amount <= account.balance:
-                with transaction.atomic():
+        # Handle withdrawal
+        elif 'withdraw' in request.POST:
+            withdraw_form = WithdrawForm(request.POST)
+            if withdraw_form.is_valid():
+                amount = withdraw_form.cleaned_data['amount']
+                if account.balance >= amount:
                     account.balance -= amount
                     account.save()
-                    Transaction.objects.create(account=account, amount=amount, transaction_type='withdraw')
-                return redirect('account_dashboard')
-            else:
-                form.add_error('amount', 'Insufficient balance.')
-    else:
-        form = WithdrawForm()
-    return render(request, 'bank/withdraw.html', {'form': form, 'account': account})
+                    Transaction.objects.create(
+                        sender=account,
+                        amount=amount,
+                        transaction_type='Withdrawal'
+                    )
+                    messages.success(request, 'Withdrawal successful!')
+                else:
+                    messages.error(request, 'Insufficient balance!')
+                return redirect('bank_account')
+        
+        # Handle deposit
+        elif 'deposit' in request.POST:
+            deposit_form = DepositForm(request.POST)
+            if deposit_form.is_valid():
+                amount = deposit_form.cleaned_data['amount']
+                account.balance += amount
+                account.save()
+                Transaction.objects.create(
+                    receiver=account,
+                    amount=amount,
+                    transaction_type='Deposit'
+                )
+                messages.success(request, 'Deposit successful!')
+                return redirect('bank_account')
 
-@login_required
-def transfer(request):
-    if request.method == 'POST':
-        form = TransferForm(request.POST)
-        if form.is_valid():
-            from_account = get_object_or_404(Account, id=form.cleaned_data['from_account_id'], owner=request.user)
-            to_account = get_object_or_404(Account, id=form.cleaned_data['to_account_id'], owner=request.user)
-            amount = form.cleaned_data['amount']
-            if amount <= from_account.balance:
-                with transaction.atomic():
-                    from_account.balance -= amount
-                    to_account.balance += amount
-                    from_account.save()
-                    to_account.save()
-                    Transaction.objects.create(account=from_account, amount=amount, transaction_type='transfer_out')
-                    Transaction.objects.create(account=to_account, amount=amount, transaction_type='transfer_in')
-                return redirect('account_dashboard')
-            else:
-                form.add_error('amount', 'Insufficient balance in the from account.')
-    else:
-        form = TransferForm()
-    return render(request, 'bank/transfer.html', {'form': form})
-
-@login_required
-def transaction_history(request, account_id):
-    account = get_object_or_404(Account, id=account_id, owner=request.user)
-    transactions = Transaction.objects.filter(account=account).order_by('-date')
-    return render(request, 'bank/transaction_history.html', {'transactions': transactions, 'account': account})
+    transfer_form = TransferForm()
+    withdraw_form = WithdrawForm()
+    deposit_form = DepositForm()
+    
+    context = {
+        'account': account,
+        'transfer_form': transfer_form,
+        'withdraw_form': withdraw_form,
+        'deposit_form': deposit_form,
+    }
+    
+    return render(request, 'bank/account.html', context)
 ```
