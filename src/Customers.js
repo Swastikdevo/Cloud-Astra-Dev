@@ -1,43 +1,42 @@
 ```javascript
 import React, { useState, useEffect } from 'react';
 
-const CustomerManagement = () => {
-  const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+const CustomerList = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [sortOrder, setSortOrder] = useState('asc');
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
+    useEffect(() => {
+        fetch('/api/customers')
+            .then(response => response.json())
+            .then(data => {
+                setCustomers(data);
+                setLoading(false);
+            });
+    }, []);
 
-  const fetchCustomers = async () => {
-    const response = await fetch('/api/customers');
-    const data = await response.json();
-    setCustomers(data);
-  };
+    const sortCustomers = () => {
+        const sorted = [...customers].sort((a, b) => {
+            const comparison = a.name.localeCompare(b.name);
+            return sortOrder === 'asc' ? comparison : -comparison;
+        });
+        setCustomers(sorted);
+        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    if (loading) return <div>Loading...</div>;
 
-  return (
-    <div>
-      <h1>Customer Management</h1>
-      <input
-        type="text"
-        placeholder="Search Customers"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      <ul>
-        {filteredCustomers.map(customer => (
-          <li key={customer.id}>
-            {customer.name} - {customer.email}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+    return (
+        <div>
+            <button onClick={sortCustomers}>Sort Customers</button>
+            <ul>
+                {customers.map(customer => (
+                    <li key={customer.id}>{customer.name}</li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
