@@ -1,42 +1,61 @@
 ```javascript
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-const CustomerList = () => {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [sortOrder, setSortOrder] = useState('asc');
+const CustomerForm = ({ onAddCustomer }) => {
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
 
-    useEffect(() => {
-        fetch('/api/customers')
-            .then(response => response.json())
-            .then(data => {
-                setCustomers(data);
-                setLoading(false);
-            });
-    }, []);
-
-    const sortCustomers = () => {
-        const sorted = [...customers].sort((a, b) => {
-            const comparison = a.name.localeCompare(b.name);
-            return sortOrder === 'asc' ? comparison : -comparison;
-        });
-        setCustomers(sorted);
-        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onAddCustomer({ name, email });
+        setName('');
+        setEmail('');
     };
 
-    if (loading) return <div>Loading...</div>;
+    return (
+        <form onSubmit={handleSubmit}>
+            <input
+                type="text"
+                placeholder="Customer Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+            />
+            <input
+                type="email"
+                placeholder="Customer Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+            />
+            <button type="submit">Add Customer</button>
+        </form>
+    );
+};
+
+const CustomerList = ({ customers }) => (
+    <ul>
+        {customers.map((customer, index) => (
+            <li key={index}>{customer.name} - {customer.email}</li>
+        ))}
+    </ul>
+);
+
+const CustomerManagement = () => {
+    const [customers, setCustomers] = useState([]);
+
+    const addCustomer = (customer) => {
+        setCustomers([...customers, customer]);
+    };
 
     return (
         <div>
-            <button onClick={sortCustomers}>Sort Customers</button>
-            <ul>
-                {customers.map(customer => (
-                    <li key={customer.id}>{customer.name}</li>
-                ))}
-            </ul>
+            <h1>Customer Management System</h1>
+            <CustomerForm onAddCustomer={addCustomer} />
+            <CustomerList customers={customers} />
         </div>
     );
 };
 
-export default CustomerList;
+export default CustomerManagement;
 ```
