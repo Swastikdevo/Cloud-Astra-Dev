@@ -3,50 +3,46 @@ import React, { useState, useEffect } from 'react';
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
-  const [newCustomer, setNewCustomer] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      const response = await fetch('/api/customers');
-      const data = await response.json();
-      setCustomers(data);
-    };
-    fetchCustomers();
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => {
+        setCustomers(data);
+        setLoading(false);
+      });
   }, []);
 
-  const addCustomer = () => {
-    if (newCustomer) {
-      setCustomers([...customers, { name: newCustomer }]);
-      setNewCustomer('');
-    }
-  };
-
-  const filteredCustomers = customers.filter(customer =>
+  const filteredCustomers = customers.filter(customer => 
     customer.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
 
   return (
     <div>
       <h1>Customer Management</h1>
       <input
         type="text"
-        placeholder="Add New Customer"
-        value={newCustomer}
-        onChange={(e) => setNewCustomer(e.target.value)}
-      />
-      <button onClick={addCustomer}>Add Customer</button>
-      <input
-        type="text"
-        placeholder="Search Customers"
+        placeholder="Search customers"
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={handleSearchChange}
       />
-      <ul>
-        {filteredCustomers.map((customer, index) => (
-          <li key={index}>{customer.name}</li>
-        ))}
-      </ul>
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <ul>
+          {filteredCustomers.map(customer => (
+            <li key={customer.id}>
+              {customer.name} - {customer.email}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
