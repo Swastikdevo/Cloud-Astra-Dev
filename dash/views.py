@@ -1,50 +1,43 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
 from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
 from .models import Account, Transaction
 from .forms import AccountForm, TransactionForm
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def account_management(request):
-    if request.method == "POST":
-        if 'create_account' in request.POST:
-            form = AccountForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return redirect('account_management')
-        elif 'make_transaction' in request.POST:
-            form = TransactionForm(request.POST)
-            if form.is_valid():
-                form.save()
-                return redirect('account_management')
+def manage_account(request):
+    if request.method == 'POST':
+        account_form = AccountForm(request.POST)
+        if account_form.is_valid():
+            account = account_form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return redirect('account_detail', account_id=account.id)
     else:
-        form = AccountForm()
-        transaction_form = TransactionForm()
+        account_form = AccountForm()
 
     accounts = Account.objects.filter(user=request.user)
-    transactions = Transaction.objects.filter(account__user=request.user)
-
-    return render(request, 'account_management.html', {
-        'form': form,
-        'transaction_form': transaction_form,
-        'accounts': accounts,
-        'transactions': transactions
-    })
+    return render(request, 'bank/manage_account.html', {'account_form': account_form, 'accounts': accounts})
 
 @login_required
-@require_http_methods(["POST"])
-def delete_account(request, account_id):
-    account = get_object_or_404(Account, id=account_id, user=request.user)
-    account.delete()
-    return JsonResponse({'success': True})
+@require_http_methods(["GET", "POST"])
+def create_transaction(request):
+    if request.method == 'POST':
+        transaction_form = TransactionForm(request.POST)
+        if transaction_form.is_valid():
+            transaction = transaction_form.save(commit=False)
+            transaction.user = request.user
+            transaction.save()
+            return redirect('transaction_history')
+    else:
+        transaction_form = TransactionForm()
+
+    return render(request, 'bank/create_transaction.html', {'transaction_form': transaction_form})
 
 @login_required
-@require_http_methods(["POST"])
-def delete_transaction(request, transaction_id):
-    transaction = get_object_or_404(Transaction, id=transaction_id, account__user=request.user)
-    transaction.delete()
-    return JsonResponse({'success': True})
+def transaction_history(request):
+    transactions = Transaction.objects.filter(user=request.user).order_by('-date')
+    return render(request, 'bank/transaction_history.html', {'transactions': transactions})
 ```
