@@ -1,61 +1,52 @@
 ```javascript
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CustomerForm = ({ onAddCustomer }) => {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
+const CustomerList = () => {
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('');
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onAddCustomer({ name, email });
-        setName('');
-        setEmail('');
-    };
+  useEffect(() => {
+    fetch('/api/customers')
+      .then(response => response.json())
+      .then(data => {
+        setCustomers(data);
+        setLoading(false);
+      });
+  }, []);
 
-    return (
-        <form onSubmit={handleSubmit}>
-            <input
-                type="text"
-                placeholder="Customer Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-            />
-            <input
-                type="email"
-                placeholder="Customer Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-            />
-            <button type="submit">Add Customer</button>
-        </form>
-    );
-};
+  const filteredCustomers = customers.filter(customer =>
+    customer.name.toLowerCase().includes(filter.toLowerCase())
+  );
 
-const CustomerList = ({ customers }) => (
-    <ul>
-        {customers.map((customer, index) => (
-            <li key={index}>{customer.name} - {customer.email}</li>
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Search Customer"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <ul>
+        {filteredCustomers.map(customer => (
+          <li key={customer.id}>
+            {customer.name} - {customer.email}
+            <button onClick={() => deleteCustomer(customer.id)}>Delete</button>
+          </li>
         ))}
-    </ul>
-);
+      </ul>
+    </div>
+  );
 
-const CustomerManagement = () => {
-    const [customers, setCustomers] = useState([]);
-
-    const addCustomer = (customer) => {
-        setCustomers([...customers, customer]);
-    };
-
-    return (
-        <div>
-            <h1>Customer Management System</h1>
-            <CustomerForm onAddCustomer={addCustomer} />
-            <CustomerList customers={customers} />
-        </div>
-    );
+  function deleteCustomer(id) {
+    fetch(`/api/customers/${id}`, { method: 'DELETE' })
+      .then(() => {
+        setCustomers(customers.filter(customer => customer.id !== id));
+      });
+  }
 };
 
-export default CustomerManagement;
+export default CustomerList;
 ```
