@@ -1,49 +1,51 @@
 ```python
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.shortcuts import render, redirect
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
-from .models import Account, Transaction
-from .forms import AccountForm, TransactionForm
 from django.contrib.auth.decorators import login_required
+from .models import Account, Transaction
+from .forms import TransferForm
 
-@login_required
 @require_http_methods(["GET", "POST"])
-def account_view(request):
+@login_required
+def transfer_money(request):
     if request.method == "POST":
-        form = AccountForm(request.POST)
+        form = TransferForm(request.POST)
         if form.is_valid():
-            account = form.save(commit=False)
-            account.user = request.user
-            account.save()
-            return redirect('account_detail', account_id=account.id)
+            sender_account = Account.objects.get(user=request.user)
+            recipient_account = Account.objects.get(account_number=form.cleaned_data['recipient_account_number'])
+            amount = form.cleaned_data['amount']
+
+            if sender_account.balance >= amount:
+                # Create transaction for the sender
+                Transaction.objects.create(
+                    account=sender_account,
+                    amount=-amount,
+                    transaction_type='debit',
+                    description=f'Transferred {amount} to {recipient_account.user.username}'
+                )
+                # Create transaction for the recipient
+                Transaction.objects.create(
+                    account=recipient_account,
+                    amount=amount,
+                    transaction_type='credit',
+                    description=f'Received {amount} from {sender_account.user.username}'
+                )
+                
+                # Update balances
+                sender_account.balance -= amount
+                recipient_account.balance += amount
+                sender_account.save()
+                recipient_account.save()
+
+                return JsonResponse({'status': 'success', 'message': 'Transfer successful!'})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Insufficient funds.'})
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Invalid data.'})
+
     else:
-        form = AccountForm()
+        form = TransferForm()
 
-    accounts = Account.objects.filter(user=request.user)
-    return render(request, 'bank/account_view.html', {'form': form, 'accounts': accounts})
-
-@login_required
-@require_http_methods(["GET"])
-def account_detail(request, account_id):
-    account = get_object_or_404(Account, id=account_id, user=request.user)
-    transactions = Transaction.objects.filter(account=account)
-    return render(request, 'bank/account_detail.html', {'account': account, 'transactions': transactions})
-
-@login_required
-@require_http_methods(["POST"])
-def transaction_view(request):
-    form = TransactionForm(request.POST)
-    if form.is_valid():
-        transaction = form.save(commit=False)
-        transaction.user = request.user
-        transaction.save()
-        return JsonResponse({'status': 'success', 'transaction_id': transaction.id})
-    return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
-
-@login_required
-@require_http_methods(["GET"])
-def account_summary(request):
-    accounts = Account.objects.filter(user=request.user)
-    total_balance = sum(account.balance for account in accounts)
-    return render(request, 'bank/account_summary.html', {'total_balance': total_balance, 'accounts': accounts})
+    return render(request, 'transfer.html', {'form': form})
 ```
